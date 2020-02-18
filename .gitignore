@@ -1,0 +1,29 @@
+logs
+tmp
+dist
+.cache
+RUNNING_PID
+
+/.idea
+/.idea_modules
+/.classpath
+/.project
+/.settings
+/RUNNING_PID
+*.iml
+
+# SBT
+dist
+project/project
+project/boot
+project/target
+project/plugins/target
+target
+.target
+.g8
+
+# general
+*~
+*.log
+tmp
+dump

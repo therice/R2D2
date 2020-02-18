@@ -1,0 +1,10 @@
+## Interface: 11303
+## Title: |cfffe7b2cR2D2|r
+## Notes: R2D2 - EPGP AddOn for World of Warcraft
+## Author: Atiesh-Gnomechomsky
+## Version: 0.1-alpha
+## SavedVariables: R2D2_DB
+## X-InterfaceName: R2D2 Classic
+
+## Required Libraries
+Libs\Libs.xml
