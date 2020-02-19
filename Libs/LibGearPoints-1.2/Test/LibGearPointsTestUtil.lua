@@ -1,3 +1,5 @@
+_G.LibGearPoints_Testing = true
+
 TestCustomItems = {
     -- Classic P2
     [18422] = { 4, 74, "INVTYPE_NECK", "Horde" },       -- Head of Onyxia

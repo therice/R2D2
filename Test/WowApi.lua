@@ -88,7 +88,11 @@ function CreateFrame(kind, name, parent)
 end
 
 function UnitName(unit)
-	return unit
+	if unit == "player" then
+		return "Gnomechomsky"
+	else
+		return unit
+	end
 end
 
 function GetRealmName()
@@ -173,7 +177,7 @@ for i=1,7 do
 end
 DEFAULT_CHAT_FRAME = ChatFrame1
 
-debugstack = debug.traceback
+-- debugstack = debug.traceback
 date = os.date
 
 local wow_api_locale = 'enUS'
@@ -187,6 +191,14 @@ end
 
 function GetAddOnInfo()
 	return
+end
+
+function GetAddOnMetadata(name, attr)
+	if string.lower(attr) == 'version' then
+		return "0.1-test"
+	else
+		return nil
+	end
 end
 
 function GetNumAddOns()
@@ -228,6 +240,7 @@ end
 time = os.clock
 
 strmatch = string.match
+strlower = string.lower
 
 function SendChatMessage(text, chattype, language, destination)
 	assert(#text<255)
@@ -358,8 +371,17 @@ _G.debugstack = function (start, count1, count2)
 	return table.concat(chunks, '\n', start_idx, end_idx)
 end
 _G.strmatch = string.match
+_G.strjoin = function(delimiter, ...)
+	return table.concat({...}, delimiter)
+end
+_G.string.trim = function(s)
+	-- from PiL2 20.4
+	return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
 _G.date = os.date
 _G.time = os.time
+_G.unpack = table.unpack
 -- https://wowwiki.fandom.com/wiki/API_strsplit
 -- A list of strings. Not a table. If the delimiter is not found in the string, the whole subject string will be returned.
 _G.strsplit = function(delimiter, str, max)

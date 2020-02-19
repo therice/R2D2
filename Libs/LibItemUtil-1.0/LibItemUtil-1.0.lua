@@ -4,6 +4,7 @@ local MINOR_VERSION = tonumber(("$Revision: 1023 $"):match("%d+")) or 0
 local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
+
 -- Inventory types are localized on each client. For this we need LibBabble-Inventory to unlocalize the strings.
 -- Establish the lookup table for localized to english words
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()

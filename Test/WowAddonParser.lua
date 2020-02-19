@@ -55,8 +55,8 @@ function Addon:new(toc)
     }, Addon)
 end
 
-function Addon:GetProperty(k, v)
-    self.attrs[k] = v
+function Addon:GetProperty(k)
+    return self.attrs[k]
 end
 
 function Addon:SetProperty(k, v)
@@ -115,7 +115,7 @@ end
 function ParseTOC(toc)
     local file = assert(io.open(toc, "r"))
     local addon = Addon:new(toc)
-    print('Parsing Add-On TOC @ ' .. toc)
+    print('Parsing Addon TOC @ ' .. toc)
     while true do
         local line = file:read()
         if line == nil then break end
@@ -144,21 +144,24 @@ function TestSetup(toc, preload_functions)
     preload_functions = preload_functions or {}
     local addon = ParseTOC(toc)
     local load = addon:ResolveFiles()
+    local addOnName  = addon:GetProperty("X-AddonName")
+    local addOnNamespace = {}
+    print("Parsed Addon -> " .. addOnName)
 
     -- insert non-addon files needing for testing
     local thisDir = pl.abspath(debug.getinfo(1).source:match("@(.*)/.*.lua$"))
-    table.insert(load, 1, thisDir .. '/WowApi.lua')
+    local wowApi = thisDir .. '/WowApi.lua'
+    print('Loading File -> ' .. wowApi)
+    loadfile(wowApi)()
 
-    local loadedFileCount = 1
+    if #preload_functions > 0 then
+        print('Invoking Preload Functions (' .. #preload_functions .. ')')
+        for _, f in pairs(preload_functions) do f() end
+    end
 
     for _, toload in pairs(load) do
         print('Loading File -> ' .. toload)
-        loadfile(toload)()
-        -- after we load the Wow API, call any specified loader functions
-        if loadedFileCount == 1 then
-            for _, f in pairs(preload_functions) do f() end
-        end
-        loadedFileCount = loadedFileCount + 1
+        loadfile(toload)(addOnName, addOnNamespace)
     end
 end
 

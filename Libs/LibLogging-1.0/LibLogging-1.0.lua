@@ -5,7 +5,7 @@ local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
 -- are we in test mode
-local _TEST = _G._LIB_LOGGING_TEST_MODE
+local _TEST = _G.LibLogging_Testing
 
 -- Basic constants for use with library, with a mapping to hierarchy key
 lib.Level = {
@@ -104,7 +104,7 @@ end
 
 local function GetCaller()
     local trace = debugstack(4, 1, 0)
-    return trace:match("([^\\]-): in function") or trace
+    return trace:match("([^\\/]-): in [function|method]") or trace
 end
 
 local function Log(writer, level, fmt, ...)

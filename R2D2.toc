@@ -4,7 +4,12 @@
 ## Author: Atiesh-Gnomechomsky
 ## Version: 0.1-alpha
 ## SavedVariables: R2D2_DB
+## X-AddonName: R2D2
 ## X-InterfaceName: R2D2 Classic
 
 ## Required Libraries
 Libs\Libs.xml
+## Localization
+Locales\Locales.xml
+## Core Add-On
+R2D2.lua

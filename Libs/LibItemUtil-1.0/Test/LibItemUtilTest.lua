@@ -3,12 +3,12 @@ local pl = require('pl.path')
 local itemUtil
 describe("LibItemUtil", function()
     setup(function()
-        _G._LIB_ITEM_UTIL_TEST_MODE = true
+        _G.LibItemUtil_Testing = true
         loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))()
         itemUtil, _ = LibStub('LibItemUtil-1.0')
     end)
     teardown(function()
-        _G._LIB_ITEM_UTIL_TEST_MODE = nil
+        _G.LibItemUtil_Testing = nil
     end)
     describe("item ids", function()
         it("resolved from item links", function()

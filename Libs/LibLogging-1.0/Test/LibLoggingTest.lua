@@ -4,12 +4,12 @@ local pl = require('pl.path')
 local logging
 describe("LibLogging", function()
     setup(function()
-        _G._LIB_LOGGING_TEST_MODE = true
+        _G.LibLogging_Testing = true
         loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))()
         logging, _ = LibStub('LibLogging-1.0')
     end)
     teardown(function()
-        _G._LIB_LOGGING_TEST_MODE = nil
+        _G.LibLogging_Testing = nil
     end)
     describe("logging levels", function()
         it("define thresholds", function()

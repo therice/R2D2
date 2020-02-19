@@ -3,14 +3,13 @@ local pl = require('pl.path')
 local gearPoints, aceDb
 describe("LibGearPoints", function()
     setup(function()
-        _G._LIB_GEAR_POINTS_TEST_MODE = true
         loadfile('LibGearPointsTestUtil.lua')()
         loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))()
         gearPoints, _ = LibStub('LibGearPoints-1.2')
         aceDb, _ = LibStub('AceDB-3.0')
     end)
     teardown(function()
-        _G._LIB_GEAR_POINTS_TEST_MODE = nil
+        _G.LibGearPoints_Testing = nil
     end)
     describe("custom items", function()
         it("is empty upon loading", function()
