@@ -11,5 +11,12 @@
 Libs\Libs.xml
 ## Localization
 Locales\Locales.xml
-## Core Add-On
-R2D2.lua
+## Initialization Stub
+Init.lua
+## Utilies
+Util\Util.xml
+## User Interface
+UI\UI.xml
+## User Interface
+Core\Core.xml
+

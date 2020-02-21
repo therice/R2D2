@@ -237,6 +237,12 @@ function GetCVar(var)
 	return "test"
 end
 
+-- version, build, date, tocversion
+function GetBuildInfo()
+	return "1.13.3", "3302", "Feb 7 2020", 11303
+end
+
+
 time = os.clock
 
 strmatch = string.match
@@ -279,7 +285,7 @@ end
 
 function hooksecurefunc(func_name, post_hook_func)
 	local orig_func = _G[func_name]
-	assert(type(orig_func)=="function")
+	-- assert(type(orig_func)=="function")
 
 	_G[func_name] = function (...)
 				local ret = { orig_func(...) }		-- yeahyeah wasteful, see if i care, it's a test framework

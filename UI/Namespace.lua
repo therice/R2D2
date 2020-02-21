@@ -1,0 +1,3 @@
+local _, namespace = ...
+
+namespace.components.UI = {}

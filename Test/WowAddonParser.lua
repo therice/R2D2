@@ -85,7 +85,7 @@ function Addon:ResolveFiles(from, files, resolutions)
         elseif endswith(resolvedFile, '.xml') then
             local rootPath = absolutepath(resolvedFile)
             --print('New root for resolution is ' .. rootPath)
-            --print('Parsing ' .. resolvedFile)
+            -- print('Parsing ' .. resolvedFile)
             local parsed = ParseXml(resolvedFile)
             self:ResolveFiles(rootPath, parsed, resolutions)
         else
@@ -104,6 +104,7 @@ function ParseXml(file)
 
     local parsed = {}
     for _, child in pairs(wowXmlHandler.root._children) do
+        -- doesn't handle comments, will error out
         if type(child) == 'table' then
             table.insert(parsed, child["_attr"].file)
         end
