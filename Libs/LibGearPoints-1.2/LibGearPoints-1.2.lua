@@ -208,6 +208,7 @@ local EquipmentLocationMappings = {
     ["INVTYPE_RELIC"]           = "relic",
     ["INVTYPE_WAND"]            = "wand",
     -- From here down are english representations of GetItemSubClassInfo calls for ranged sub-classes
+    -- See GearPoints.lua
     ["Bows"]                    = "ranged",         -- GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_BOWS)
     ["Guns"]                    = "ranged",         -- GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_GUNS)
     ["Crossbows"]               = "ranged",         -- GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_CROSSBOW)
@@ -228,6 +229,7 @@ end
 -- the arguments here shoul be itemEquipLoc (Non-localized token) and itemSubType (Localized name) from GetItemInfo()
 function lib:GetScale(equipLoc, subClass)
     local name = self:GetScaleKey(equipLoc, subClass)
+    Logging:Trace("GearPoints.GetScale(%s, %s) -> %s", equipLoc, subClass, name)
     if name then
         -- configuration supports multiple scaling factors, but currently implementation only uses one
         local scale_config = ScalingConfig[name]
@@ -262,6 +264,8 @@ end
 
 -- calculates the GP for specified item
 function lib:GetValue(item)
+    Logging:Trace("GearPoints.GetValue(%s)", item)
+
     if not item then return end
 
     local _, itemLink, rarity, ilvl, _, _, itemSubClass, _, equipLoc = GetItemInfo(item)
@@ -280,7 +284,7 @@ function lib:GetValue(item)
         CustomItem = CustomItems[itemId]
         if CustomItem then
             -- , table.tostring(custom_item)
-            Logging:Debug("GetValue(%s) : Custom Item %s", tostring(itemId))
+            Logging:Trace("GetValue(%s) : Custom Item %s", tostring(itemId))
         end
     end
 

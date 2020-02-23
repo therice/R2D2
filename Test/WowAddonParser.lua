@@ -142,6 +142,8 @@ function ParseTOC(toc)
 end
 
 function TestSetup(toc, preload_functions)
+    -- The loading of addon source may redefine print function, capture it before starting
+    local print = _G.print
     preload_functions = preload_functions or {}
     local addon = ParseTOC(toc)
     local load = addon:ResolveFiles()

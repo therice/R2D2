@@ -15,6 +15,8 @@ Locales\Locales.xml
 Init.lua
 ## Utilies
 Util\Util.xml
+## Modules
+Modules\Modules.xml
 ## User Interface
 UI\UI.xml
 ## User Interface

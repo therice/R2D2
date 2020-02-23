@@ -4,6 +4,40 @@ local Util = namespace.components.Util
 Util.Tables = {}
 
 local Self = Util.Tables
+local Functions = Util.Functions
+
+-- Get table keys
+---@param t table
+---@return table
+function Self.Keys(t)
+    local u = Self.New()
+    for i,v in pairs(t) do tinsert(u, i) end
+    return u
+end
+
+-- Get table values as continuously indexed list
+---@param t table
+---@return table
+function Self.Values(t)
+    local u = Self.New()
+    for i,v in pairs(t) do tinsert(u, v) end
+    return u
+end
+
+-- Good old FoldLeft
+---@param t table
+---@param u any
+function Self.FoldL(t, fn, u, index, ...)
+    fn, u = Functions.New(fn), u or Self.New()
+    for i,v in pairs(t) do
+        if index then
+            u = fn(u, v, i, ...)
+        else
+            u = fn(u, v, ...)
+        end
+    end
+    return u
+end
 
 -- Reusable tables
 -- Store unused tables in a cache to reuse them later

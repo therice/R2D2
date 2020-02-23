@@ -388,6 +388,9 @@ end
 _G.date = os.date
 _G.time = os.time
 _G.unpack = table.unpack
+_G.tinsert = table.insert
+_G.tremove = table.remove
+
 -- https://wowwiki.fandom.com/wiki/API_strsplit
 -- A list of strings. Not a table. If the delimiter is not found in the string, the whole subject string will be returned.
 _G.strsplit = function(delimiter, str, max)
@@ -437,4 +440,22 @@ _G.GetItemInfo = function(item)
 	return table.unpack(itemInfo)
 end
 
+--[[
+returns
+name (string) - Name of the item subtype
+isArmorType (boolean) - Seems to only return true for classID 4: Armor - subClassID 0 to 4 Miscellaneous, Cloth, Leather, Mail, Plate
+--]]
+_G.GetItemSubClassInfo = function(classID, subClassID)
+	if classID == LE_ITEM_CLASS_WEAPON then
+		if subClassID == LE_ITEM_WEAPON_WAND then
+			return "Wands", false
+		elseif subClassID == LE_ITEM_WEAPON_THROWN then
+			return "Thrown", false
+		end
+	end
+end
+
 -- https://github.com/Gethe/wow-ui-source/tree/classic
+_G.LE_ITEM_CLASS_WEAPON = 2
+_G.LE_ITEM_WEAPON_WAND = 19
+_G.LE_ITEM_WEAPON_THROWN = 16
