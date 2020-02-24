@@ -11,6 +11,7 @@
     <Include file="AceLocale-3.0\AceLocale-3.0.xml"/>
     <Include file="AceConsole-3.0\AceConsole-3.0.xml"/>
     <Include file="AceGUI-3.0\AceGUI-3.0.xml"/>
+    <Include file="AceConfig-3.0\AceConfig-3.0.xml"/>
     <Include file="LibItemUtil-1.0\LibItemUtil-1.0.xml"/>
     <Include file="LibGearPoints-1.2\LibGearPoints-1.2.xml"/>
 </Ui>

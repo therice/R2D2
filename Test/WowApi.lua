@@ -1,10 +1,18 @@
-local frames = {} -- Stores globally created frames, and their internal properties.
+local frames = {} -- Stores globally created frames and their internal properties.
+local textures = {} -- Stores textures and their internal properties
 
 local FrameClass = {} -- A class for creating frames.
+local TextureClass = {} -- A class for creating textures
 
 FrameClass.methods = {
 	"SetScript", "RegisterEvent", "UnregisterEvent", "UnregisterAllEvents", "Show", "Hide", "IsShown",
-	"ClearAllPoints", "SetParent", "GetName", "SetOwner", "SetHyperlink", "NumLines"
+	"ClearAllPoints", "SetParent", "GetName", "SetOwner", "SetHyperlink", "NumLines", "SetPoint", "SetSize", "SetFrameStrata",
+	"SetBackdrop", "CreateFontString", "SetNormalFontObject", "SetHighlightFontObject", "SetNormalTexture", "GetNormalTexture",
+	"SetPushedTexture", "GetPushedTexture", "SetHighlightTexture", "GetHighlightTexture", "SetText", "GetScript"
+}
+
+TextureClass.methods = {
+	"SetTexCoord"
 }
 
 function FrameClass:New(name)
@@ -19,13 +27,39 @@ function FrameClass:New(name)
 		name = name,
 		isShow = true,
 		parent = nil,
+		text = nil,
+		textures = {}
 	}
 	return frame, frameProps
+end
+
+function TextureClass:New(t)
+	local texture = {}
+	for _,method in ipairs(self.methods) do
+		texture[method] = self[method]
+	end
+
+	local textureProps = {
+		texture = t,
+		texturePath = nil,
+		coord = {}
+	}
+
+	return texture, textureProps
+end
+
+function FrameClass:SetText(text)
+	frames[self].text = text
 end
 
 function FrameClass:SetScript(script,handler)
 	frames[self].scripts[script] = handler
 end
+
+function FrameClass:GetScript(script)
+	return frames[self].scripts[script]
+end
+
 
 function FrameClass:RegisterEvent(event)
 	frames[self].events[event] = true
@@ -77,6 +111,65 @@ function FrameClass:NumLines()
 	return 0
 end
 
+function FrameClass:SetPoint(point, relativeFrame, relativePoint, ofsx, ofsy)
+
+end
+
+function FrameClass:SetSize(x, y)
+
+end
+
+function FrameClass:SetFrameStrata(strata)
+
+end
+
+function FrameClass:SetBackdrop(bgFile, edgeFile, tile, tileSize, edgeSize, insets)
+
+end
+
+function FrameClass:CreateFontString(name, layer, inheritsFrom)
+	return CreateFrame("FontString", name)
+end
+
+function FrameClass:SetNormalFontObject(font)
+
+end
+
+function FrameClass:SetHighlightFontObject(font)
+
+end
+
+function FrameClass:SetNormalTexture(texture, texturePath)
+	local texture = CreateTexture("normal", texture, texturePath)
+	frames[self].textures['normal'] = texture
+end
+
+function FrameClass:GetNormalTexture()
+	return frames[self].textures['normal']
+end
+
+function FrameClass:SetPushedTexture(texture, texturePath)
+	local texture = CreateTexture("pushed", texture, texturePath)
+	frames[self].textures['pushed'] = texture
+end
+
+function FrameClass:GetPushedTexture()
+	return frames[self].textures['pushed']
+end
+
+function FrameClass:SetHighlightTexture(texture, texturePath)
+	local texture = CreateTexture("highlight", texture, texturePath)
+	frames[self].textures['highlight'] = texture
+end
+
+function FrameClass:GetHighlightTexture()
+	return frames[self].textures['highlight']
+end
+
+
+function TextureClass:SetTexCoord(left, right, top, bottom)
+end
+
 function CreateFrame(kind, name, parent)
 	local frame,internal = FrameClass:New(name)
 	internal.parent = parent
@@ -87,6 +180,15 @@ function CreateFrame(kind, name, parent)
 	return frame
 end
 
+function CreateTexture(texture, texturePath)
+	local tex, internal = TextureClass:New(type)
+	internal.texture = texturePath
+	internal.texturePath = texturePath
+	internal.coord = {}
+	textures[tex] = internal
+	return tex
+end
+
 function UnitName(unit)
 	if unit == "player" then
 		return "Gnomechomsky"
@@ -94,6 +196,7 @@ function UnitName(unit)
 		return unit
 	end
 end
+
 
 function GetRealmName()
 	return "Realm Name"
