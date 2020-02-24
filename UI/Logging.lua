@@ -34,7 +34,6 @@ end
 function LoggingUI:OnInitialize()
     logging:Trace("OnInitialize(%s)", self:GetName())
 
-
     if not self.loggingFrame or not self.loggingDetail then
         self.loggingFrame =
             UI("Frame")

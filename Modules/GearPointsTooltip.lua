@@ -43,10 +43,14 @@ function OnTooltipSetItemAddGp(tooltip, ...)
     local _, itemlink = tooltip:GetItem()
     local gp, comment = GearPoints:GetValue(itemlink)
     local ilvl = select(4, GetItemInfo(itemlink))
-    logging:Trace("GearPointsTooltip:OnTooltipSetItem(%s) : GP = %s, Comment = %s, ItemLevel = %s", itemlink,  Objects.ToString(gp),  Objects.ToString(comment),  Objects.ToString(ilvl))
-    if ilvl then tooltip:AddLine(("ItemLevel [%s] : %s"):format("Alpaca", ilvl)) end
+    --[[
+    logging:Trace("GearPointsTooltip:OnTooltipSetItem(%s) : GP = %s, Comment = %s, ItemLevel = %s",
+            itemlink,  Objects.ToString(gp),  Objects.ToString(comment),  Objects.ToString(ilvl)
+    )
+    --]]
+    if ilvl then tooltip:AddLine(L["gp_tooltip_ilvl"]:format(ilvl)) end
     if not gp then return end
-    tooltip:AddLine(("GP [%s] : %d (%s)"):format("Alpaca",gp, comment), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+    tooltip:AddLine(L["gp_tooltip_gp"]:format(gp, comment), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
 end
 
 

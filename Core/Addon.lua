@@ -8,15 +8,24 @@ local Util      = namespace.components.Util
 local Strings   = Util.Strings
 local Tables    = Util.Tables
 
+R2D2.defaults = {
+    profile = {
+        logThreshold = logging.Level.Trace,
+        onlyEnabledInRaids = true,
+    }
+}
+
+
 function R2D2:OnInitialize()
-    logging:SetRootThreshold(logging.Level.Trace)
+    logging:SetRootThreshold(logging.Level.Debug)
     logging:Debug("OnInitialize(%s)", self:GetName())
     self.version = GetAddOnMetadata(name, "Version")
     self.chatCmdHelp = {
         {cmd = "config", desc = L["chat_commands_config"]},
         {cmd = "version", desc = L["chat_commands_version"]},
     }
-    self.db = LibStub('AceDB-3.0'):New('R2D2_DB')
+    self.db = LibStub('AceDB-3.0'):New('R2D2_DB', R2D2.defaults)
+    logging:SetRootThreshold(self.db.profile.logThreshold)
     -- setup chat hooks
     self:RegisterChatCommand(name:lower(), "HandleChatCommand")
 end

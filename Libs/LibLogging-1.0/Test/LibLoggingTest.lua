@@ -1,15 +1,16 @@
 local pl = require('pl.path')
-
+local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match("@(.*)$"))
 
 local logging
 describe("LibLogging", function()
     setup(function()
         _G.LibLogging_Testing = true
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))()
+        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
         logging, _ = LibStub('LibLogging-1.0')
     end)
     teardown(function()
         _G.LibLogging_Testing = nil
+        After()
     end)
     describe("logging levels", function()
         it("define thresholds", function()
@@ -36,13 +37,13 @@ describe("LibLogging", function()
     end)
     describe("write output to", function()
         it("specified handler", function()
-            local logging_output
+            local logging_output = ""
             local CaptureOutput = function(msg)
                 logging_output = msg
             end
 
+            logging:SetRootThreshold(logging.Level.Debug)
             logging:SetWriter(CaptureOutput)
-            logging:SetRootThreshold(logging.Level.Info)
             logging:Log(logging.Level.Info, "InfoTest")
             assert.matches("INFO.*(LibLoggingTest.lua.*): InfoTest",logging_output)
             logging:Debug("DebugTest")

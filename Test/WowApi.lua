@@ -410,7 +410,7 @@ _G.strsplit = function(delimiter, str, max)
 		record[field] = string.sub(str, start)
 	end
 
-	return record
+	return unpack(record)
 end
 -- https://wowwiki.fandom.com/wiki/API_GetItemInfo
 -- https://wowwiki.fandom.com/wiki/ItemString
@@ -456,6 +456,27 @@ _G.GetItemSubClassInfo = function(classID, subClassID)
 end
 
 -- https://github.com/Gethe/wow-ui-source/tree/classic
+_G.INVTYPE_HEAD = "Head"
+_G.INVTYPE_NECK = "Neck"
+_G.INVTYPE_SHOULDER = "Shoulder"
+_G.INVTYPE_CHEST = "Chest"
+_G.INVTYPE_WAIST = "Waist"
+_G.INVTYPE_LEGS = "Legs"
+_G.INVTYPE_FEET = "Feet"
+_G.INVTYPE_WRIST = "Wrist"
+_G.INVTYPE_HAND = "Hands"
+_G.INVTYPE_FINGER = "Finger"
+_G.INVTYPE_TRINKET = "Trinket"
+_G.INVTYPE_CLOAK = "Back"
+_G.SHIELDSLOT = "Shield"
+_G.INVTYPE_HOLDABLE = "Held In Off-Hand"
+_G.INVTYPE_RANGED = "Ranged"
+_G.INVTYPE_RELIC =  "Relic"
+_G.INVTYPE_WEAPON = "One-Hand"
+_G.INVTYPE_2HWEAPON = "Two-Handed"
+_G.INVTYPE_WEAPONMAINHAND = "Main Hand"
+_G.INVTYPE_WEAPONOFFHAND = "Off Hand"
+_G.WEAPON = "Weapon"
 _G.LE_ITEM_CLASS_WEAPON = 2
 _G.LE_ITEM_WEAPON_WAND = 19
 _G.LE_ITEM_WEAPON_THROWN = 16

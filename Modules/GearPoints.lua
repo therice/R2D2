@@ -4,7 +4,7 @@ local G = _G
 local GP        = namespace:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
 local L         = namespace.components.Locale
 local logging   = namespace.components.Logging
--- logal LibGP     =
+local LibGP     = LibStub("LibGearPoints-1.2")
 
 local DisplayName = {}
 DisplayName.OneHWeapon  = L["%s %s"]:format(_G.INVTYPE_WEAPON, _G.WEAPON)
@@ -51,8 +51,8 @@ GP.defaults = {
         weapon2h_comment_1  = DisplayName.TwoHWeapon,
         weaponmainh_scale_1 = 1.5,
         weaponmainh_comment_1 = DisplayName.MainHWeapon,
-        weaponoffh__scale_1 = 0.5,
-        weaponoffh__comment_1 = DisplayName.OffHWeapon,
+        weaponoffh_scale_1  = 0.5,
+        weaponoffh_comment_1= DisplayName.OffHWeapon,
         holdable_scale_1    = 0.5,
         holdable_comment_1  = _G.INVTYPE_HOLDABLE,
         ranged_scale_1      = 2, -- Bows, Guns, Crossbows
@@ -66,7 +66,15 @@ GP.defaults = {
     }
 }
 
+function GP:OnEnable()
+    logging:Debug("OnEnable(%s)", self:GetName())
+    LibGP:SetScalingConfig(self.db.profile)
+    LibGP:SetFormulaInputs(self.db.profile.gp_base, self.db.profile.gp_coefficient_base, self.db.profile.gp_multiplier)
+end
+
 function GP:OnInitialize()
     logging:Debug("OnInitialize(%s)", self:GetName())
-    self.db = namespace.db:RegisterNamespace(self:GetName(), GpTooltip.defaults)
+    -- replace the library string representation function with our utiltiy (more detail)
+    LibGP:SetToStringFn(namespace.components.Util.Objects.ToString)
+    self.db = namespace.db:RegisterNamespace(self:GetName(), GP.defaults)
 end

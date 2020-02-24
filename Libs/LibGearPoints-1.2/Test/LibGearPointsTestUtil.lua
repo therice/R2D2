@@ -1,5 +1,3 @@
-_G.LibGearPoints_Testing = true
-
 TestCustomItems = {
     -- Classic P2
     [18422] = { 4, 74, "INVTYPE_NECK", "Horde" },       -- Head of Onyxia
@@ -11,9 +9,9 @@ TestCustomItems = {
 
 TestScalingConfig =  {
     weapon = {
-        {1.5, 'Main Hand Weapon'},
+        {1.5,'One-Hand Weapon'},
         {0.5, 'Off Hand Weapon / Tank Main Hand Weapon'},
-        {0.15, 'Hunter One Hand Weapon'},
+        {0.15, 'Hunter One-Hand Weapon'},
     },
     weaponmainh = {
         {1.5, 'Main Hand Weapon'},
@@ -52,31 +50,4 @@ do
             index = index +1
         end
     end
-end
-
--- todo : move this to a utility class
-function GetSize(tbl, includeIndices, includeKeys)
-    local size = 0;
-
-    includeIndices = (includeIndices == nil and true) or includeIndices
-    includeKeys = (includeKeys == nil and true) or includeKeys
-
-    if (includeIndices and includeKeys) then
-        for _, _ in pairs(tbl) do
-            size = size + 1
-        end
-
-    elseif (includeIndices and not includeKeys) then
-        for _, _ in ipairs(tbl) do
-            size = size + 1
-        end
-    elseif (not includeIndices and includeKeys) then
-        for key, _ in pairs(tbl) do
-            if (type(key) == "string") then
-                size = size + 1
-            end
-        end
-    end
-
-    return size;
 end

@@ -109,6 +109,7 @@ end
 
 local function Log(writer, level, fmt, ...)
     -- don't log if specified level is filtered by our root threshold
+    -- print(GetThreshold(level) .. '/' .. RootThreshold)
     if GetThreshold(level) < RootThreshold then return end
     writer(string.format("%s [%s] (%s): "..fmt, string.upper(level), GetDateTime(), GetCaller(), ...))
 end

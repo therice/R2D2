@@ -24,6 +24,33 @@ end
 
 Before()
 
+
+function GetSize(tbl, includeIndices, includeKeys)
+    local size = 0;
+
+    includeIndices = (includeIndices == nil and true) or includeIndices
+    includeKeys = (includeKeys == nil and true) or includeKeys
+
+    if (includeIndices and includeKeys) then
+        for _, _ in pairs(tbl) do
+            size = size + 1
+        end
+
+    elseif (includeIndices and not includeKeys) then
+        for _, _ in ipairs(tbl) do
+            size = size + 1
+        end
+    elseif (not includeIndices and includeKeys) then
+        for key, _ in pairs(tbl) do
+            if (type(key) == "string") then
+                size = size + 1
+            end
+        end
+    end
+
+    return size;
+end
+
 local thisDir = pl.abspath(debug.getinfo(1).source:match("@(.*)/.*.lua$"))
 loadfile(thisDir .. '/WowAddonParser.lua')()
 TestSetup(pl.abspath(thisDir .. '/../R2D2.toc'), params[2] or {})

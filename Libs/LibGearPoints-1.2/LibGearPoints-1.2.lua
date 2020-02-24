@@ -7,6 +7,10 @@ if not lib then return end
 local Logging = LibStub("LibLogging-1.0")
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
 
+-- Allows for specification of an alternative function for string repr
+local ToStringFn = function(x) return x end
+function lib:SetToStringFn(fn) ToStringFn = fn end
+
 -- Used to display GP values directly on tier tokens or provide custom valuation
 --
 -- keys are item ids and values are tuple where index is
@@ -26,7 +30,6 @@ For example:
     [20932] = { 4, 78, "INVTYPE_SHOULDER" },    -- T2.5 shoulder, feet (Qiraji Bindings of Dominance)
 }
 --]]
-
 local CustomItems = {}
 function lib:GetCustomItems()
     return CustomItems
@@ -135,27 +138,41 @@ function lib:GetScalingConfig()
 end
 
 function lib:SetScalingConfig(config)
+    --local Objects = R2D2.components.Util.Objects
+
     ScalingConfig = {}
     for k, v in pairs(config) do
         local equipLoc = k
         local scaling = v
+        Logging:Trace("SetScalingConfig() : equipLoc=%s scaling=%s type=%s", equipLoc, ToStringFn(scaling), type(scaling))
 
         -- split by '_' to determine if this is a composite key containing location and one (or more) scaling values
         -- e.g. weaponmainh_scale_1, weaponmainh_comment_1
         -- this would be necessary if setting configuration from AceDB
-        for _, keyParts in pairs({strsplit('_', k)}) do
-            if #keyParts == 3 then
-                -- index #1 is the equipment location
-                equipLoc = keyParts[1]
-                -- index #2 is the name of the value in the tuple (e.g. comment 'name' or scale 'name')
-                local tupleIndexName = keyParts[2]
-                local tupleIndex
-                if      tupleIndexName == 'scale'   then tupleIndex = 1
-                elseif  tupleIndexName == 'comment' then tupleIndex = 2
-                else    error(format("Invalid tuple index name %s", tupleIndexName))
-                end
+        local parts = {strsplit('_', equipLoc)}
+        if #parts == 1 then
+            if type(scaling) == 'number' or type(scaling) == 'table' then
+                Logging:Trace("SetScalingConfig(SET) : equipLoc=%s scaling=%s", equipLoc, scaling)
+                ScalingConfig[equipLoc] = scaling
+            else
+                Logging:Trace("SetScalingConfig(IGNORE_1) : equipLoc=%s scaling=%s type=%s", equipLoc,  ToStringFn(scaling), type(scaling))
+            end
+        elseif #parts == 3 then
+            -- index #1 is the equipment location
+            equipLoc = parts[1]
+            -- index #2 is the name of the value in the tuple (e.g. comment 'name' or scale 'name')
+            local tupleIndexName = parts[2]
+            local tupleIndex
+            if      tupleIndexName == 'scale'   then tupleIndex = 1
+            elseif  tupleIndexName == 'comment' then tupleIndex = 2
+            else
+                Logging:Warn("SetScalingConfig(IGNORE_3) : Ignoring equipLoc=%s tupleIndexName=%s", equipLoc, tupleIndexName)
+                tupleIndex = -1
+            end
+
+            if tupleIndex > 0 then
                 -- index #3 is the order of the tuple in table (e.g. 1 = first prioriy, 2 = second priority)
-                local priority = tonumber(keyParts[3])
+                local priority = tonumber(parts[3])
                 -- table of all tuples associated with equipment location
                 scaling = ScalingConfig[equipLoc] or {}
                 -- tuple at the specified priority
@@ -163,12 +180,14 @@ function lib:SetScalingConfig(config)
                 scalingTuple[tupleIndex] = config[k]
                 -- assign the tuple to specified priority in table
                 scaling[priority] = scalingTuple
+                Logging:Trace("SetScalingConfig(SET) : equipLoc=%s scaling=%s", equipLoc, ToStringFn(scaling))
                 -- now set configuration for equipment location to scaling data
                 ScalingConfig[equipLoc] = scaling
-            else
-                ScalingConfig[equipLoc] = scaling
             end
+        else
+            Logging:Warn("SetScalingConfig(IGNORE_%s) : equipLoc=%s", #parts, equipLoc)
         end
+        --end
     end
 end
 
@@ -202,9 +221,9 @@ local EquipmentLocationMappings = {
     ["INVTYPE_2HWEAPON"]        = "weapon2H",
     ["INVTYPE_WEAPONMAINHAND"]  = "weaponMainH",
     ["INVTYPE_WEAPONOFFHAND"]   = "weaponOffH",
-    ["INVTYPE_HOLDABLE"]        = "holdable",
+    ["INVTYPE_HOLDABLE"]        = "holdable",       -- bow, gun, crossbow
     ["INVTYPE_RANGED"]          = "ranged",
-    ["INVTYPE_THROWN"]          = "ranged",         -- bow, gun, crossbow
+    ["INVTYPE_THROWN"]          = "ranged",
     ["INVTYPE_RELIC"]           = "relic",
     ["INVTYPE_WAND"]            = "wand",
     -- From here down are english representations of GetItemSubClassInfo calls for ranged sub-classes
