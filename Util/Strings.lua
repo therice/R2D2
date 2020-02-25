@@ -1,5 +1,5 @@
-local _, namespace = ...;
-local Util = namespace.components.Util
+local _, AddOn = ...;
+local Util = AddOn.components.Util
 local Objects = Util.Objects
 local Tables = Util.Tables
 

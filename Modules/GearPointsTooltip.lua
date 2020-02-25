@@ -1,25 +1,57 @@
-local _,namespace = ...
-local G = _G
+local _, AddOn = ...
+local GpTooltip     = AddOn:NewModule("GearPointsTooltip", "AceHook-3.0", "AceEvent-3.0")
+local GearPoints    = AddOn.Libs.GearPoints
+local ItemUtil      = AddOn.Libs.ItemUtil
+local Objects       = AddOn.components.Util.Objects
+local L             = AddOn.components.Locale
+local logging       = AddOn.components.Logging
 
-local GpTooltip     = namespace:NewModule("GearPointsTooltip", "AceHook-3.0", "AceEvent-3.0")
-local GearPoints    = LibStub("LibGearPoints-1.2")
-local ItemUtil      = LibStub("LibItemUtil-1.0")
-local Objects       = namespace.components.Util.Objects
-local L             = namespace.components.Locale
-local logging       = namespace.components.Logging
-
--- These defaults are registered at a module specific namespace in the DB
--- No need to qualify them further
+-- These are the defaults that go into the DB
 GpTooltip.defaults = {
     profile = {
-        enabled = true,
+        enabled = false,
         threshold = 4,  -- epic
+    }
+}
+
+-- These are arguments for configuring options via UI
+-- See UI/Config.lua
+GpTooltip.options = {
+    name = L['gp_tooltips'],
+    desc = L['gp_tooltips_desc'],
+    args = {
+        help = {
+            order = 0,
+            type = 'description',
+            name = L['gp_tooltips_help'],
+            fontSize = 'medium',
+        },
+        threshold = {
+            order = 10,
+            type = 'select',
+            name = L['quality_threshold'],
+            desc = L['quality_threshold_desc'],
+            values = {
+                [0] = ITEM_QUALITY0_DESC, -- Poor
+                [1] = ITEM_QUALITY1_DESC, -- Common
+                [2] = ITEM_QUALITY2_DESC, -- Uncommon
+                [3] = ITEM_QUALITY3_DESC, -- Rare
+                [4] = ITEM_QUALITY4_DESC, -- Epic
+                [5] = ITEM_QUALITY5_DESC, -- Legendary
+                [6] = ITEM_QUALITY6_DESC, -- Artifact
+            },
+            get = function() return GearPoints:GetQualityThreshold() end,
+            set = function(info, itemQuality)
+                info.handler.db.profile.threshold = itemQuality
+                GearPoints:SetQualityThreshold(itemQuality)
+            end,
+        }
     }
 }
 
 function GpTooltip:OnInitialize()
     logging:Debug("OnInitialize(%s)", self:GetName())
-    self.db = namespace.db:RegisterNamespace(self:GetName(), GpTooltip.defaults)
+    self.db = AddOn.db:RegisterNamespace(self:GetName(), GpTooltip.defaults)
 end
 
 function GpTooltip:OnEnable()
@@ -31,12 +63,13 @@ function GpTooltip:OnEnable()
         if obj:IsObjectType("GameTooltip") and obj ~= ItemUtil.tooltip then
             local obj_name = obj:GetName() or nil
             assert(obj:HasScript("OnTooltipSetItem"))
-            logging:Debug("GearPointsTooltip:OnEnable() : Hooking script into GameTooltip '%s'",  Objects.ToString(obj_name))
+            logging:Trace("GearPointsTooltip:OnEnable() : Hooking script into GameTooltip '%s'",  Objects.ToString(obj_name))
             self:HookScript(obj, "OnTooltipSetItem", OnTooltipSetItemAddGp)
         end
         obj = EnumerateFrames(obj)
     end
 end
+
 
 function OnTooltipSetItemAddGp(tooltip, ...)
     -- logging:Trace("GearPointsTooltip:OnTooltipSetItem(%s)",  Objects.ToString(tooltip:GetName()))

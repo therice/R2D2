@@ -1,24 +1,12 @@
-local _, namespace = ...
-local G = _G
+local _, AddOn = ...
 
-local AceGUI = LibStub("AceGUI-3.0")
-local UI = namespace:NewModule("UI", "AceEvent-3.0")
-local logging = namespace.components.Logging
+local UI = {}
+AddOn.components.UI = UI
 
-namespace.components.UI = UI
-
-local Strings = namespace.components.Util.Strings
-local Objects = namespace.components.Util.Objects
-local Numbers = namespace.components.Util.Numbers
-
-
-function UI:OnInitialize()
-    logging:Debug("OnInitialize(%s)", self:GetName())
-end
-
-function UI:OnEnable()
-    logging:Debug("OnEnable(%s)", self:GetName())
-end
+local AceGUI    = AddOn.Libs.AceGUI
+local Strings   = AddOn.components.Util.Strings
+local Objects   = AddOn.components.Util.Objects
+local Numbers   = AddOn.components.Util.Numbers
 
 --[[
  Enable chain-calling for UI elements

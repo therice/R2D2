@@ -1,10 +1,8 @@
-local _,namespace = ...
-local G = _G
-
-local GP        = namespace:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
-local L         = namespace.components.Locale
-local logging   = namespace.components.Logging
-local LibGP     = LibStub("LibGearPoints-1.2")
+local _, AddOn = ...
+local GP        = AddOn:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
+local L         = AddOn.components.Locale
+local logging   = AddOn.components.Logging
+local LibGP     = AddOn.Libs.GearPoints
 
 local DisplayName = {}
 DisplayName.OneHWeapon  = L["%s %s"]:format(_G.INVTYPE_WEAPON, _G.WEAPON)
@@ -66,15 +64,123 @@ GP.defaults = {
     }
 }
 
+local function HelpPlate(desc, fontSize)
+    fontSize = fontSize or 'medium'
+    help = {
+        order = 1,
+        type = "description",
+        name = desc,
+        fontSize = fontSize,
+    }
+    return help
+end
+
+local function ScalePlate(index)
+    scalePlate = {
+        name = L["multiplier_with_id"]:format(index),
+        type = "range",
+        min = 0,
+        max = 5,
+        step = 0.01,
+        order = index * 2,
+    }
+    return scalePlate
+end
+
+local function CommentPlate(index)
+    local comment = L["comment_with_id"]:format(index)
+    commentPlate = {
+        name = comment,
+        desc = comment,
+        type = "input",
+        order = index * 2 + 1,
+    }
+    return commentPlate
+end
+
+-- These are arguments for configuring options via UI
+-- See UI/Config.lua
+GP.options = {
+    name = L['gp'],
+    desc = L['gp_desc'],
+    args = {
+        help = HelpPlate(L["gp_help"]),
+        headerEquation = {
+            order = 10,
+            type = "header",
+            name = L["equation"],
+        },
+        equation = {
+            order = 11,
+            type = "group",
+            inline = true,
+            name = "",
+            args = {
+                -- http://www.epgpweb.com/help/gearpoints
+                help = HelpPlate("GP = base * (coefficient ^ ((item_level / 26) + (item_rarity - 4)) * slot_multiplier) * multiplier", "large"),
+                gp_base = {
+                    order = 2,
+                    type = "range",
+                    name = "base",
+                    min = 1,
+                    max = 10000,
+                    step = 0.01,
+                },
+                gp_coefficient_base = {
+                    order = 3,
+                    type = "range",
+                    name = "coefficient",
+                    min = 1,
+                    max = 100,
+                    step = 0.01,
+                },
+                gp_multiplier = {
+                    order = 4,
+                    type = "range",
+                    name = "multiplier",
+                    min = 1,
+                    max = 100,
+                    step = 0.01,
+                },
+            },
+        },
+        headerSlots = {
+            order = 20,
+            type = "header",
+            name = L["slots"],
+        },
+        head = {
+            order = 21,
+            type = "group",
+            name = _G.INVTYPE_HEAD,
+            args = {
+                help = HelpPlate(_G.INVTYPE_HEAD),
+                head_scale_1 = ScalePlate(1),
+                head_comment_1 = CommentPlate(1),
+            },
+        },
+        neck = {
+            order = 22,
+            type = "group",
+            name = _G.INVTYPE_NECK,
+            args = {
+                help = HelpPlate(_G.INVTYPE_NECK),
+                neck_scale_1 = ScalePlate(1),
+                neck_comment_1 = CommentPlate(1),
+            },
+        },
+    }
+}
+
+function GP:OnInitialize()
+    logging:Debug("OnInitialize(%s)", self:GetName())
+    -- replace the library string representation function with our utility (more detail)
+    LibGP:SetToStringFn(AddOn.components.Util.Objects.ToString)
+    self.db = AddOn.db:RegisterNamespace(self:GetName(), GP.defaults)
+end
+
 function GP:OnEnable()
     logging:Debug("OnEnable(%s)", self:GetName())
     LibGP:SetScalingConfig(self.db.profile)
     LibGP:SetFormulaInputs(self.db.profile.gp_base, self.db.profile.gp_coefficient_base, self.db.profile.gp_multiplier)
-end
-
-function GP:OnInitialize()
-    logging:Debug("OnInitialize(%s)", self:GetName())
-    -- replace the library string representation function with our utiltiy (more detail)
-    LibGP:SetToStringFn(namespace.components.Util.Objects.ToString)
-    self.db = namespace.db:RegisterNamespace(self:GetName(), GP.defaults)
 end

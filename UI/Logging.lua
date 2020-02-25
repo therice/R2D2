@@ -1,16 +1,17 @@
-local _, namespace = ...
+local _, AddOn = ...
 local G = _G
 local _TEST = G.R2D2_Testing
+local loggingFrame, loggingDetail, preInitLogging
 
-local LoggingUI = namespace:NewModule("LoggingUI", "AceEvent-3.0")
-local UI        = namespace.components.UI
-local Strings   = namespace.components.Util.Strings
-local Tables    = namespace.components.Util.Tables
-local logging   = namespace.components.Logging
-
+local LoggingUI = AddOn:NewModule("LoggingUI", "AceEvent-3.0")
+local L         = AddOn.components.Locale
+local UI        = AddOn.components.UI
+local Strings   = AddOn.components.Util.Strings
+local Tables    = AddOn.components.Util.Tables
+local Logging   = AddOn.components.Logging
 
 if _TEST then
-    logging:SetWriter(
+    Logging:SetWriter(
             function(msg)
                 G.R2D2_Testing_GetLogFile():write(msg, '\n')
             end
@@ -22,35 +23,81 @@ if _TEST then
     end
 else
     -- track all emitted logging before we setup the frame for display
-    LoggingUI.preInitLogging = { }
-    logging:SetWriter(
+    preInitLogging = { }
+    Logging:SetWriter(
             function(msg)
-                table.insert(LoggingUI.preInitLogging, 1, msg)
+                table.insert(preInitLogging, 1, msg)
             end
     )
 end
 
+LoggingUI.options = {
+    name = L['logging'],
+    desc = L['logging_desc'],
+    ignore_enable_disable = true,
+    args = {
+        help = {
+            order = 0,
+            type = 'description',
+            name = L['logging_help'],
+            fontSize = 'medium',
+        },
+        ToggleWindow = {
+            order = 1,
+            type = "execute",
+            name = L["logging_window_toggle"],
+            desc = L["logging_window_toggle_desc"],
+            func = function()
+                LoggingUI:Toggle()
+            end
+        },
+        spacer = {
+            order = 2,
+            type = "description",
+            name = "",
+        },
+        logThreshold = {
+            order = 3,
+            type = 'select',
+            name = L['logging_threshold'],
+            desc = L['logging_threshold_desc'],
+            values = {
+                [1] = Logging.Level.Disabled,
+                [2] = Logging.Level.Trace,
+                [3] = Logging.Level.Debug,
+                [4] = Logging.Level.Info,
+                [5] = Logging.Level.Warn,
+                [6] = Logging.Level.Error,
+                [7] = Logging.Level.Fatal,
+            },
+            get = function() return Logging:GetRootThreshold() end,
+            set = function(info, logThreshold)
+                AddOn.db.profile.logThreshold = logThreshold
+                Logging:SetRootThreshold(logThreshold)
+            end,
+        }
+    }
+}
 
 function LoggingUI:OnInitialize()
-    logging:Trace("OnInitialize(%s)", self:GetName())
+    Logging:Debug("OnInitialize(%s)", self:GetName())
 
-    if not self.loggingFrame or not self.loggingDetail then
-        self.loggingFrame =
-            UI("Frame")
+    if not loggingFrame or not loggingDetail then
+        loggingFrame =
+            UI("Frame", "R2D2_LoggingWindow")
                 .SetTitle("R2D2 Logging")
                 .SetStatusText("Mouse wheel to scroll. Title bar drags. Bottom-right corner re-sizes.")
                 .SetLayout("Fill")
                 .SetPoint("BOTTOMRIGHT", "UIParent", "BOTTOMRIGHT", 0, 0)()
-        -- self.loggingFrame:Hide()
 
         local detailsContainer =
             UI("InlineGroup")
                 .SetFullWidth(true)
                 .SetFullHeight(true)
                 .SetLayout("Fill")
-                .AddTo(self.loggingFrame)()
+                .AddTo(loggingFrame)()
 
-        self.loggingDetail =
+        loggingDetail =
             UI("MultiLineEditBox")
                 .SetFullWidth(true)
                 .SetFullHeight(true)
@@ -59,23 +106,30 @@ function LoggingUI:OnInitialize()
                 .AddTo(detailsContainer)()
 
         -- now set logging to emit to frame
-        logging:SetWriter(
+        Logging:SetWriter(
                 function(msg)
-                    local txt = msg .. '\n' .. self.loggingDetail:GetText()
-                    self.loggingDetail:SetText(txt)
+                    local txt = msg .. '\n' .. loggingDetail:GetText()
+                    loggingDetail:SetText(txt)
                 end
         )
     end
 end
 
 function LoggingUI:OnEnable()
-    logging:Trace("OnEnable(%s)", self:GetName())
+    Logging:Debug("OnEnable(%s)", self:GetName())
     -- copy any pre-enabled logging to logging window
-    self.loggingDetail:SetText(
-            self.loggingDetail:GetText() ..
-            Strings.Join('\n',  unpack(Tables.Values(LoggingUI.preInitLogging)))
+    loggingDetail:SetText(
+            loggingDetail:GetText() ..
+            Strings.Join('\n',  unpack(Tables.Values(preInitLogging)))
     )
-    -- discard the catpured pre-enabled logging
-    self.preInitLogging = {}
+    -- discard the captured pre-enabled logging
+    preInitLogging = {}
 end
 
+function LoggingUI:Toggle()
+    if loggingFrame:IsVisible() then
+        loggingFrame:Hide()
+    else
+        loggingFrame:Show()
+    end
+end

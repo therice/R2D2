@@ -2,4 +2,5 @@
     <Script file="Namespace.lua"/>
     <Script file="UI.lua"/>
     <Script file="Logging.lua"/>
+    <Script file="Config.lua"/>
 </Ui>

@@ -189,6 +189,20 @@ function CreateTexture(texture, texturePath)
 	return tex
 end
 
+
+C_Timer = {}
+function C_Timer.After(duration, callback)
+
+end
+
+function C_Timer.NewTimer(duration, callback)
+
+end
+
+function C_Timer.NewTicker(duration, callback, iterations)
+
+end
+
 function UnitName(unit)
 	if unit == "player" then
 		return "Gnomechomsky"

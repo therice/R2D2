@@ -1,5 +1,6 @@
-local _, namespace = ...;
-local Util = namespace.components.Util
+local _, AddOn = ...;
+local Util = AddOn.components.Util
+local pairs, type, table = pairs, type, table
 
 Util.Tables = {}
 
@@ -38,6 +39,22 @@ function Self.FoldL(t, fn, u, index, ...)
     end
     return u
 end
+
+function Self.Iterate(t, order_fn)
+    local a = {}
+    for n in pairs(t) do table.insert(a, n) end
+    table.sort(a, f)
+    local i = 0 -- iterator variable
+    local iter = function () -- iterator function
+        i = i + 1
+        if a[i] == nil then return nil
+        else return a[i], t[a[i]]
+        end
+    end
+    return iter
+end
+
+
 
 -- Reusable tables
 -- Store unused tables in a cache to reuse them later

@@ -1,43 +1,48 @@
-local name, namespace = ...
-local R2D2 = namespace
 local G = _G
+local name, AddOn = ...
+local R2D2 = AddOn
 
-local L         = namespace.components.Locale
-local logging   = namespace.components.Logging
-local Util      = namespace.components.Util
+local L         = AddOn.components.Locale
+local Logging   = AddOn.components.Logging
+local Util      = AddOn.components.Util
 local Strings   = Util.Strings
 local Tables    = Util.Tables
 
 R2D2.defaults = {
     profile = {
-        logThreshold = logging.Level.Trace,
-        onlyEnabledInRaids = true,
+        logThreshold = Logging.Level.Debug,
     }
 }
 
 
 function R2D2:OnInitialize()
-    logging:SetRootThreshold(logging.Level.Debug)
-    logging:Debug("OnInitialize(%s)", self:GetName())
-    self.version = GetAddOnMetadata(name, "Version")
+    Logging:SetRootThreshold(Logging.Level.Debug)
+    Logging:Debug("OnInitialize(%s)", self:GetName())
     self.chatCmdHelp = {
-        {cmd = "config", desc = L["chat_commands_config"]},
-        {cmd = "version", desc = L["chat_commands_version"]},
+        {
+            cmd = "config",
+            desc = L["chat_commands_config"]
+        },
+        {
+            cmd = "version",
+            desc = L["chat_commands_version"]
+        },
     }
-    self.db = LibStub('AceDB-3.0'):New('R2D2_DB', R2D2.defaults)
-    logging:SetRootThreshold(self.db.profile.logThreshold)
-    -- setup chat hooks
+    self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
+    Logging:SetRootThreshold(self.db.profile.logThreshold)
     self:RegisterChatCommand(name:lower(), "HandleChatCommand")
 end
 
 function R2D2:OnEnable()
-    logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), self.version)
+    Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), self.version)
     for name, module in self:IterateModules() do
         if not module.db or module.db.profile.enabled or not module.defaults then
-            logging:Debug("OnEnable(%s) - Enabling module (startup) '%s'", self:GetName(), name)
+            Logging:Debug("OnEnable(%s) - Enabling module (startup) '%s'", self:GetName(), name)
             module:Enable()
         end
     end
+    -- Setup the options for configuration UI
+    self.components.Config.SetupOptions()
 end
 
 function R2D2:Help()
@@ -48,7 +53,11 @@ function R2D2:Help()
 end
 
 function R2D2:Config()
-
+    if AddOn.Libs.AceConfigDialog.OpenFrames[name] then
+        AddOn.Libs.AceConfigDialog:Close(name)
+    else
+        AddOn.Libs.AceConfigDialog:Open(name)
+    end
 end
 
 function R2D2:Version()
@@ -59,13 +68,13 @@ function R2D2:HandleChatCommand(msg)
     local args = Tables.New(self:GetArgs(msg,10))
     args[11] = nil
     local cmd = Strings.Lower(tremove(args, 1)):trim()
-    logging:Trace("ChatCommand(%s) -> %s", cmd, strjoin(' ', unpack(args)))
+    Logging:Trace("ChatCommand(%s) -> %s", cmd, strjoin(' ', unpack(args)))
 
     if Strings.IsEmpty(cmd) or cmd == "help" then
         self:Help()
-    elseif input == 'config' or input == "c" then
+    elseif cmd == 'config' or cmd == "c" then
         self:Config()
-    elseif input == 'version' or input == "v" or input == "ver" then
+    elseif cmd == 'version' or cmd == "v" or cmd == "ver" then
         self:Version()
     else
         self:Help()
