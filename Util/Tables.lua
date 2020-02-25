@@ -43,7 +43,7 @@ end
 function Self.Iterate(t, order_fn)
     local a = {}
     for n in pairs(t) do table.insert(a, n) end
-    table.sort(a, f)
+    table.sort(a, order_fn)
     local i = 0 -- iterator variable
     local iter = function () -- iterator function
         i = i + 1
