@@ -1,11 +1,8 @@
 local _, AddOn = ...;
-local Util = AddOn.components.Util
-local Objects = Util.Objects
-local Tables = Util.Tables
-
-Util.Strings = {}
-
-local Self = Util.Strings
+local Util      = AddOn.components.Util
+local Self      = Util.Strings
+local Objects   = Util.Objects
+local Tables    = Util.Tables
 
 
 ---@return boolean

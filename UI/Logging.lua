@@ -6,6 +6,7 @@ local loggingFrame, loggingDetail, preInitLogging
 local LoggingUI = AddOn:NewModule("LoggingUI", "AceEvent-3.0")
 local L         = AddOn.components.Locale
 local UI        = AddOn.components.UI
+local COpts     = UI.ConfigOptions
 local Strings   = AddOn.components.Util.Strings
 local Tables    = AddOn.components.Util.Tables
 local Logging   = AddOn.components.Logging
@@ -31,51 +32,33 @@ else
     )
 end
 
+-- function COpts.Execute(name, order, descr, fn, extra)
+
 LoggingUI.options = {
     name = L['logging'],
     desc = L['logging_desc'],
     ignore_enable_disable = true,
     args = {
-        help = {
-            order = 0,
-            type = 'description',
-            name = L['logging_help'],
-            fontSize = 'medium',
-        },
-        ToggleWindow = {
-            order = 1,
-            type = "execute",
-            name = L["logging_window_toggle"],
-            desc = L["logging_window_toggle_desc"],
-            func = function()
-                LoggingUI:Toggle()
-            end
-        },
-        spacer = {
-            order = 2,
-            type = "description",
-            name = "",
-        },
-        logThreshold = {
-            order = 3,
-            type = 'select',
-            name = L['logging_threshold'],
-            desc = L['logging_threshold_desc'],
-            values = {
-                [1] = Logging.Level.Disabled,
-                [2] = Logging.Level.Trace,
-                [3] = Logging.Level.Debug,
-                [4] = Logging.Level.Info,
-                [5] = Logging.Level.Warn,
-                [6] = Logging.Level.Error,
-                [7] = Logging.Level.Fatal,
-            },
-            get = function() return Logging:GetRootThreshold() end,
-            set = function(info, logThreshold)
-                AddOn.db.profile.logThreshold = logThreshold
-                Logging:SetRootThreshold(logThreshold)
-            end,
-        }
+        help = COpts.Description(L['logging_help']),
+        toggleWindow = COpts.Execute(L["logging_window_toggle"], 1, L["logging_window_toggle_desc"], function() LoggingUI:Toggle() end),
+        spacer = COpts.Description("", nil, 2),
+        -- function COpts.Select(name, order, descr, values, get, set, extra)
+        logThreshold = COpts.Select(L['logging_threshold'], 3, L['logging_threshold_desc'],
+                {
+                    [1] = Logging.Level.Disabled,
+                    [2] = Logging.Level.Trace,
+                    [3] = Logging.Level.Debug,
+                    [4] = Logging.Level.Info,
+                    [5] = Logging.Level.Warn,
+                    [6] = Logging.Level.Error,
+                    [7] = Logging.Level.Fatal,
+                },
+                function() return Logging:GetRootThreshold() end,
+                function(info, logThreshold)
+                    AddOn.db.profile.logThreshold = logThreshold
+                    Logging:SetRootThreshold(logThreshold)
+                end
+        )
     }
 }
 
@@ -87,8 +70,15 @@ function LoggingUI:OnInitialize()
             UI("Frame", "R2D2_LoggingWindow")
                 .SetTitle("R2D2 Logging")
                 .SetStatusText("Mouse wheel to scroll. Title bar drags. Bottom-right corner re-sizes.")
-                .SetLayout("Fill")
+                .SetLayout("Flow")
                 .SetPoint("BOTTOMRIGHT", "UIParent", "BOTTOMRIGHT", 0, 0)()
+
+        UI("Button")
+            .SetText("Clear")
+            .SetHeight(20)
+            .SetWidth(100)
+            .SetCallback("OnClick", function() loggingDetail:SetText("") end)
+            .AddTo(loggingFrame)()
 
         local detailsContainer =
             UI("InlineGroup")
@@ -104,6 +94,7 @@ function LoggingUI:OnInitialize()
                 .DisableButton(true)
                 .SetLabel(nil)
                 .AddTo(detailsContainer)()
+
 
         -- now set logging to emit to frame
         Logging:SetWriter(

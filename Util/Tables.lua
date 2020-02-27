@@ -1,11 +1,9 @@
 local _, AddOn = ...;
-local Util = AddOn.components.Util
+local Util      = AddOn.components.Util
+local Self      = Util.Tables
+local Functions = Util.Functions
 local pairs, type, table = pairs, type, table
 
-Util.Tables = {}
-
-local Self = Util.Tables
-local Functions = Util.Functions
 
 -- Get table keys
 ---@param t table
@@ -25,6 +23,22 @@ function Self.Values(t)
     return u
 end
 
+-- Copy a table and optionally apply a function to every entry
+---@param fn function
+---@param index boolean
+---@param notVal boolean
+function Self.Copy(t, fn, index, notVal, ...)
+    local fn, u = Functions.New(fn), Self.New()
+    for i,v in pairs(t) do
+        if fn then
+            u[i] = Functions.Call(fn, v, i, index, notVal, ...)
+        else
+            u[i] = v
+        end
+    end
+    return u
+end
+
 -- Good old FoldLeft
 ---@param t table
 ---@param u any
@@ -40,20 +54,47 @@ function Self.FoldL(t, fn, u, index, ...)
     return u
 end
 
-function Self.Iterate(t, order_fn)
-    local a = {}
-    for n in pairs(t) do table.insert(a, n) end
-    table.sort(a, order_fn)
-    local i = 0 -- iterator variable
-    local iter = function () -- iterator function
-        i = i + 1
-        if a[i] == nil then return nil
-        else return a[i], t[a[i]]
-        end
-    end
-    return iter
+-- Sort a table
+local SortFn = function (a, b) return a > b end
+function Self.Sort(t, fn)
+    fn = fn == true and SortFn or Functions.New(fn) or nil
+    table.sort(t, fn)
+    return t
 end
 
+-- Copy a table and optionally apply a function to every entry
+---@param fn function
+---@param index boolean
+---@param notVal boolean
+function Self.Copy(t, fn, index, notVal, ...)
+    local fn, u = Functions.New(fn), Self.New()
+    for i,v in pairs(t) do
+        if fn then
+            u[i] = Functions.Call(fn, v, i, index, notVal, ...)
+        else
+            u[i] = v
+        end
+    end
+    return u
+end
+
+
+-- Omit specific keys from a table
+function Self.CopyUnselect(t, ...)
+    local u = Self.New()
+    for i,v in pairs(t) do
+        if not Util.In(i, ...) then
+            u[i] = v
+        end
+    end
+    return u
+end
+
+
+---@return number
+function Self.Count(t)
+    return Self.FoldL(t, Functions.Inc, 0)
+end
 
 
 -- Reusable tables

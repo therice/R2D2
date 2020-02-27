@@ -1,4 +1,3 @@
-local G = _G
 local name, AddOn = ...
 local R2D2 = AddOn
 
@@ -41,6 +40,7 @@ function R2D2:OnEnable()
             module:Enable()
         end
     end
+
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
 end

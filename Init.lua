@@ -10,7 +10,7 @@ R2D2:SetDefaultModuleState(false)
 R2D2.Options = {
     name = AddOnName,
     type = 'group',
-    childGroups = "tab",
+    childGroups = 'tab',
     handler = self,
     args = {}
 }
@@ -79,11 +79,11 @@ local ModulePrototype = {
         Logging:Trace("Module:SetEnabled(%s) : %s", self:GetName(), tostring(self.db.profile.enabled))
     end,
     GetDbValue = function (self, i)
-        Logging:Debug("Module:GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))
+        Logging:Trace("Module:GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))
         return self.db.profile[i[#i]]
     end,
     SetDbValue = function (self, i, v)
-        Logging:Debug("Module:SetDbValue(%s, %s, %s)", self:GetName(), tostring(i[#i]), tostring(v or 'nil'))
+        Logging:Trace("Module:SetDbValue(%s, %s, %s)", self:GetName(), tostring(i[#i]), tostring(v or 'nil'))
         self.db.profile[i[#i]] = v
     end,
 }

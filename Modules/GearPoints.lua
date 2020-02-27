@@ -1,7 +1,10 @@
 local _, AddOn = ...
 local GP        = AddOn:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
 local L         = AddOn.components.Locale
-local logging   = AddOn.components.Logging
+local Logging   = AddOn.components.Logging
+local Tables    = AddOn.components.Util.Tables
+local Objects   = AddOn.components.Util.Objects
+local COpts     = AddOn.components.UI.ConfigOptions
 local LibGP     = AddOn.Libs.GearPoints
 
 local DisplayName = {}
@@ -64,52 +67,14 @@ GP.defaults = {
     }
 }
 
-local function HelpPlate(desc, fontSize)
-    fontSize = fontSize or 'medium'
-    help = {
-        order = 1,
-        type = "description",
-        name = desc,
-        fontSize = fontSize,
-    }
-    return help
-end
-
-local function ScalePlate(index)
-    scalePlate = {
-        name = L["multiplier_with_id"]:format(index),
-        type = "range",
-        min = 0,
-        max = 5,
-        step = 0.01,
-        order = index * 2,
-    }
-    return scalePlate
-end
-
-local function CommentPlate(index)
-    local comment = L["comment_with_id"]:format(index)
-    commentPlate = {
-        name = comment,
-        desc = comment,
-        type = "input",
-        order = index * 2 + 1,
-    }
-    return commentPlate
-end
-
 -- These are arguments for configuring options via UI
 -- See UI/Config.lua
 GP.options = {
     name = L['gp'],
     desc = L['gp_desc'],
     args = {
-        help = HelpPlate(L["gp_help"]),
-        headerEquation = {
-            order = 10,
-            type = "header",
-            name = L["equation"],
-        },
+        help = COpts.Description(L["gp_help"]),
+        headerEquation = COpts.Header(L["equation"], nil, 10),
         equation = {
             order = 11,
             type = "group",
@@ -117,70 +82,72 @@ GP.options = {
             name = "",
             args = {
                 -- http://www.epgpweb.com/help/gearpoints
-                help = HelpPlate("GP = base * (coefficient ^ ((item_level / 26) + (item_rarity - 4)) * slot_multiplier) * multiplier", "large"),
-                gp_base = {
-                    order = 2,
-                    type = "range",
-                    name = "base",
-                    min = 1,
-                    max = 10000,
-                    step = 0.01,
-                },
-                gp_coefficient_base = {
-                    order = 3,
-                    type = "range",
-                    name = "coefficient",
-                    min = 1,
-                    max = 100,
-                    step = 0.01,
-                },
-                gp_multiplier = {
-                    order = 4,
-                    type = "range",
-                    name = "multiplier",
-                    min = 1,
-                    max = 100,
-                    step = 0.01,
-                },
+                help = COpts.Description("GP = base * (coefficient ^ ((item_level / 26) + (item_rarity - 4)) * slot_multiplier) * multiplier", "large"),
+                gp_base = COpts.Range("base", 2, 1, 1000),
+                gp_coefficient_base = COpts.Range("coefficient", 3, 1, 100),
+                gp_multiplier = COpts.Range("multiplier", 4, 1, 100),
             },
         },
-        headerSlots = {
-            order = 20,
-            type = "header",
-            name = L["slots"],
-        },
-        head = {
-            order = 21,
-            type = "group",
-            name = _G.INVTYPE_HEAD,
-            args = {
-                help = HelpPlate(_G.INVTYPE_HEAD),
-                head_scale_1 = ScalePlate(1),
-                head_comment_1 = CommentPlate(1),
-            },
-        },
-        neck = {
-            order = 22,
-            type = "group",
-            name = _G.INVTYPE_NECK,
-            args = {
-                help = HelpPlate(_G.INVTYPE_NECK),
-                neck_scale_1 = ScalePlate(1),
-                neck_comment_1 = CommentPlate(1),
-            },
-        },
+        headerSlots = COpts.Header(L["slots"], nil, 20),
     }
 }
 
+do
+    local gpdefaults = GP.defaults.profile
+    -- table for storing processed defaults which needed added as arguments
+    local slotArgs = Tables.New()
+
+    -- iterate the keys in alphabetical order
+    for _, key in Objects.Each(Tables.Sort(Tables.Keys(gpdefaults))) do
+        local parts = {strsplit('_', key)}
+        if #parts == 3 and Objects.In(parts[2], 'scale', 'comment') then
+            local slot = parts[1]
+            local slot_input = parts[2]
+            local slotTable = slotArgs[slot] or Tables.New()
+
+            if slot_input == 'scale' then
+                slotTable[key] = COpts.Range(L["slot_multipler"], 2, 0, 5, {width='double'})
+            elseif slot_input == 'comment' then
+                local displayName = gpdefaults[key]
+                slotTable['displayname'] = displayName
+                slotTable['help'] = COpts.Description(displayName)
+                slotTable[key] = COpts.Input(L['slot_comment'], 3, {width='double'})
+            end
+
+            slotArgs[slot] = slotTable
+        end
+    end
+
+    -- capture a reference to GP configuration option's arguments
+    -- this is where we'll be adding the slot specific entries
+    local gpargs = GP.options.args
+
+    local order = 21
+    -- todo : this is going to sort by slot and not the display name, maybe cleanup when done
+    for _, slot in Objects.Each(Tables.Sort(Tables.Keys(slotArgs))) do
+        local displayname = slotArgs[slot].displayname
+        gpargs[slot] = {
+            order = order,
+            type = "group",
+            name = displayname,
+            desc = L["item_slot_with_name"]:format(displayname),
+            args = Tables.CopyUnselect(slotArgs[slot], 'displayname')
+        }
+        order = order + 1
+    end
+
+    Tables.Release(slotArgs)
+end
+
 function GP:OnInitialize()
-    logging:Debug("OnInitialize(%s)", self:GetName())
+    Logging:Debug("OnInitialize(%s)", self:GetName())
     -- replace the library string representation function with our utility (more detail)
     LibGP:SetToStringFn(AddOn.components.Util.Objects.ToString)
     self.db = AddOn.db:RegisterNamespace(self:GetName(), GP.defaults)
 end
 
 function GP:OnEnable()
-    logging:Debug("OnEnable(%s)", self:GetName())
+    Logging:Debug("OnEnable(%s)", self:GetName())
     LibGP:SetScalingConfig(self.db.profile)
     LibGP:SetFormulaInputs(self.db.profile.gp_base, self.db.profile.gp_coefficient_base, self.db.profile.gp_multiplier)
 end

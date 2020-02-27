@@ -1,12 +1,96 @@
 local _, AddOn = ...
 
-local UI = {}
+local UI = {
+    ConfigOptions = {
+
+    }
+}
+
 AddOn.components.UI = UI
 
 local AceGUI    = AddOn.Libs.AceGUI
 local Strings   = AddOn.components.Util.Strings
 local Objects   = AddOn.components.Util.Objects
 local Numbers   = AddOn.components.Util.Numbers
+local COpts     = UI.ConfigOptions
+
+
+local function Extra(options, extra)
+    for k,v in pairs(extra or {}) do
+        options[k] = v
+    end
+    return options
+end
+
+function COpts.Header(name, width, order, extra)
+    header = {
+        order = order or 0,
+        type = 'header',
+        name = name,
+        width = width or nil
+    }
+
+    return Extra(header, extra)
+end
+
+function COpts.Description(descr, fontSize, order, extra)
+    description = {
+        order = order or 0,
+        type = 'description',
+        name = descr,
+        fontSize = fontSize or 'medium',
+    }
+    return Extra(description, extra)
+end
+
+function COpts.Input(name, order, extra)
+    input = {
+        order = order or 1,
+        type = 'input',
+        name = name,
+    }
+    return Extra(input, extra)
+end
+
+function COpts.Range(name, order, min, max, extra)
+    range = {
+        order = order or 1,
+        type = 'range',
+        name = name,
+        min = min,
+        max = max,
+        step = 0.5
+    }
+
+    return Extra(range, extra)
+end
+
+function COpts.Execute(name, order, descr, fn, extra)
+    execute = {
+        order = order or 1,
+        type = 'execute',
+        name = name,
+        desc = descr,
+        func = fn
+    }
+
+    return Extra(execute, extra)
+end
+
+
+function COpts.Select(name, order, descr, values, get, set, extra)
+    sel = {
+        order = order or 1,
+        type = 'select',
+        name = name,
+        desc = descr,
+        values = values,
+        get = get,
+        set = set,
+    }
+
+    return Extra(sel, extra)
+end
 
 --[[
  Enable chain-calling for UI elements

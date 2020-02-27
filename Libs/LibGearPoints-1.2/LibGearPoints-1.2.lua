@@ -6,6 +6,7 @@ if not lib then return end
 
 local Logging = LibStub("LibLogging-1.0")
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
+local ItemUtil = LibStub("LibItemUtil-1.0")
 
 -- Allows for specification of an alternative function for string repr
 local ToStringFn = function(x) return x end
@@ -31,18 +32,26 @@ For example:
 }
 --]]
 local CustomItems = {}
+
 function lib:GetCustomItems()
     return CustomItems
 end
+
 function lib:SetCustomItems(data)
     CustomItems = {}
     for k, v in pairs(data) do
         CustomItems[k] = v
     end
 end
+
+function lib:ResetCustomItems()
+    lib:SetCustomItems({})
+end
+
 function lib:AddCustomItem(itemId, rarity, ilvl, slot, faction)
     CustomItems[itemId] = { rarity, ilvl, slot, faction}
 end
+
 function lib:RemoveCustomItem(itemId)
     CustomItems[itemId] = nil
 end
@@ -68,9 +77,11 @@ function lib:SetQualityThreshold(itemQuality)
 
     QualityThreshold = itemQuality
 end
+
 function lib:GetQualityThreshold()
     return QualityThreshold
 end
+
 -- inputs for GP formula, initialized with defaults
 local FormulaInputs = {
     Base = nil,
@@ -79,10 +90,12 @@ local FormulaInputs = {
     ItemRaritySubtrahend = 4,
     Multiplier = nil
 }
+
 -- base, coefficientBase, multiplier
 function lib:GetFormulaInputs()
     return FormulaInputs.Base, FormulaInputs.CoefficientBase, FormulaInputs.Multiplier
 end
+
 -- base : the base GP value
 -- coefficientBase : the base for calculating coefficient
 -- multiplier : the multiplier for GP
@@ -91,9 +104,11 @@ function lib:SetFormulaInputs(base, coefficientBase, multiplier)
     FormulaInputs.CoefficientBase = coefficientBase or FormulaInputs.CoefficientBase
     FormulaInputs.Multiplier = multiplier or  FormulaInputs.Multiplier
 end
+
 function lib:ResetFormulaInputs()
     lib:SetFormulaInputs(4.8, 2.5, 1)
 end
+
 -- set them to defaults on initialization
 lib:ResetFormulaInputs()
 
@@ -155,7 +170,7 @@ function lib:SetScalingConfig(config)
                 Logging:Trace("SetScalingConfig(SET) : equipLoc=%s scaling=%s", equipLoc, scaling)
                 ScalingConfig[equipLoc] = scaling
             else
-                Logging:Trace("SetScalingConfig(IGNORE_1) : equipLoc=%s scaling=%s type=%s", equipLoc,  ToStringFn(scaling), type(scaling))
+                Logging:Trace("SetScalingConfig(IGNORE_1) : ignoring equipLoc=%s scaling=%s type=%s", equipLoc,  ToStringFn(scaling), type(scaling))
             end
         elseif #parts == 3 then
             -- index #1 is the equipment location
@@ -185,7 +200,7 @@ function lib:SetScalingConfig(config)
                 ScalingConfig[equipLoc] = scaling
             end
         else
-            Logging:Warn("SetScalingConfig(IGNORE_%s) : equipLoc=%s", #parts, equipLoc)
+            Logging:Warn("SetScalingConfig(IGNORE_%s) : ignoring equipLoc=%s", #parts, equipLoc)
         end
         --end
     end
@@ -248,7 +263,7 @@ end
 -- the arguments here shoul be itemEquipLoc (Non-localized token) and itemSubType (Localized name) from GetItemInfo()
 function lib:GetScale(equipLoc, subClass)
     local name = self:GetScaleKey(equipLoc, subClass)
-    Logging:Trace("GearPoints.GetScale(%s, %s) -> %s", equipLoc, subClass, name)
+    Logging:Trace("GearPoints.GetScale(%s, %s) -> %s", equipLoc or 'nil', subClass or 'nil', name or 'nil')
     if name then
         -- configuration supports multiple scaling factors, but currently implementation only uses one
         local scale_config = ScalingConfig[name]
@@ -278,7 +293,7 @@ end
 function lib:CalculateFromEquipmentLocation(equipLoc, subClass, ilvl, rarity)
     local scale, comment = self:GetScale(equipLoc, subClass)
     local gp = self:CalculateFromScale(scale, ilvl, rarity)
-    return gp, comment
+    return gp, comment, ilvl
 end
 
 -- calculates the GP for specified item
@@ -295,26 +310,19 @@ function lib:GetValue(item)
     if not itemId then return end
     itemId = tonumber(itemId)
 
-
     -- Check to see if there is custom data for this item ID
-    local CustomItem = nil
+    local customItem = CustomItems[itemId]
     -- if gp_custom_config.enabled and gp_custom_config.custom_items then
-    if CustomItems then
-        CustomItem = CustomItems[itemId]
-        if CustomItem then
-            -- , table.tostring(custom_item)
-            Logging:Trace("GetValue(%s) : Custom Item %s", tostring(itemId))
-        end
-    end
-
-    if CustomItem then
+    if customItem then
+        Logging:Trace("GetValue(%s) : custom item found for item %s", item, tostring(itemId))
         --  1. rarity, int, 4 = epic
         --  2. ilvl, int
         --  3. inventory slot, string
         --  4. faction (Horde/Alliance), string
-        rarity = CustomItem[1]
-        ilvl = CustomItem[2]
-        equipLoc = CustomItem[3]
+        rarity = customItem['rarity']
+        ilvl = customItem['item_level']
+        equipLoc = customItem['equip_location']
+        Logging:Trace("GetValue(%s/%s) : rarity=%s, ilvl=%s, equipLoc=%s", item, tostring(itemId), rarity, ilvl, equipLoc)
     end
 
     -- Is the item above our minimum threshold?
@@ -325,11 +333,27 @@ function lib:GetValue(item)
 
     if equipLoc == "CUSTOM_SCALE" then
         -- this will error out until support the custom scale attribute for custom items
-        return self:CalculateFromScale(CustomItem.s1, nil, ilvl, rarity), ""
+        return self:CalculateFromScale(customItem.s1, nil, ilvl, rarity), "", ilvl
     elseif equipLoc == "CUSTOM_GP" then
         -- this will error out until support the custom GP attribute for custom items
-        return CustomItem.gp, ""
+        return customItem.gp, "", ilvl
     else
         return self:CalculateFromEquipmentLocation(equipLoc, itemSubClass, ilvl, rarity)
     end
 end
+
+-- if custom item exists, return the associated item level
+-- otherwise use the in-game provided value
+--function lib:GetItemLevel(item)
+--    local itemId = ItemUtil:ItemlinkToID(item)
+--
+--    local ilvl
+--    local customItem = CustomItems[itemId]
+--    if customItem then
+--        ilvl = customItem['item_level']
+--    else
+--        ilvl = select(4, GetItemInfo(item))
+--    end
+--
+--    return ilvl
+--end
