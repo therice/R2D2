@@ -1,12 +1,12 @@
 local MAJOR_VERSION = "LibGearPoints-1.2"
-local MINOR_VERSION = 10200
+local MINOR_VERSION = 11303
 
 local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
 local Logging = LibStub("LibLogging-1.0")
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
-local ItemUtil = LibStub("LibItemUtil-1.0")
+-- local ItemUtil = LibStub("LibItemUtil-1.0")
 
 -- Allows for specification of an alternative function for string repr
 local ToStringFn = function(x) return x end

@@ -52,6 +52,7 @@ do
     R2D2:AddLib('Logging', 'LibLogging-1.0')
     R2D2:AddLib('GearPoints', 'LibGearPoints-1.2')
     R2D2:AddLib('ItemUtil', 'LibItemUtil-1.0')
+    R2D2:AddLib('Encounter', 'LibEncounter-1.0')
 end
 
 AddOn.components            = {}

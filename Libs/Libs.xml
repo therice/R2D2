@@ -4,6 +4,7 @@
     <Include file="LibLogging-1.0\LibLogging-1.0.xml"/>
     <Include file="LibBabble-Inventory-3.0\LibBabble-Inventory-3.0.xml"/>
     <Include file="LibDeformat-3.0\LibDeformat-3.0.xml"/>
+    <Include file="LibEncounter-1.0\LibEncounter-1.0.xml"/>
     <Include file="AceAddon-3.0\AceAddon-3.0.xml"/>
     <Include file="AceEvent-3.0\AceEvent-3.0.xml"/>
     <Include file="AceTimer-3.0\AceTimer-3.0.xml"/>
