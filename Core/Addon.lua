@@ -3,7 +3,7 @@ local R2D2 = AddOn
 
 local L         = AddOn.components.Locale
 local Logging   = AddOn.components.Logging
-local Util      = AddOn.components.Util
+local Util      = AddOn.Libs.Util
 local Strings   = Util.Strings
 local Tables    = Util.Tables
 

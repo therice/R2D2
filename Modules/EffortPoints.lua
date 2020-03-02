@@ -3,8 +3,9 @@ local EP        = AddOn:NewModule("EffortPoints", "AceHook-3.0", "AceEvent-3.0")
 local Encounter = AddOn.Libs.Encounter
 local L         = AddOn.components.Locale
 local Logging   = AddOn.components.Logging
-local Tables    = AddOn.components.Util.Tables
-local Objects   = AddOn.components.Util.Objects
+local Util      = AddOn.Libs.Util
+local Tables    = Util.Tables
+local Objects   = Util.Objects
 local COpts     = AddOn.components.UI.ConfigOptions
 
 EP.defaults = {

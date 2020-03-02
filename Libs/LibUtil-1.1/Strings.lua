@@ -1,9 +1,11 @@
-local _, AddOn = ...;
-local Util      = AddOn.components.Util
-local Self      = Util.Strings
-local Objects   = Util.Objects
-local Tables    = Util.Tables
+local MAJOR_VERSION = "LibUtil-1.1"
+local MINOR_VERSION = 11303
 
+local lib, minor = LibStub(MAJOR_VERSION, true)
+if not lib or next(lib.Strings) or (minor or 0) > MINOR_VERSION then return end
+
+local Util = lib
+local Self = lib.Strings
 
 ---@return boolean
 function Self.IsSet(str)
@@ -44,7 +46,7 @@ end
 
 -- Split string on delimiter
 function Self.Split(str, del)
-    local t = Tables.New()
+    local t = Util.Tables.New()
     for v in (str .. del):gmatch("(.-)" .. del:gsub(".", "%%%1")) do
         tinsert(t, v)
     end
@@ -55,7 +57,7 @@ end
 ---@vararg string
 function Self.Join(del, ...)
     local s = ""
-    for _,v in Objects.Each(...) do
+    for _,v in Util.Objects.Each(...) do
         if not Self.IsEmpty(v) then
             s = s .. (s == "" and "" or del or " ") .. v
         end

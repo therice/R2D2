@@ -2,8 +2,9 @@ local _, AddOn = ...
 local GP        = AddOn:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
 local L         = AddOn.components.Locale
 local Logging   = AddOn.components.Logging
-local Tables    = AddOn.components.Util.Tables
-local Objects   = AddOn.components.Util.Objects
+local Util      = AddOn.Libs.Util
+local Tables    = Util.Tables
+local Objects   = Util.Objects
 local COpts     = AddOn.components.UI.ConfigOptions
 local LibGP     = AddOn.Libs.GearPoints
 
@@ -142,7 +143,7 @@ end
 function GP:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     -- replace the library string representation function with our utility (more detail)
-    LibGP:SetToStringFn(AddOn.components.Util.Objects.ToString)
+    LibGP:SetToStringFn(Objects.ToString)
     self.db = AddOn.db:RegisterNamespace(self:GetName(), GP.defaults)
 end
 

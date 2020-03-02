@@ -3,8 +3,9 @@ local GpCustom      = AddOn:NewModule("GearPointsCustom", "AceHook-3.0", "AceEve
 local GearPoints    = AddOn.Libs.GearPoints
 local L             = AddOn.components.Locale
 local Logging       = AddOn.components.Logging
-local Tables        = AddOn.components.Util.Tables
-local Objects       = AddOn.components.Util.Objects
+local Util          = AddOn.Libs.Util
+local Tables        = Util.Tables
+local Objects       = Util.Objects
 local COpts         = AddOn.components.UI.ConfigOptions
 
 GpCustom.defaults = {

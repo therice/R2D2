@@ -153,7 +153,6 @@ function lib:GetScalingConfig()
 end
 
 function lib:SetScalingConfig(config)
-    --local Objects = R2D2.components.Util.Objects
 
     ScalingConfig = {}
     for k, v in pairs(config) do

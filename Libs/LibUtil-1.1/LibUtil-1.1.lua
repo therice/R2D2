@@ -1,5 +1,8 @@
-local _, AddOn = ...
-local Util = {}
+local MAJOR_VERSION = "LibUtil-1.1"
+local MINOR_VERSION = 11303
+
+local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
+if not lib then return end
 
 -- Modules
 local Modules = {
@@ -16,8 +19,8 @@ local Module = {
     end
 }
 
-for _,mod in pairs(Modules) do
-    Util[mod] = setmetatable({}, Module)
+for _, mod in pairs(Modules) do
+    lib[mod] = setmetatable({}, Module)
 end
 
 -- Chaining
@@ -57,7 +60,7 @@ local Chain = {
 
 -- Metatable
 local Meta = {
-    __index = Util.Objects,
+    __index = lib.Objects,
     __call = function (self, val)
         local chain = setmetatable(self.Tables.New(), Chain)
         chain.obj, chain.key, chain.val = self, nil, val
@@ -65,8 +68,6 @@ local Meta = {
     end
 }
 
-setmetatable(Util, Meta)
-Util.__index = Util
-Util.__call = Meta.__call
-
-AddOn.components.Util = Util
+setmetatable(lib, Meta)
+lib.__index = lib
+lib.__call = Meta.__call

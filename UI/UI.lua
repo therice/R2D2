@@ -9,9 +9,10 @@ local UI = {
 AddOn.components.UI = UI
 
 local AceGUI    = AddOn.Libs.AceGUI
-local Strings   = AddOn.components.Util.Strings
-local Objects   = AddOn.components.Util.Objects
-local Numbers   = AddOn.components.Util.Numbers
+local Util      = AddOn.Libs.Util
+local Strings   = Util.Strings
+local Objects   = Util.Objects
+local Numbers   = Util.Numbers
 local COpts     = UI.ConfigOptions
 
 

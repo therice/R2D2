@@ -1,8 +1,11 @@
-local _, AddOn = ...;
-local Util      = AddOn.components.Util
-local Self      = Util.Objects
-local Functions = Util.Functions
-local Tables    = Util.Tables
+local MAJOR_VERSION = "LibUtil-1.1"
+local MINOR_VERSION = 11303
+
+local lib, minor = LibStub(MAJOR_VERSION, true)
+if not lib or next(lib.Objects) or (minor or 0) > MINOR_VERSION then return end
+
+local Util = lib
+local Self = lib.Objects
 
 -- Check if two values are equal
 function Self.Equals(a, b)
@@ -39,10 +42,10 @@ end
 local EachFn = function (t, i)
     i = (i or 0) + 1
     if i > #t then
-        Tables.ReleaseTemp(t)
+        Util.Tables.ReleaseTemp(t)
     else
         local v = t[i]
-        return i, Self.Check(v == Tables.NIL, nil, v)
+        return i, Self.Check(v == Util.Tables.NIL, nil, v)
     end
 end
 
@@ -54,9 +57,9 @@ function Self.Each(...)
     if ... and type(...) == "table" then
         return next, ...
     elseif select("#", ...) == 0 then
-        return Functions.Noop
+        return Util.Functions.Noop
     else
-        return EachFn, Tables.Temp(...)
+        return EachFn, Util.Tables.Temp(...)
     end
 end
 
@@ -99,7 +102,7 @@ function Self.ToString(val, depth)
             return fn(val, depth)
         else
             local j = 1
-            return Tables.FoldL(
+            return Util.Tables.FoldL(
                     val,
                     function (s, v, i)
                         if s ~= "{" then s = s .. ", " end

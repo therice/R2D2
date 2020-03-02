@@ -7,8 +7,9 @@ local LoggingUI = AddOn:NewModule("LoggingUI", "AceEvent-3.0")
 local L         = AddOn.components.Locale
 local UI        = AddOn.components.UI
 local COpts     = UI.ConfigOptions
-local Strings   = AddOn.components.Util.Strings
-local Tables    = AddOn.components.Util.Tables
+local Util      = AddOn.Libs.Util
+local Strings   = Util.Strings
+local Tables    = Util.Tables
 local Logging   = AddOn.components.Logging
 
 if _TEST then

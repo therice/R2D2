@@ -1,9 +1,11 @@
-local _, AddOn = ...;
-local Util      = AddOn.components.Util
-local Self      = Util.Tables
-local Functions = Util.Functions
-local pairs, type, table = pairs, type, table
+local MAJOR_VERSION = "LibUtil-1.1"
+local MINOR_VERSION = 11303
 
+local lib, minor = LibStub(MAJOR_VERSION, true)
+if not lib or next(lib.Tables) or (minor or 0) > MINOR_VERSION then return end
+
+local Util = lib
+local Self = lib.Tables
 
 -- Get table keys
 ---@param t table
@@ -28,10 +30,10 @@ end
 ---@param index boolean
 ---@param notVal boolean
 function Self.Copy(t, fn, index, notVal, ...)
-    local fn, u = Functions.New(fn), Self.New()
+    local fn, u = Util.Functions.New(fn), Self.New()
     for i,v in pairs(t) do
         if fn then
-            u[i] = Functions.Call(fn, v, i, index, notVal, ...)
+            u[i] = Util.Functions.Call(fn, v, i, index, notVal, ...)
         else
             u[i] = v
         end
@@ -43,7 +45,7 @@ end
 ---@param t table
 ---@param u any
 function Self.FoldL(t, fn, u, index, ...)
-    fn, u = Functions.New(fn), u or Self.New()
+    fn, u = Util.Functions.New(fn), u or Self.New()
     for i,v in pairs(t) do
         if index then
             u = fn(u, v, i, ...)
@@ -57,7 +59,7 @@ end
 -- Sort a table
 local SortFn = function (a, b) return a > b end
 function Self.Sort(t, fn)
-    fn = fn == true and SortFn or Functions.New(fn) or nil
+    fn = fn == true and SortFn or Util.Functions.New(fn) or nil
     table.sort(t, fn)
     return t
 end
@@ -67,10 +69,10 @@ end
 ---@param index boolean
 ---@param notVal boolean
 function Self.Copy(t, fn, index, notVal, ...)
-    local fn, u = Functions.New(fn), Self.New()
+    local fn, u = Util.Functions.New(fn), Self.New()
     for i,v in pairs(t) do
         if fn then
-            u[i] = Functions.Call(fn, v, i, index, notVal, ...)
+            u[i] = Util.Functions.Call(fn, v, i, index, notVal, ...)
         else
             u[i] = v
         end
@@ -93,7 +95,7 @@ end
 
 ---@return number
 function Self.Count(t)
-    return Self.FoldL(t, Functions.Inc, 0)
+    return Self.FoldL(t, Util.Functions.Inc, 0)
 end
 
 

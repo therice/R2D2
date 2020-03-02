@@ -42,6 +42,7 @@ do
         end
     end
 
+    R2D2:AddLib('Util', 'LibUtil-1.1')
     R2D2:AddLib('AceAddon', AceAddon, AceAddonMinor)
     R2D2:AddLib('AceDB', 'AceDB-3.0')
     R2D2:AddLib('AceLocale', 'AceLocale-3.0')

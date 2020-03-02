@@ -1,6 +1,12 @@
-local _, AddOn = ...;
-local Util = AddOn.components.Util
-local Self = Util.Functions
+local MAJOR_VERSION = "LibUtil-1.1"
+local MINOR_VERSION = 11303
+
+local lib, minor = LibStub(MAJOR_VERSION, true)
+if not lib or next(lib.Functions) or (minor or 0) > MINOR_VERSION then return end
+
+local Util = lib
+local Self = lib.Functions
+
 
 function Self.New(fn, obj) return type(fn) == "string" and (obj and obj[fn] or _G[fn]) or fn end
 function Self.Id(...) return ... end

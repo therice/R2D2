@@ -1,7 +1,8 @@
 local _, AddOn = ...
 local L         = AddOn.components.Locale
 local Logging   = AddOn.components.Logging
-local Objects   = AddOn.components.Util.Objects
+local Util      = AddOn.Libs.Util
+local Objects   = Util.Objects
 local COpts     = AddOn.components.UI.ConfigOptions
 local Config    = {}
 

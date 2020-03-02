@@ -2,6 +2,7 @@
     <Script file="LibStub\LibStub.lua"/>
     <Include file="CallbackHandler-1.0\CallbackHandler-1.0.xml"/>
     <Include file="LibLogging-1.0\LibLogging-1.0.xml"/>
+    <Include file="LibUtil-1.1\LibUtil-1.1.xml"/>
     <Include file="LibBabble-Inventory-3.0\LibBabble-Inventory-3.0.xml"/>
     <Include file="LibDeformat-3.0\LibDeformat-3.0.xml"/>
     <Include file="LibEncounter-1.0\LibEncounter-1.0.xml"/>
