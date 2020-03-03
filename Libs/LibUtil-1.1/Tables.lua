@@ -25,6 +25,30 @@ function Self.Values(t)
     return u
 end
 
+
+-- Turn a table into a continuously indexed list (in-place)
+---@param t table
+---@return table
+function Self.List(t)
+    local n = Self.Count(t)
+    for k=1, n do
+        if not t[k] then
+            local l
+            for i,v in pairs(t) do
+                if type(i) == "number" then
+                    l = min(l or i, i)
+                else
+                    l = i break
+                end
+            end
+            t[k], t[l] = t[l], nil
+        end
+    end
+    return t
+end
+
+
+
 -- Copy a table and optionally apply a function to every entry
 ---@param fn function
 ---@param index boolean
@@ -96,6 +120,57 @@ end
 ---@return number
 function Self.Count(t)
     return Self.FoldL(t, Util.Functions.Inc, 0)
+end
+
+-- Flip table keys and values
+function Self.Flip(t, val, ...)
+    local u = Self.New()
+    for i,v in pairs(t) do
+        if type(val) == "function" then
+            u[v] = val(v, i, ...)
+        elseif val ~= nil then
+            u[v] = val
+        else
+            u[v] = i
+        end
+    end
+    return u
+end
+
+-- Group table entries by funciton
+---@param t table
+---@param fn function(v: any, i: any): any
+function Self.Group(t, fn)
+    fn = Util.Functions.New(fn) or Util.Functions.Id
+    local u = Self.New()
+    for i,v in pairs(t) do
+        i = fn(v, i)
+        u[i] = u[i] or Self.New()
+        tinsert(u[i], v)
+    end
+    return u
+end
+
+-- Group table entries by key
+---@param t table
+function Self.GroupBy(t, k)
+    local u = Self.New()
+    for i,v in pairs(t) do
+        i = v[k]
+        u[i] = u[i] or Self.New()
+        tinsert(u[i], v)
+    end
+    return u
+end
+
+-- Group the keys with the same values
+function Self.GroupKeys(t)
+    local u = Self.New()
+    for i,v in pairs(t) do
+        u[v] = u[v] or Self.New()
+        tinsert(u[v], i)
+    end
+    return u
 end
 
 

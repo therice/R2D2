@@ -11,6 +11,7 @@ local LZ = LibStub("LibBabble-SubZone-3.0")
 
 -- collection of maps (for encounters)
 lib.Maps = {
+
 }
 
 -- collection of creatures (for encounters)
@@ -20,8 +21,13 @@ lib.Creatures = {
 
 -- collection of encounters
 lib.Encounters = {
+
 }
 
+-- mapping from creature to encounters
+--lib.CreatureEncounters = {
+--
+--}
 
 function lib:GetCreatureMapId(creature_id)
 

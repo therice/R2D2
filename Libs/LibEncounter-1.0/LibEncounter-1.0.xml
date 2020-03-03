@@ -3,4 +3,5 @@
     <Include file="LibBabble-SubZone-3.0\lib.xml"/>
     <Include file="LibBabble-Boss-3.0\lib.xml"/>
     <Script file="LibEncounter-1.0.lua"/>
+    <Script file="Encounters.lua"/>
 </Ui>

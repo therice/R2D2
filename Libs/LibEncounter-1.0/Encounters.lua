@@ -1,4 +1,6 @@
 local lib = LibStub("LibEncounter-1.0", true)
+local Util = LibStub("LibUtil-1.1", true)
+local Logging = LibStub("LibLogging-1.0", true)
 
 -- todo : possibly collapse all into encounters
 --
@@ -187,3 +189,14 @@ lib.Encounters = {
         creature_id = 11583,
     },
 }
+
+do
+    -- lib.CreatureEncounters = Util(lib.Encounters):Sort(true)()
+    ----lib.CreatureEncounters = Util.Tables.New()
+    --for _, v in Util.Objects.Each(Util.Tables.Values(lib.Encounters)) do
+    --    lib.CreatureEncounters[v.creature_id] = 'ted'
+    --end
+
+
+    print(Util.Objects.ToString(lib.CreatureEncounters))
+end
