@@ -1,0 +1,25 @@
+local pl = require('pl.path')
+local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match("@(.*)$"))
+local ep
+
+describe("EffortPoints", function()
+    setup(function()
+        loadfile(pl.abspath(pl.abspath('.') .. '/../../Test/TestSetup.lua'))(this, {})
+        R2D2:OnInitialize()
+        ep = R2D2:GetModule("EffortPoints")
+        ep:OnInitialize()
+        R2D2:OnEnable()
+        ep:OnEnable()
+    end)
+
+    teardown(function()
+        After()
+    end)
+
+    describe("module", function()
+        it("is initialized", function()
+            assert.is.Not.Nil(ep)
+            assert.is.True(ep:IsEnabled())
+        end)
+    end)
+end)

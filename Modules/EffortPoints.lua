@@ -10,6 +10,7 @@ local COpts     = AddOn.components.UI.ConfigOptions
 
 EP.defaults = {
     profile = {
+        enabled = true,
         -- should EP be auto-awarded for kills
         auto_award = false,
         -- EP values by creature
@@ -68,6 +69,7 @@ EP.options = {
 do
     local ep_defaults = EP.defaults.profile
     -- table for storing processed defaults which needed added as arguments
+    -- Creatures indexed by map name
     local creature_ep = Tables.New()
 
     -- iterate all the creatures and group by map (instance)
@@ -86,9 +88,13 @@ do
 
     local creature_ep_args = EP.options.args
     for _, key in Objects.Each(Tables.Sort(Tables.Keys(creature_ep))) do
+        -- arguments that map to the map name (under which creatures will be attached)
         local map_args = Tables.New()
+        -- iterate through all the creatrues in the map
         for _, c in Objects.Each(creature_ep[key]) do
             local creature_args = Tables.New()
+            -- the key is of format 'creature.id', which will then be used for
+            -- reading/writing values from the "db"
             creature_args['creatures.'..tostring(c.creature_id)] = COpts.Range("epvalue", 1, 1, 100)
 
             map_args[c.creature_name] = {
@@ -97,7 +103,6 @@ do
                 args = creature_args,
             }
         end
-        --Logging:Debug(Util.Objects.ToString(map_args, 5))
 
         creature_ep_args[key] = {
             type = "group",
@@ -112,4 +117,8 @@ end
 function EP:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), EP.defaults)
+end
+
+function EP:OnEnable()
+    Logging:Debug("OnEnable(%s)", self:GetName())
 end

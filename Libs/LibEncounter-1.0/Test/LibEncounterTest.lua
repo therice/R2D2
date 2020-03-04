@@ -33,17 +33,5 @@ describe("LibItemUtil", function()
             assert.equal("Molten Core", map)
             assert.equal("Lucifron", creature)
         end)
-        it("blah blah", function()
-            local t = {
-                creatures = {
-                    ['1'] = 2,
-                    ['31'] = 3,
-                    ted = 4,
-                }
-            }
-            assert.equal(4, util.Tables.Get(t, 'creatures', 'ted'))
-            assert.equal(4, util.Tables.Get(t, 'creatures.ted'))
-            assert.equal(3, util.Tables.Get(t, 'creatures.31'))
-        end)
     end)
 end)
