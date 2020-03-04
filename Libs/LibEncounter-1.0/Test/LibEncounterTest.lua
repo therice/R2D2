@@ -1,0 +1,25 @@
+local pl = require('pl.path')
+local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match("@(.*)$"))
+
+local encounter, util
+describe("LibItemUtil", function()
+    setup(function()
+        _G.LibEncounter_Testing = true
+        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
+        encounter, _ = LibStub('LibEncounter-1.0', true)
+        util, _ = LibStub('LibUtil-1.1', true)
+    end)
+    teardown(function()
+        _G.LibEncounter_Testing = nil
+    end)
+    describe("creature names", function()
+        it("resolved from ids", function()
+            assert.equal("Lucifron", encounter:GetCreatureName(12118))
+        end)
+    end)
+    describe("map names", function()
+        it("resolved from ids", function()
+            assert.equal("Molten Core", encounter:GetMapName(409))
+        end)
+    end)
+end)

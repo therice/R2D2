@@ -5,8 +5,11 @@ local lib, minor = LibStub(MAJOR_VERSION, true)
 if not lib or next(lib.Functions) or (minor or 0) > MINOR_VERSION then return end
 
 local Util = lib
-local Self = lib.Functions
+local Self = Util.Functions
 
+-------------------------------------------------------
+--                      Function                     --
+-------------------------------------------------------
 
 function Self.New(fn, obj) return type(fn) == "string" and (obj and obj[fn] or _G[fn]) or fn end
 function Self.Id(...) return ... end
@@ -15,9 +18,9 @@ function Self.False() return false end
 function Self.Zero() return 0 end
 function Self.Noop() end
 
---@param index boolean
---@param notVal boolean
---@return any
+---@param index boolean
+---@param notVal boolean
+---@return any
 function Self.Call(fn, v, i, index, notVal, ...)
     if index and notVal then
         return fn(i, ...)
@@ -30,8 +33,92 @@ function Self.Call(fn, v, i, index, notVal, ...)
     end
 end
 
+-- Get a value directly or as return value of a function
+---@param fn function
+function Self.Val(fn, ...)
+    return (type(fn) == "function" and Util.Push(fn(...)) or Util.Push(fn)).Pop()
+end
+
 -- Some math
 ---@param i number
 function Self.Inc(i)
     return i+1
+end
+
+---@param i number
+function Self.Dec(i)
+    return i-1
+end
+
+---@param a number
+---@param b number
+function Self.Add(a, b)
+    return a+b
+end
+
+---@param a number
+---@param b number
+function Self.Sub(a, b)
+    return a-b
+end
+
+---@param a number
+---@param b number
+function Self.Mul(a, b)
+    return a*b
+end
+
+---@param a number
+---@param b number
+function Self.Div(a, b)
+    return a/b
+end
+
+-- MODIFY
+
+-- Throttle a function, so it is executed at most every n seconds
+---@param fn function
+---@param n number
+---@param leading boolean
+function Self.Throttle(fn, n, leading)
+    local Timer = LibStub("AceTimer-3.0")
+    local Fn, handle, called
+    Fn = function (...)
+        if not handle then
+            if leading then fn(...) end
+            handle = Timer:ScheduleTimer(function (...)
+                handle = nil
+                if not leading then fn(...) end
+                if called then
+                    called = nil
+                    Fn(...)
+                end
+            end, n, ...)
+        else
+            called = true
+        end
+    end
+    return Fn
+end
+
+-- Debounce a function, so it is executed only n seconds after the last call
+function Self.Debounce(fn, n, leading)
+    local Timer = LibStub("AceTimer-3.0")
+    local handle, called
+    return function (...)
+        if not handle then
+            if leading then fn(...) end
+            handle = Timer:ScheduleTimer(function (...)
+                handle = nil
+                if not leading or called then
+                    called = nil
+                    fn(...)
+                end
+            end, n, ...)
+        else
+            called = true
+            Timer:CancelTimer(handle)
+            handle = Timer:ScheduleTimer(handle.func, n, unpack(handle, 1, handle.argsCount))
+        end
+    end
 end

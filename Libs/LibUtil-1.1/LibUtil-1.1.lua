@@ -1,16 +1,17 @@
 local MAJOR_VERSION = "LibUtil-1.1"
 local MINOR_VERSION = 11303
 
-local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
+local lib = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
 -- Modules
+-- type() to module
 local Modules = {
-    tables = "Tables",
-    strings = "Strings",
-    numbers = "Numbers",
-    objects = "Objects",
-    ["functions"] = "Functions",
+    table = "Tables",
+    string = "Strings",
+    number = "Numbers",
+    ["function"] = "Functions",
+    "Objects"
 }
 
 local Module = {

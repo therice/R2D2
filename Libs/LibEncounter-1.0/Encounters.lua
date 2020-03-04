@@ -45,7 +45,7 @@ lib.Creatures = {
         name = 'Garr',
     },
     [12056] = {
-        name = 'Baron Geddon"',
+        name = 'Baron Geddon',
     },
     [12264] = {
         name = 'Shazzrah',
@@ -189,14 +189,3 @@ lib.Encounters = {
         creature_id = 11583,
     },
 }
-
-do
-    -- lib.CreatureEncounters = Util(lib.Encounters):Sort(true)()
-    ----lib.CreatureEncounters = Util.Tables.New()
-    --for _, v in Util.Objects.Each(Util.Tables.Values(lib.Encounters)) do
-    --    lib.CreatureEncounters[v.creature_id] = 'ted'
-    --end
-
-
-    print(Util.Objects.ToString(lib.CreatureEncounters))
-end

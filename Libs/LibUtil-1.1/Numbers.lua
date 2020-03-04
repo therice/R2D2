@@ -6,7 +6,7 @@ local lib, minor = LibStub(MAJOR_VERSION, true)
 if not lib or next(lib.Numbers) or (minor or 0) > MINOR_VERSION then return end
 
 local Util = lib
-local Self = lib.Numbers
+local Self = Util.Numbers
 
 
 -- Rounds a number
