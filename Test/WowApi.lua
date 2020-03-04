@@ -529,6 +529,9 @@ _G.strsplit = function(delimiter, str, max)
 
 	return unpack(record)
 end
+
+string.split = _G.strsplit
+
 -- https://wowwiki.fandom.com/wiki/API_GetItemInfo
 -- https://wowwiki.fandom.com/wiki/ItemString
 -- "itemName", "itemLink", itemRarity, itemLevel, itemMinLevel, "itemType", "itemSubType", itemStackCount, "itemEquipLoc", "invTexture", "itemSellPrice"

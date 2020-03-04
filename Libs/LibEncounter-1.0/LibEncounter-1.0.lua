@@ -29,17 +29,22 @@ lib.Encounters = {
 
 
 function lib:GetCreatureMapId(creature_id)
-    local map_id
-
     local encounters = Util(lib.Encounters)
         :CopyFilter(
             function(v, i)
                 return v.creature_id == creature_id
             end
-    )
+    )()
 
-    print(Util.Objects.ToString(encounters))
+    if Util.Tables.Count(encounters) == 0 then
+        error(("No encounters found for creature id=%s"):format(creature_id))
+    end
 
+    if Util.Tables.Count(encounters) > 1 then
+        error(("Multiple encounters found for creature id=%s"):format(creature_id))
+    end
+
+    return Util.Tables.First(encounters).map_id
 end
 
 function lib:GetCreatureName(creature_id)
@@ -65,6 +70,6 @@ function lib:GetMapName(map_id)
 end
 
 function lib:GetCreatureDetail(creature_id)
-    local map_id = GetCreatureMapId(creature_id)
-    return self:GetMapName(map_id), self:GetCreatureName(creature_id)
+    local map_id = self:GetCreatureMapId(creature_id)
+    return self:GetCreatureName(creature_id), self:GetMapName(map_id)
 end

@@ -61,6 +61,7 @@ AddOn.components.Locale     = R2D2.Libs.AceLocale:GetLocale("R2D2")
 AddOn.components.Logging    = R2D2.Libs.Logging
 
 local Logging = AddOn.components.Logging
+local Tables = AddOn.Libs.Util.Tables
 
 -- Establish a prototype for mixing into any add-on modules
 -- These are used for the configuration UI
@@ -82,6 +83,7 @@ local ModulePrototype = {
     end,
     GetDbValue = function (self, i)
         Logging:Trace("Module:GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))
+        print(Tables.Get(self.db.profile, tostring(i[#i])))
         return self.db.profile[i[#i]]
     end,
     SetDbValue = function (self, i, v)

@@ -147,7 +147,7 @@ end
 
 setmetatable(UI.Chain, {
     __index = function (chain, key)
-        chain.key = Strings.Capitalize(key)
+        chain.key = Strings.UcFirst(key)
         return ChainFn
     end,
     __call = function (chain, index)
