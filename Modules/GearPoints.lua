@@ -107,7 +107,7 @@ do
             local slotTable = slotArgs[slot] or Tables.New()
 
             if slot_input == 'scale' then
-                slotTable[key] = COpts.Range(L["slot_multipler"], 2, 0, 5, nil, {width='double'})
+                slotTable[key] = COpts.Range(L["slot_multiplier"], 2, 0, 5, nil, {width='double'})
             elseif slot_input == 'comment' then
                 local displayName = gpdefaults[key]
                 slotTable['displayname'] = displayName

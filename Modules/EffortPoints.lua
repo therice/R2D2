@@ -72,10 +72,10 @@ EP.options = {
             args = {
             }
         },
-        foo = {
+        standby = {
             type = 'group',
-            name = 'foo',
-            desc = 'Foo',
+            name = L['standby'],
+            desc = L['standby_desc'],
             args = {
 
             }
