@@ -11,7 +11,7 @@ AddOn.components.Config = Config
 AddOn.Libs.AceConfigDialog:SetDefaultSize("R2D2",  900, 600)
 
 function Config.SetupOptions()
-    local Options = AddOn.Options
+    local Options = Util.Tables.Copy(AddOn.Options)
     Options.args = {
         -- General configuration options header
         R2D2_Header = COpts.Header(L["version"] .. format(": |cff99ff33%s|r", AddOn.version), 'full')

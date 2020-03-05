@@ -39,9 +39,10 @@ function GpCustom:AddDefaultCustomItems()
         for id, value in Objects.Each(defaultCustomItems) do
             -- make sure the item applies to player's faction
             if not Objects.IsSet(value[4]) or Objects.Equals(value[4], faction) then
-                if not custom_items[id] then
-                    Logging:Trace("AddDefaultCustomItems() : adding item id=%s", id)
-                    custom_items[id] = {
+                local id_key = tostring(id)
+                if not custom_items[id_key] then
+                    Logging:Trace("AddDefaultCustomItems() : adding item id=%s", id_key)
+                    custom_items[id_key] = {
                         rarity = value[1],
                         item_level = value[2],
                         equip_location =  value[3],
@@ -49,6 +50,67 @@ function GpCustom:AddDefaultCustomItems()
                     }
                 end
             end
+        end
+    end
+end
+
+function GpCustom:SetupConfigOptions()
+    local custom_items_args = GpCustom.options.args
+
+    for _, id in Objects.Each(Tables.Sort(Tables.Keys(self.db.profile.custom_items))) do
+        local custom_item_args = Tables.New()
+        -- todo : if never seen before will return nil, need to register for callback
+        local name, link, _, _, _, _, _, _, _, texture = GetItemInfo(tonumber(id))
+        if name then
+            Logging:Debug('SetupConfigOptions() : Adding %s (%s)', link, id)
+            custom_item_args['custom_items.'..id..'.header'] =  COpts.Description(link, 'large', 0, {image=texture})
+            custom_item_args['custom_items.'..id..'.filler_1'] = COpts.Header('', nil, 1)
+            custom_item_args['custom_items.'..id..'.rarity'] = COpts.Select(L['quality'], 2,  L['quality_desc'],
+                    {
+                        [0] = ITEM_QUALITY0_DESC, -- Poor
+                        [1] = ITEM_QUALITY1_DESC, -- Common
+                        [2] = ITEM_QUALITY2_DESC, -- Uncommon
+                        [3] = ITEM_QUALITY3_DESC, -- Rare
+                        [4] = ITEM_QUALITY4_DESC, -- Epic
+                        [5] = ITEM_QUALITY5_DESC, -- Legendary
+                        [6] = ITEM_QUALITY6_DESC, -- Artifact
+                    }, nil, nil, {width='double'})
+            custom_item_args['custom_items.'..id..'.item_level'] = COpts.Range(L['item_lvl'], 3, 1, 100, 1, {desc=L['item_lvl_desc'], width='double'})
+            custom_item_args['custom_items.'..id..'.equip_location'] = COpts.Select('Equipment', 4,  'Equipment Desc',
+                    {
+                        INVTYPE_HEAD            = INVTYPE_HEAD,
+                        INVTYPE_NECK            = INVTYPE_NECK,
+                        INVTYPE_SHOULDER        = INVTYPE_SHOULDER,
+                        INVTYPE_CHEST           = INVTYPE_CHEST,
+                        INVTYPE_ROBE            = INVTYPE_ROBE,
+                        INVTYPE_WAIST           = INVTYPE_WAIST,
+                        INVTYPE_LEGS            = INVTYPE_LEGS,
+                        INVTYPE_FEET            = INVTYPE_FEET,
+                        INVTYPE_WRIST           = INVTYPE_WRIST,
+                        INVTYPE_HAND            = INVTYPE_HAND,
+                        INVTYPE_FINGER          = INVTYPE_FINGER,
+                        INVTYPE_TRINKET         = INVTYPE_TRINKET,
+                        INVTYPE_CLOAK           = INVTYPE_CLOAK,
+                        INVTYPE_WEAPON          = INVTYPE_WEAPON,
+                        INVTYPE_SHIELD          = INVTYPE_SHIELD,
+                        INVTYPE_2HWEAPON        = INVTYPE_2HWEAPON,
+                        INVTYPE_WEAPONMAINHAND  = INVTYPE_WEAPONMAINHAND,
+                        INVTYPE_WEAPONOFFHAND   = INVTYPE_WEAPONOFFHAND,
+                        INVTYPE_HOLDABLE        = INVTYPE_HOLDABLE,
+                        INVTYPE_RANGED          = INVTYPE_RANGED,
+                        INVTYPE_THROWN          = INVTYPE_THROWN,
+                        INVTYPE_RELIC           = INVTYPE_RELIC,
+                        INVTYPE_WAND            = INVTYPE_WAND,
+                        --["INVTYPE_BOWS"]        = GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_BOWS),
+                    }, nil, nil, {width='double'})
+
+
+            custom_items_args[id] = {
+                type = 'group',
+                name = name,
+                icon = texture,
+                args = custom_item_args,
+            }
         end
     end
 end
@@ -63,9 +125,10 @@ end
 function GpCustom:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     GearPoints:SetCustomItems(self.db.profile.custom_items)
+    self:SetupConfigOptions()
 end
 
 function GpCustom:OnDisable()
-    Logging:Debug("OnEnable(%s)", self:GetName())
+    Logging:Debug("OnDisable(%s)", self:GetName())
     GearPoints:ResetCustomItems()
 end

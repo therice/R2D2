@@ -53,14 +53,14 @@ function COpts.Input(name, order, extra)
     return Extra(input, extra)
 end
 
-function COpts.Range(name, order, min, max, extra)
+function COpts.Range(name, order, min, max, step, extra)
     range = {
         order = order or 1,
         type = 'range',
         name = name,
         min = min,
         max = max,
-        step = 0.5
+        step = step or 0.5
     }
 
     return Extra(range, extra)
