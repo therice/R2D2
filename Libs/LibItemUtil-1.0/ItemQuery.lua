@@ -1,23 +1,8 @@
 local lib = LibStub("LibItemUtil-1.0", true)
 local Logging = LibStub("LibLogging-1.0", true)
 local Util = LibStub("LibUtil-1.1", true)
-local unpack = table.unpack
-
--- Make a frame for our repeating calls to GetItemInfo.
-lib.query_frame = lib.query_frame or CreateFrame("Frame", "LibItemUtil-1.0_ItemQueryFrame")
-local query_frame = lib.query_frame
-query_frame:Hide()
-query_frame:SetScript('OnUpdate', nil)
-query_frame:UnregisterAllEvents()
 
 local itemQueue = { }
-
-function lib:OnEvent(event, ...)
-    Logging:Trace("OnEvent(%s) - %s", event, type(self[event]))
-    if type(self[event]) == 'function' then
-        self[event](self, event, ...)
-    end
-end
 
 function OnError(err)
     Logging:Error("%s", err)
@@ -41,12 +26,9 @@ function lib:GET_ITEM_INFO_RECEIVED(event, item, success)
 
     if Util.Tables.Count(itemQueue) == 0 then
         Logging:Trace("GetItemInfo : UnregisterEvent GET_ITEM_INFO_RECEIVED")
-        query_frame:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
+        lib:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
     end
 end
-
-query_frame:SetScript("OnEvent", function(frame, ...) lib:OnEvent(...) end)
-
 
 function lib:GetItemInfo(id, callback)
     if type(id) == 'string' and strmatch(id, 'item:(%d+)')  then
@@ -60,8 +42,8 @@ function lib:GetItemInfo(id, callback)
     id = tonumber(id)
 
     itemQueue[id] = callback
-    if Util.Tables.Count(itemQueue) > 0 and not query_frame:IsEventRegistered("GET_ITEM_INFO_RECEIVED") then
+    if Util.Tables.Count(itemQueue) > 0 then
         Logging:Trace("GetItemInfo : Registering GET_ITEM_INFO_RECEIVED")
-        query_frame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+        lib:RegisterEvent("GET_ITEM_INFO_RECEIVED")
     end
 end

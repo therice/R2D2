@@ -4,10 +4,14 @@ local MINOR_VERSION = 11303
 local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
+local AceEvent = LibStub("AceEvent-3.0")
+AceEvent:Embed(lib)
+
 -- Inventory types are localized on each client. For this we need LibBabble-Inventory to unlocalize the strings.
 -- Establish the lookup table for localized to english words
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
 local Deformat = LibStub("LibDeformat-3.0")
+
 
 -- Use the GameTooltip or create a new one and initialize it
 -- Used to extract Class limitations for an item, upgraded ilvl, and binding type.
