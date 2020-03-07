@@ -307,13 +307,13 @@ function lib:GetValue(item)
     -- Get the item ID to check against known token IDs
     local itemId = itemLink:match("item:(%d+)")
     if not itemId then return end
-    itemId = tonumber(itemId)
+    itemId = tostring(itemId)
 
     -- Check to see if there is custom data for this item ID
     local customItem = CustomItems[itemId]
     -- if gp_custom_config.enabled and gp_custom_config.custom_items then
     if customItem then
-        Logging:Trace("GetValue(%s) : custom item found for item %s", item, tostring(itemId))
+        Logging:Trace("GetValue(%s) : custom item found for item %s", item, itemId)
         --  1. rarity, int, 4 = epic
         --  2. ilvl, int
         --  3. inventory slot, string
@@ -321,7 +321,7 @@ function lib:GetValue(item)
         rarity = customItem['rarity']
         ilvl = customItem['item_level']
         equipLoc = customItem['equip_location']
-        Logging:Trace("GetValue(%s/%s) : rarity=%s, ilvl=%s, equipLoc=%s", item, tostring(itemId), rarity, ilvl, equipLoc)
+        Logging:Trace("GetValue(%s/%s) : rarity=%s, ilvl=%s, equipLoc=%s", item, itemId, rarity, ilvl, equipLoc)
     end
 
     -- Is the item above our minimum threshold?
@@ -344,7 +344,7 @@ end
 -- if custom item exists, return the associated item level
 -- otherwise use the in-game provided value
 --function lib:GetItemLevel(item)
---    local itemId = ItemUtil:ItemlinkToID(item)
+--    local itemId = ItemUtil:ItemLinkToId(item)
 --
 --    local ilvl
 --    local customItem = CustomItems[itemId]

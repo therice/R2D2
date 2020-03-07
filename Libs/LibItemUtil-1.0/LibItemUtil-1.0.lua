@@ -4,23 +4,16 @@ local MINOR_VERSION = 11303
 local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
-
 -- Inventory types are localized on each client. For this we need LibBabble-Inventory to unlocalize the strings.
 -- Establish the lookup table for localized to english words
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
 local Deformat = LibStub("LibDeformat-3.0")
 
--- Make a frame for our repeating calls to GetItemInfo.
-lib.frame = lib.frame or CreateFrame("Frame", MAJOR_VERSION .. "_Frame")
-local frame = lib.frame
-frame:Hide()
-frame:SetScript('OnUpdate', nil)
-frame:UnregisterAllEvents()
-
 -- Use the GameTooltip or create a new one and initialize it
 -- Used to extract Class limitations for an item, upgraded ilvl, and binding type.
-lib.tooltip = lib.tooltip or CreateFrame("GameTooltip", MAJOR_VERSION .. "_Tooltip", frame, "GameTooltipTemplate")
+lib.tooltip = lib.tooltip or CreateFrame("GameTooltip", MAJOR_VERSION .. "_Tooltip", nil, "GameTooltipTemplate")
 local tooltip = lib.tooltip
+tooltip:SetOwner(UIParent, "ANCHOR_NONE")
 tooltip:Hide()
 
 local restrictedClassFrameNameFormat = tooltip:GetName().."TextLeft%d"
@@ -200,8 +193,8 @@ local Disallowed = {
 
 --- Convert an itemlink to itemID
 --  @param itemlink of which you want the itemID from
---  @returns number or nils
-function lib:ItemlinkToID(itemlink)
+--  @returns number or nil
+function lib:ItemLinkToId(itemlink)
     if not itemlink then return nil end
     local itemID = strmatch(itemlink, 'item:(%d+)')
     if not itemID then return end
