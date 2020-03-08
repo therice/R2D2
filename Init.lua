@@ -12,7 +12,9 @@ R2D2.Options = {
     type = 'group',
     childGroups = 'tab',
     handler = self,
-    args = {}
+    args = {
+
+    }
 }
 R2D2.version = GetAddOnMetadata(AddOnName, "Version")
 
@@ -83,13 +85,10 @@ local ModulePrototype = {
     end,
     GetDbValue = function (self, i)
         Logging:Trace("Module:GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))
-        -- print(Tables.Get(self.db.profile, tostring(i[#i])))
         return Tables.Get(self.db.profile, tostring(i[#i]))
-        -- return self.db.profile[i[#i]]
     end,
     SetDbValue = function (self, i, v)
         Logging:Trace("Module:SetDbValue(%s, %s, %s)", self:GetName(), tostring(i[#i]), tostring(v or 'nil'))
-        -- self.db.profile[i[#i]] = v
         Tables.Set(self.db.profile, tostring(i[#i]), v)
     end,
 }

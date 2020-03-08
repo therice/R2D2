@@ -3,4 +3,5 @@
     <Script file="GearPointsCustom.lua" />
     <Script file="GearPointsTooltip.lua" />
     <Script file="EffortPoints.lua" />
+    <Script file="Standby.lua" />
 </Ui>

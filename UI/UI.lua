@@ -93,6 +93,17 @@ function COpts.Select(name, order, descr, values, get, set, extra)
     return Extra(sel, extra)
 end
 
+function COpts.Toggle(name, order, descr, extra)
+    toggle = {
+        order = order or 1,
+        type = 'toggle',
+        name = name,
+        desc = descr,
+    }
+
+    return Extra(toggle, extra)
+end
+
 --[[
  Enable chain-calling for UI elements
 

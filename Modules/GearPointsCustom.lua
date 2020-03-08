@@ -59,7 +59,7 @@ end
 local function AddItemToConfigOptions(options, id)
     local name, link, _, _, _, _, _, _, _, texture = GetItemInfo(id)
     if name then
-        Logging:Debug('AddItemToConfigOptions() : Adding %s (%s)', link, id)
+        Logging:Trace('AddItemToConfigOptions() : Adding %s (%s)', link, id)
         local custom_item_args = Tables.New()
         custom_item_args['custom_items.'..id..'.header'] =  COpts.Description(link, 'large', 0, {image=texture})
         custom_item_args['custom_items.'..id..'.filler_1'] = COpts.Header('', nil, 1)
@@ -74,7 +74,7 @@ local function AddItemToConfigOptions(options, id)
                     [6] = ITEM_QUALITY6_DESC, -- Artifact
                 }, nil, nil, {width='double'})
         custom_item_args['custom_items.'..id..'.item_level'] = COpts.Range(L['item_lvl'], 3, 1, 100, 1, {desc=L['item_lvl_desc'], width='double'})
-        custom_item_args['custom_items.'..id..'.equip_location'] = COpts.Select('Equipment', 4,  'Equipment Desc',
+        custom_item_args['custom_items.'..id..'.equip_location'] = COpts.Select(L['equipment_loc'], 4,  L['equipment_loc_desc'],
                 {
                     INVTYPE_HEAD            = INVTYPE_HEAD,
                     INVTYPE_NECK            = INVTYPE_NECK,
@@ -118,7 +118,6 @@ end
 
 function GpCustom:SetupConfigOptions()
     local custom_items_args = GpCustom.options.args
-
     for _, id in Objects.Each(Tables.Sort(Tables.Keys(self.db.profile.custom_items))) do
         AddItemToConfigOptions(custom_items_args, id)
     end
