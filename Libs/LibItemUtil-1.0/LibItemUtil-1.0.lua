@@ -195,6 +195,54 @@ local Disallowed = {
     },
 }
 
+-- Support for custom item definitions
+--
+-- keys are item ids and values are tuple where index is
+--  1. rarity, int, 4 = epic
+--  2. ilvl, int
+--  3. inventory slot, string (supports special keywords such as CUSTOM_SCALE and CUSTOM_GP)
+--  4. faction (Horde/Alliance), string
+--[[
+For example:
+
+{
+    -- Classic P2
+    [18422] = { 4, 74, "INVTYPE_NECK", "Horde" },       -- Head of Onyxia
+    [18423] = { 4, 74, "INVTYPE_NECK", "Alliance" },    -- Head of Onyxia
+    -- Classic P5
+    [20928] = { 4, 78, "INVTYPE_SHOULDER" },    -- T2.5 shoulder, feet (Qiraji Bindings of Command)
+    [20932] = { 4, 78, "INVTYPE_SHOULDER" },    -- T2.5 shoulder, feet (Qiraji Bindings of Dominance)
+}
+--]]
+local CustomItems = {}
+
+function lib:GetCustomItems()
+    return CustomItems
+end
+
+function lib:SetCustomItems(data)
+    CustomItems = {}
+    for k, v in pairs(data) do
+        CustomItems[k] = v
+    end
+end
+
+function lib:ResetCustomItems()
+    lib:SetCustomItems({})
+end
+
+function lib:AddCustomItem(itemId, rarity, ilvl, slot, faction)
+    CustomItems[itemId] = { rarity, ilvl, slot, faction}
+end
+
+function lib:RemoveCustomItem(itemId)
+    CustomItems[itemId] = nil
+end
+
+function lib:GetCustomItem(itemId)
+    return CustomItems[itemId]
+end
+
 --- Convert an itemlink to itemID
 --  @param itemlink of which you want the itemID from
 --  @returns number or nil

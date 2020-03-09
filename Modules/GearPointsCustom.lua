@@ -1,6 +1,5 @@
 local _, AddOn = ...
 local GpCustom      = AddOn:NewModule("GearPointsCustom", "AceHook-3.0", "AceEvent-3.0")
-local GearPoints    = AddOn.Libs.GearPoints
 local ItemUtil      = AddOn.Libs.ItemUtil
 local L             = AddOn.components.Locale
 local Logging       = AddOn.components.Logging
@@ -133,10 +132,10 @@ end
 
 function GpCustom:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
-    GearPoints:SetCustomItems(self.db.profile.custom_items)
+    ItemUtil:SetCustomItems(self.db.profile.custom_items)
 end
 
 function GpCustom:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
-    GearPoints:ResetCustomItems()
+    ItemUtil:ResetCustomItems()
 end

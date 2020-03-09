@@ -13,6 +13,7 @@ local Util      = AddOn.Libs.Util
 local Strings   = Util.Strings
 local Objects   = Util.Objects
 local Numbers   = Util.Numbers
+local Logging   = AddOn.components.Logging
 local COpts     = UI.ConfigOptions
 
 
@@ -104,6 +105,14 @@ function COpts.Toggle(name, order, descr, extra)
     return Extra(toggle, extra)
 end
 
+
+function UI.CreateGameTooltip(name, parent)
+    local itemTooltip = CreateFrame("GameTooltip", name.."_ItemTooltip", parent, "GameTooltipTemplate")
+    itemTooltip:SetClampedToScreen(false)
+    itemTooltip:SetScale(parent and parent:GetScale()*.95 or 1) -- Don't use parent scale
+    return itemTooltip
+end
+
 --[[
  Enable chain-calling for UI elements
 
@@ -115,7 +124,7 @@ end
 
   local x = Crate("X)
   x:SetFoo("x")
-  x:.SetBar("y")
+  x:SetBar("y")
   ...
 
 --]]
@@ -144,6 +153,8 @@ local ChainFn = function (...)
                 or widget.image and widget.image[key] and widget.image
                 or widget.label and widget.label[key] and widget.label
                 or widget.content and widget.content[key] and widget.content
+        Logging:Debug("ChainFn() : Object = %s, Key = %s", type(obj), key)
+
         obj[key](obj, ...)
 
         -- Fix Label's stupid image anchoring

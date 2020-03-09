@@ -6,55 +6,14 @@ if not lib then return end
 
 local Logging = LibStub("LibLogging-1.0")
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
+local ItemUtil = LibStub("LibItemUtil-1.0")
+
 -- local ItemUtil = LibStub("LibItemUtil-1.0")
 
 -- Allows for specification of an alternative function for string repr
 local ToStringFn = function(x) return x end
 function lib:SetToStringFn(fn) ToStringFn = fn end
 
--- Used to display GP values directly on tier tokens or provide custom valuation
---
--- keys are item ids and values are tuple where index is
---  1. rarity, int, 4 = epic
---  2. ilvl, int
---  3. inventory slot, string (supports special keywords such as CUSTOM_SCALE and CUSTOM_GP)
---  4. faction (Horde/Alliance), string
---[[
-For example:
-
-{
-    -- Classic P2
-    [18422] = { 4, 74, "INVTYPE_NECK", "Horde" },       -- Head of Onyxia
-    [18423] = { 4, 74, "INVTYPE_NECK", "Alliance" },    -- Head of Onyxia
-    -- Classic P5
-    [20928] = { 4, 78, "INVTYPE_SHOULDER" },    -- T2.5 shoulder, feet (Qiraji Bindings of Command)
-    [20932] = { 4, 78, "INVTYPE_SHOULDER" },    -- T2.5 shoulder, feet (Qiraji Bindings of Dominance)
-}
---]]
-local CustomItems = {}
-
-function lib:GetCustomItems()
-    return CustomItems
-end
-
-function lib:SetCustomItems(data)
-    CustomItems = {}
-    for k, v in pairs(data) do
-        CustomItems[k] = v
-    end
-end
-
-function lib:ResetCustomItems()
-    lib:SetCustomItems({})
-end
-
-function lib:AddCustomItem(itemId, rarity, ilvl, slot, faction)
-    CustomItems[itemId] = { rarity, ilvl, slot, faction}
-end
-
-function lib:RemoveCustomItem(itemId)
-    CustomItems[itemId] = nil
-end
 
 -- Currently, we don't support have support for item modifiers/affixes (e.g. gem slots)
 -- local ItemBonusGp = {}
@@ -310,7 +269,7 @@ function lib:GetValue(item)
     itemId = tostring(itemId)
 
     -- Check to see if there is custom data for this item ID
-    local customItem = CustomItems[itemId]
+    local customItem = ItemUtil:GetCustomItem(itemId)
     -- if gp_custom_config.enabled and gp_custom_config.custom_items then
     if customItem then
         Logging:Trace("GetValue(%s) : custom item found for item %s", item, itemId)
