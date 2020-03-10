@@ -247,6 +247,7 @@ function lib:CalculateFromScale(scale, ilvl, rarity)
     )
     return math.floor(FormulaInputs.Base * coefficient * FormulaInputs.Multiplier)
 end
+
 -- calculate GP from equipment location, sub-class, item level, and rarity
 function lib:CalculateFromEquipmentLocation(equipLoc, subClass, ilvl, rarity)
     local scale, comment = self:GetScale(equipLoc, subClass)

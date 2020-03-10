@@ -30,13 +30,13 @@ function lib:GET_ITEM_INFO_RECEIVED(event, item, success)
     end
 end
 
-function lib:GetItemInfo(id, callback)
+function lib:QueryItemInfo(id, callback)
     if type(id) == 'string' and strmatch(id, 'item:(%d+)')  then
         id = lib:ItemLinkToId(id)
     end
 
     if type(callback) ~= "function" then
-        error("Usage: GetItemInfo(id, callback, [...]): 'callback' - function", 2)
+        error("Usage: GetItemInfo(id, callback): 'callback' - function", 2)
     end
 
     id = tonumber(id)

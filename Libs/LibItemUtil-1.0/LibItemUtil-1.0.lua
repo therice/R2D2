@@ -11,13 +11,14 @@ AceEvent:Embed(lib)
 -- Establish the lookup table for localized to english words
 local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
 local Deformat = LibStub("LibDeformat-3.0")
-
+local Logging  = LibStub("LibLogging-1.0")
 
 -- Use the GameTooltip or create a new one and initialize it
 -- Used to extract Class limitations for an item, upgraded ilvl, and binding type.
-lib.tooltip = lib.tooltip or CreateFrame("GameTooltip", MAJOR_VERSION .. "_Tooltip", nil, "GameTooltipTemplate")
+lib.tooltip = lib.tooltip or CreateFrame("GameTooltip", MAJOR_VERSION .. "_TooltipParse", nil, "GameTooltipTemplate")
 local tooltip = lib.tooltip
 tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+tooltip:UnregisterAllEvents()
 tooltip:Hide()
 
 local restrictedClassFrameNameFormat = tooltip:GetName().."TextLeft%d"
@@ -195,6 +196,34 @@ local Disallowed = {
     },
 }
 
+local function GetNumClasses()
+    return _G.MAX_CLASSES
+end
+
+lib.ClassDisplayNameToId = {}
+lib.ClassTagNameToId = {}
+lib.ClassIdToDisplayName = {}
+lib.ClassIdToFileName = {}
+
+do
+    for i=1, GetNumClasses() do
+        local info = C_CreatureInfo.GetClassInfo(i)
+        -- could be nil
+        if info then
+            lib.ClassDisplayNameToId[info.className] = i
+            lib.ClassTagNameToId[info.classFile] = i
+        end
+    end
+
+    local druid = C_CreatureInfo.GetClassInfo(11)
+    lib.ClassDisplayNameToId[druid.className] = 11
+    lib.ClassTagNameToId[druid.classFile] = 11
+end
+
+lib.ClassIdToDisplayName = tInvert(lib.ClassDisplayNameToId)
+lib.ClassIdToFileName = tInvert(lib.ClassTagNameToId)
+
+
 -- Support for custom item definitions
 --
 -- keys are item ids and values are tuple where index is
@@ -246,11 +275,8 @@ end
 --- Convert an itemlink to itemID
 --  @param itemlink of which you want the itemID from
 --  @returns number or nil
-function lib:ItemLinkToId(itemlink)
-    if not itemlink then return nil end
-    local itemID = strmatch(itemlink, 'item:(%d+)')
-    if not itemID then return end
-    return tonumber(itemID)
+function lib:ItemLinkToId(link)
+    return tonumber(strmatch(link or "", "item:(%d+):"))
 end
 
 -- determine if specified class is compatible with item
@@ -295,4 +321,50 @@ function lib:ClassCanUse(class, item)
     end
 
     return true
+end
+
+-- @return The bitwise flag indicates the classes allowed for the item, as specified on the tooltip by "Classes: xxx"
+-- If the tooltip does not specify "Classes: xxx" or if the item is not cached, return 0xffffffff
+-- This function only checks the tooltip and does not consider if the item is equipable by the class.
+-- Item must have been cached to get the correct result.
+--
+-- If the number at binary bit i is 1 (bit 1 is the lowest bit), then the item works for the class with ID i.
+-- 0b100,000,000,010 indicates the item works for Paladin(classID 2) and DemonHunter(class ID 12)
+function lib:GetItemClassesAllowedFlag(itemLink)
+    if type(str) == "string" and str:trim() ~= "" then return 0 end
+    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    tooltip:SetHyperlink(itemLink)
+
+    Logging:Trace("GetItemClassesAllowedFlag(%s)", itemLink)
+
+    local delimiter = ", "
+    for i = 1, tooltip:NumLines() or 0 do
+        local line = getglobal(restrictedClassFrameNameFormat:format(i))
+        if line and line.GetText then
+            local text = line:GetText() or ""
+            local classesText = Deformat(text, ITEM_CLASSES_ALLOWED)
+            if classesText then
+                tooltip:Hide()
+                if LIST_DELIMITER and LIST_DELIMITER ~= "" and classesText:find(LIST_DELIMITER:gsub("%%s","")) then
+                    delimiter = LIST_DELIMITER:gsub("%%s","")
+                elseif PLAYER_LIST_DELIMITER and PLAYER_LIST_DELIMITER ~= "" and classesText:find(PLAYER_LIST_DELIMITER) then
+                    delimiter = PLAYER_LIST_DELIMITER
+                end
+
+                local result = 0
+                for className in string.gmatch(classesText..delimiter, "(.-)"..delimiter) do
+                    local classID = ClassDisplayNameToId[className]
+                    if classID then
+                        result = result + bit.lshift(1, classID-1)
+                    else
+                        Logging:Warn("Error while getting classes flag of %s  Class %s does not exist", itemLink, className)
+                    end
+                end
+                return result
+            end
+        end
+    end
+
+    tooltip:Hide()
+    return 0xffffffff -- The item works for all classes
 end

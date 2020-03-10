@@ -20,4 +20,6 @@
     <Include file="AceSerializer-3.0\AceSerializer-3.0.xml"/>
     <Include file="LibItemUtil-1.0\LibItemUtil-1.0.xml"/>
     <Include file="LibGearPoints-1.2\LibGearPoints-1.2.xml"/>
+    <Script file="LibWindow-1.1\LibWindow-1.1.lua" />
+    <Include file="lib-st\lib-st.xml" />
 </Ui>

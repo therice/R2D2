@@ -110,8 +110,8 @@ local function AddItemToConfigOptions(options, id)
             args = custom_item_args,
         }
     else
-        Logging:Debug('AddItemToConfigOptions() : Item %s not available, registering callback', id)
-        ItemUtil:GetItemInfo(id, function() AddItemToConfigOptions(options, id) end)
+        Logging:Trace('AddItemToConfigOptions() : Item %s not available, submitting query', id)
+        ItemUtil:QueryItemInfo(id, function() AddItemToConfigOptions(options, id) end)
     end
 end
 
@@ -130,9 +130,19 @@ function GpCustom:OnInitialize()
     self:SetupConfigOptions()
 end
 
+local function TestItemUtil(id)
+    local _, link = GetItemInfo(id)
+    if link then
+        Logging:Debug("%s", ItemUtil:GetItemClassesAllowedFlag(link))
+    else
+        ItemUtil:QueryItemInfo(id, function () TestItemUtil(id) end)
+    end
+end
+
 function GpCustom:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     ItemUtil:SetCustomItems(self.db.profile.custom_items)
+    --TestItemUtil(18832)
 end
 
 function GpCustom:OnDisable()

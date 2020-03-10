@@ -203,6 +203,53 @@ function C_Timer.NewTicker(duration, callback, iterations)
 
 end
 
+C_CreatureInfo = {}
+C_CreatureInfo.ClassInfo = {
+	[1] = {
+		"Warrior", "WARRIOR"
+	},
+	[2] = {
+		"Paladin", "PALADIN"
+	},
+	[3] = {
+		"Hunter", "HUNTER"
+	},
+	[4] = {
+		"Rogue", "ROGUE"
+	},
+	[5] = {
+		"Priest", "PRIEST"
+	},
+	[6] = nil,
+	[7] = {
+		"Shaman", "SHAMAN"
+	},
+	[8] = {
+		"Mage", "MAGE"
+	},
+	[9] = {
+		"Warlock", "WARLOCK"
+	},
+	[10] = nil,
+	[11] = {
+		"Druid", "DRUID"
+	},
+	[12] = nil,
+}
+
+-- className (localized name, e.g. "Warrior"), classFile (non-localized name, e.g. "WARRIOR"), classID
+function C_CreatureInfo.GetClassInfo(classID)
+	local classInfo = C_CreatureInfo.ClassInfo[classID]
+	if classInfo then
+		return {
+			className = classInfo[1],
+			classFile = classInfo[2],
+			classID = classID
+		}
+	end
+	return nil
+end
+
 function UnitName(unit)
 	if unit == "player" then
 		return "Gnomechomsky"
@@ -239,6 +286,13 @@ end
 function GetNumPartyMembers()
 	return 1
 end
+
+-- There are 9 classes in classic, but they are NOT the first 9 ids. Druids are class ID 11 even in classic.
+-- return 9 here is consistent with Classic flavor
+--function GetNumClasses()
+--	return 9
+--end
+_G.MAX_CLASSES = 9
 
 FACTION_HORDE = "Horde"
 FACTION_ALLIANCE = "Alliance"
@@ -467,6 +521,15 @@ end
 -----
 
 UIParent = {}
+
+_G.tInvert = function(tbl)
+	local inverted = {};
+	for k, v in pairs(tbl) do
+		inverted[v] = k;
+	end
+	return inverted;
+end
+
 
 -- define required function pointers in global space which won't be available in testing
 _G.format = string.format
