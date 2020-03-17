@@ -7,29 +7,30 @@ local Util      = AddOn.Libs.Util
 local Strings   = Util.Strings
 local Tables    = Util.Tables
 
-R2D2.defaults = {
-    profile = {
-        logThreshold = Logging.Level.Debug,
-    }
-}
-
-
 function R2D2:OnInitialize()
     Logging:SetRootThreshold(Logging.Level.Debug)
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.chatCmdHelp = {
-        {
-            cmd = "config",
-            desc = L["chat_commands_config"]
-        },
-        {
-            cmd = "version",
-            desc = L["chat_commands_version"]
-        },
+        {cmd = "config", desc = L["chat_commands_config"]},
+        {cmd = "test", desc = L["chat_commands_test"]},
+        {cmd = "version", desc = L["chat_commands_version"]},
     }
+    -- the player class
+    self.playerClass = select(2, UnitClass("player"))
+    -- our guild
+    self.guildRank = L["unguilded"]
+    -- are we running in test mode
+    self.testMode = false
+    -- sent by master loooter
+    self.mlDb = {}
+    -- are we the master looter?
+    self.isMasterLooter = false
+    -- name of the master looter
+    self.masterLooter = ""
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
-    self:RegisterChatCommand(name:lower(), "HandleChatCommand")
+    self:RegisterChatCommand(name:lower(), "ChatCommand")
+    self:RegisterComm(name)
 end
 
 function R2D2:OnEnable()
@@ -41,8 +42,19 @@ function R2D2:OnEnable()
         end
     end
 
+    self.realmName = select(2, UnitFullName(self.Constants.player))
+    self.playerName = self:UnitName(self.Constants.player)
+
+    if IsInGuild() then
+        self.guildRank = select(2, GetGuildInfo("player"))
+    end
+
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
+end
+
+function R2D2:CallModule(module)
+    self:EnableModule(module)
 end
 
 function R2D2:Help()
@@ -50,6 +62,29 @@ function R2D2:Help()
     for _, v in ipairs(self.chatCmdHelp) do
         print("|cff20a200", v.cmd, "|r:", v.desc)
     end
+end
+
+function R2D2:Test(count)
+    Logging:Debug("Test(%s)", count)
+    local testItems = self:GetTestItems()
+    local items = {}
+    for _ = 1, count do
+        Tables.Push(items, testItems[math.random(1, #testItems)])
+    end
+
+    self.testMode = true
+    self.isMasterLooter, self.masterLooter = self:GetMasterLooter()
+
+    if not self.isMasterLooter then
+        self:Print(L["error_test_as_non_leader"])
+        self.testMode = false
+        return
+    end
+
+    self:CallModule("MasterLooter")
+    local ML = self:MasterLooterModule()
+    ML:NewMasterLooter(self.masterLooter)
+    ML:Test(items)
 end
 
 function R2D2:Config()
@@ -64,7 +99,7 @@ function R2D2:Version()
 
 end
 
-function R2D2:HandleChatCommand(msg)
+function R2D2:ChatCommand(msg)
     local args = Tables.New(self:GetArgs(msg,10))
     args[11] = nil
     local cmd = Strings.Lower(tremove(args, 1)):trim()
@@ -74,6 +109,8 @@ function R2D2:HandleChatCommand(msg)
         self:Help()
     elseif cmd == 'config' or cmd == "c" then
         self:Config()
+    elseif cmd == 'test' or cmd == "t" then
+        self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then
         self:Version()
     else

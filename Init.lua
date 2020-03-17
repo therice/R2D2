@@ -1,10 +1,9 @@
 -- name : The name of your addon as set in the TOC and folder name
 -- name : The shared addon table between the Lua files of an addon
-local _G = _G
-local AceAddon, AceAddonMinor = _G.LibStub('AceAddon-3.0')
+local AceAddon, AceAddonMinor = LibStub('AceAddon-3.0')
 
 local AddOnName, AddOn = ...
-R2D2 = AceAddon:NewAddon(AddOn, AddOnName, 'AceConsole-3.0', 'AceEvent-3.0', 'AceTimer-3.0', 'AceHook-3.0')
+R2D2 = AceAddon:NewAddon(AddOn, AddOnName, 'AceConsole-3.0', 'AceEvent-3.0',  "AceComm-3.0", "AceSerializer-3.0", "AceHook-3.0", "AceTimer-3.0")
 R2D2:SetDefaultModuleState(false)
 -- Basic options container for augmentation by other modules
 R2D2.Options = {

@@ -9,7 +9,7 @@ AceEvent:Embed(lib)
 
 -- Inventory types are localized on each client. For this we need LibBabble-Inventory to unlocalize the strings.
 -- Establish the lookup table for localized to english words
-local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
+--local BabbleInv = LibStub("LibBabble-Inventory-3.0"):GetReverseLookupTable()
 local Deformat = LibStub("LibDeformat-3.0")
 local Logging  = LibStub("LibLogging-1.0")
 
@@ -21,178 +21,184 @@ tooltip:SetOwner(UIParent, "ANCHOR_NONE")
 tooltip:UnregisterAllEvents()
 tooltip:Hide()
 
-local restrictedClassFrameNameFormat = tooltip:GetName().."TextLeft%d"
-
---[[
-All item types we care about:
-
-    Cloth = true,
-    Leather = true,
-    Mail = true,
-    Plate = true,
-    Shields = true,
-
-    Bows = true,
-    Crossbows = true,
-    Daggers = true,
-    ["Fist Weapons"] = true,
-    Guns = true,
-    ["One-Handed Axes"] = true,
-    ["One-Handed Maces"] = true,
-    ["One-Handed Swords"] = true,
-    Polearms = true,
-    Staves = true,
-    ["Two-Handed Axes"] = true,
-    ["Two-Handed Maces"] = true,
-    ["Two-Handed Swords"] = true,
-
-    Idols = true,
-    Librams = true,
-    Sigils = true,
-    Thrown = true,
-    Totems = true,
-    Wands = true,
---]]
-
-local Disallowed = {
+-- https://wow.gamepedia.com/ItemType
+local DisallowedByClass = {
     DRUID = {
-        Mail = true,
-        Plate = true,
-        Shields = true,
-        Bows = true,
-        Crossbows = true,
-        Guns = true,
-        ["One-Handed Axes"] = true,
-        ["One-Handed Swords"] = true,
-        ["Two-Handed Axes"] = true,
-        ["Two-Handed Swords"] = true,
-        Librams = true,
-        Sigils = true,
-        Thrown = true,
-        Totems = true,
-        Wands = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_MAIL] = true,
+            [LE_ITEM_ARMOR_PLATE] = true,
+            [LE_ITEM_ARMOR_SHIELD] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_BOWS] = true,
+            [LE_ITEM_WEAPON_CROSSBOW] = true,
+            [LE_ITEM_WEAPON_GUNS] = true,
+            [LE_ITEM_WEAPON_AXE1H] = true,
+            [LE_ITEM_WEAPON_SWORD1H] = true,
+            [LE_ITEM_WEAPON_AXE2H] = true,
+            [LE_ITEM_WEAPON_SWORD2H] = true,
+            [LE_ITEM_WEAPON_WAND] = true,
+            [LE_ITEM_WEAPON_THROWN]  = true,
+        },
     },
     HUNTER = {
-        Plate = true,
-        Shields = true,
-        ["One-Handed Maces"] = true,
-        ["Two-Handed Maces"] = true,
-        Idols = true,
-        Librams = true,
-        Sigils = true,
-        Totems = true,
-        Wands = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_PLATE] = true,
+            [LE_ITEM_ARMOR_SHIELD] = true,
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_MACE1H] = true,
+            [LE_ITEM_WEAPON_MACE2H] = true,
+            [LE_ITEM_WEAPON_WAND] = true,
+        },
     },
     MAGE = {
-        Leather = true,
-        Mail = true,
-        Plate = true,
-        Shields = true,
-        Bows = true,
-        Crossbows = true,
-        ["Fist Weapons"] = true,
-        Guns = true,
-        ["One-Handed Axes"] = true,
-        ["One-Handed Maces"] = true,
-        Polearms = true,
-        ["Two-Handed Axes"] = true,
-        ["Two-Handed Maces"] = true,
-        ["Two-Handed Swords"] = true,
-        Idols = true,
-        Librams = true,
-        Sigils = true,
-        Thrown = true,
-        Totems = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_LEATHER] = true,
+            [LE_ITEM_ARMOR_MAIL] = true,
+            [LE_ITEM_ARMOR_PLATE] = true,
+            [LE_ITEM_ARMOR_SHIELD] = true,
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_BOWS] = true,
+            [LE_ITEM_WEAPON_CROSSBOW] = true,
+            [LE_ITEM_WEAPON_GUNS] = true,
+            [LE_ITEM_WEAPON_UNARMED] = true,
+            [LE_ITEM_WEAPON_AXE1H] = true,
+            [LE_ITEM_WEAPON_MACE1H] = true,
+            [LE_ITEM_WEAPON_POLEARM] = true,
+            [LE_ITEM_WEAPON_AXE2H] = true,
+            [LE_ITEM_WEAPON_MACE2H] = true,
+            [LE_ITEM_WEAPON_SWORD2H] = true,
+            [LE_ITEM_WEAPON_THROWN]  = true,
+        },
     },
     PALADIN = {
-        Bows = true,
-        Crossbows = true,
-        ["Fist Weapons"] = true,
-        Guns = true,
-        Staves = true,
-        Idols = true,
-        Sigils = true,
-        Thrown = true,
-        Totems = true,
-        Wands = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_BOWS] = true,
+            [LE_ITEM_WEAPON_CROSSBOW] = true,
+            [LE_ITEM_WEAPON_GUNS] = true,
+            [LE_ITEM_WEAPON_UNARMED] = true,
+            [LE_ITEM_WEAPON_STAFF] = true,
+            [LE_ITEM_WEAPON_WAND] = true,
+            [LE_ITEM_WEAPON_THROWN]  = true,
+        },
     },
     PRIEST = {
-        Leather = true,
-        Mail = true,
-        Plate = true,
-        Shields = true,
-        Bows = true,
-        Crossbows = true,
-        ["Fist Weapons"] = true,
-        Guns = true,
-        ["One-Handed Axes"] = true,
-        ["One-Handed Swords"] = true,
-        Polearms = true,
-        ["Two-Handed Axes"] = true,
-        ["Two-Handed Maces"] = true,
-        ["Two-Handed Swords"] = true,
-        Idols = true,
-        Librams = true,
-        Sigils = true,
-        Thrown = true,
-        Totems = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_LEATHER] = true,
+            [LE_ITEM_ARMOR_MAIL] = true,
+            [LE_ITEM_ARMOR_PLATE] = true,
+            [LE_ITEM_ARMOR_SHIELD] = true,
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_BOWS] = true,
+            [LE_ITEM_WEAPON_CROSSBOW] = true,
+            [LE_ITEM_WEAPON_GUNS] = true,
+            [LE_ITEM_WEAPON_UNARMED] = true,
+            [LE_ITEM_WEAPON_AXE1H] = true,
+            [LE_ITEM_WEAPON_SWORD1H] = true,
+            [LE_ITEM_WEAPON_POLEARM] = true,
+            [LE_ITEM_WEAPON_AXE2H] = true,
+            [LE_ITEM_WEAPON_MACE2H] = true,
+            [LE_ITEM_WEAPON_SWORD2H] = true,
+            [LE_ITEM_WEAPON_THROWN]  = true,
+        },
     },
     ROGUE = {
-        Mail = true,
-        Plate = true,
-        Shields = true,
-        Polearms = true,
-        Staves = true,
-        ["Two-Handed Axes"] = true,
-        ["Two-Handed Maces"] = true,
-        ["Two-Handed Swords"] = true,
-        Idols = true,
-        Librams = true,
-        Sigils = true,
-        Totems = true,
-        Wands = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_MAIL] = true,
+            [LE_ITEM_ARMOR_PLATE] = true,
+            [LE_ITEM_ARMOR_SHIELD] = true,
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_POLEARM] = true,
+            [LE_ITEM_WEAPON_STAFF] = true,
+            [LE_ITEM_WEAPON_AXE2H] = true,
+            [LE_ITEM_WEAPON_MACE2H] = true,
+            [LE_ITEM_WEAPON_SWORD2H] = true,
+            [LE_ITEM_WEAPON_WAND] = true,
+        },
     },
     SHAMAN = {
-        Plate = true,
-        Bows = true,
-        Crossbows = true,
-        Guns = true,
-        ["One-Handed Swords"] = true,
-        Polearms = true,
-        ["Two-Handed Swords"] = true,
-        Idols = true,
-        Librams = true,
-        Sigils = true,
-        Thrown = true,
-        Wands = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_PLATE] = true,
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_BOWS] = true,
+            [LE_ITEM_WEAPON_CROSSBOW] = true,
+            [LE_ITEM_WEAPON_GUNS] = true,
+            [LE_ITEM_WEAPON_SWORD1H] = true,
+            [LE_ITEM_WEAPON_POLEARM] = true,
+            [LE_ITEM_WEAPON_SWORD2H] = true,
+            [LE_ITEM_WEAPON_THROWN]  = true,
+            [LE_ITEM_WEAPON_WAND] = true,
+        },
     },
     WARLOCK = {
-        Leather = true,
-        Mail = true,
-        Plate = true,
-        Shields = true,
-        Bows = true,
-        Crossbows = true,
-        ["Fist Weapons"] = true,
-        Guns = true,
-        ["One-Handed Axes"] = true,
-        ["One-Handed Maces"] = true,
-        Polearms = true,
-        ["Two-Handed Axes"] = true,
-        ["Two-Handed Maces"] = true,
-        ["Two-Handed Swords"] = true,
-        Idols = true,
-        Librams = true,
-        Sigils = true,
-        Thrown = true,
-        Totems = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_LEATHER] = true,
+            [LE_ITEM_ARMOR_MAIL] = true,
+            [LE_ITEM_ARMOR_PLATE] = true,
+            [LE_ITEM_ARMOR_SHIELD] = true,
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_BOWS] = true,
+            [LE_ITEM_WEAPON_CROSSBOW] = true,
+            [LE_ITEM_WEAPON_GUNS] = true,
+            [LE_ITEM_WEAPON_UNARMED] = true,
+            [LE_ITEM_WEAPON_AXE1H] = true,
+            [LE_ITEM_WEAPON_MACE1H] = true,
+            [LE_ITEM_WEAPON_POLEARM] = true,
+            [LE_ITEM_WEAPON_AXE2H] = true,
+            [LE_ITEM_WEAPON_MACE2H] = true,
+            [LE_ITEM_WEAPON_SWORD2H] = true,
+            [LE_ITEM_WEAPON_THROWN]  = true,
+
+        },
     },
     WARRIOR = {
-        Idols = true,
-        Librams = true,
-        Sigils = true,
-        Totems = true,
-        Wands = true,
+        [LE_ITEM_CLASS_ARMOR] = {
+            [LE_ITEM_ARMOR_IDOL] = true,
+            [LE_ITEM_ARMOR_LIBRAM] = true,
+            [LE_ITEM_ARMOR_SIGIL] = true,
+            [LE_ITEM_ARMOR_TOTEM] = true,
+        },
+        [LE_ITEM_CLASS_WEAPON] = {
+            [LE_ITEM_WEAPON_WAND] = true,
+        },
     },
 }
 
@@ -280,48 +286,50 @@ function lib:ItemLinkToId(link)
 end
 
 -- determine if specified class is compatible with item
-function lib:ClassCanUse(class, item)
-    -- this will be localized
-    local subType = select(7, GetItemInfo(item))
-    if not subType then return true end
+--function lib:ClassCanUse(class, item)
+--    -- this will be localized
+--    local subType = select(7, GetItemInfo(item))
+--    if not subType then return true end
+--
+--    -- Check if this is a restricted class token.
+--    -- Possibly cache this check if performance is an issue.
+--    local link = select(2, GetItemInfo(item))
+--    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+--    tooltip:SetHyperlink(link)
+--    -- lets see if we can find a 'Classes: Mage, Druid' string on the itemtooltip
+--    -- Only scanning line 2 is not enough, we need to scan all the lines
+--    for lineID = 1, tooltip:NumLines(), 1 do
+--        local line = _G[restrictedClassFrameNameFormat:format(lineID)]
+--        if line then
+--            local text = line:GetText()
+--            if text then
+--                local classList = Deformat(text, ITEM_CLASSES_ALLOWED)
+--                if classList then
+--                    tooltip:Hide()
+--                    for _, restrictedClass in pairs({strsplit(',', classList)}) do
+--                        restrictedClass = strtrim(strupper(restrictedClass))
+--                        restrictedClass = strupper(LOCALIZED_CLASS_NAMES_FEMALE[restrictedClass] or LOCALIZED_CLASS_NAMES_MALE[restrictedClass])
+--                        if class == restrictedClass then
+--                            return true
+--                        end
+--                    end
+--                    return false
+--                end
+--            end
+--        end
+--    end
+--    tooltip:Hide()
+--
+--    -- Check if players can equip this item.
+--    subType = BabbleInv[subType]
+--    if Disallowed[class][subType] then
+--        return false
+--    end
+--
+--    return true
+--end
 
-    -- Check if this is a restricted class token.
-    -- Possibly cache this check if performance is an issue.
-    local link = select(2, GetItemInfo(item))
-    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
-    tooltip:SetHyperlink(link)
-    -- lets see if we can find a 'Classes: Mage, Druid' string on the itemtooltip
-    -- Only scanning line 2 is not enough, we need to scan all the lines
-    for lineID = 1, tooltip:NumLines(), 1 do
-        local line = _G[restrictedClassFrameNameFormat:format(lineID)]
-        if line then
-            local text = line:GetText()
-            if text then
-                local classList = Deformat(text, ITEM_CLASSES_ALLOWED)
-                if classList then
-                    tooltip:Hide()
-                    for _, restrictedClass in pairs({strsplit(',', classList)}) do
-                        restrictedClass = strtrim(strupper(restrictedClass))
-                        restrictedClass = strupper(LOCALIZED_CLASS_NAMES_FEMALE[restrictedClass] or LOCALIZED_CLASS_NAMES_MALE[restrictedClass])
-                        if class == restrictedClass then
-                            return true
-                        end
-                    end
-                    return false
-                end
-            end
-        end
-    end
-    tooltip:Hide()
-
-    -- Check if players can equip this item.
-    subType = BabbleInv[subType]
-    if Disallowed[class][subType] then
-        return false
-    end
-
-    return true
-end
+local restrictedClassFrameNameFormat = tooltip:GetName().."TextLeft%d"
 
 -- @return The bitwise flag indicates the classes allowed for the item, as specified on the tooltip by "Classes: xxx"
 -- If the tooltip does not specify "Classes: xxx" or if the item is not cached, return 0xffffffff
@@ -353,7 +361,7 @@ function lib:GetItemClassesAllowedFlag(itemLink)
 
                 local result = 0
                 for className in string.gmatch(classesText..delimiter, "(.-)"..delimiter) do
-                    local classID = ClassDisplayNameToId[className]
+                    local classID = self.ClassDisplayNameToId[className]
                     if classID then
                         result = result + bit.lshift(1, classID-1)
                     else
@@ -367,4 +375,19 @@ function lib:GetItemClassesAllowedFlag(itemLink)
 
     tooltip:Hide()
     return 0xffffffff -- The item works for all classes
+end
+
+function lib:ClassCanUse(class, classesFlag, equipLoc, typeId, subTypeId)
+    local classId = self.ClassTagNameToId[class]
+    -- if the classes flag, parsed from tooltip, doesn't contain the class id then it cannot be used
+    if bit.band(classesFlag, bit.lshift(1, classId-1)) == 0 then
+        return false
+    end
+
+    if DisallowedByClass[class] and DisallowedByClass[class][typeId] then
+        local canUse = DisallowedByClass[class][typeId][subTypeId]
+        if canUse then return not canUse end
+    end
+
+    return true
 end

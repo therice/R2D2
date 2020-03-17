@@ -478,6 +478,15 @@ function Self.Copy(t, fn, index, notVal, ...)
     return u
 end
 
+-- Copy a table into another table
+--@param t1 the table in which to copy
+--@param t2 the table from which to copy
+function Self.CopyInto(t1, t2)
+    for k, v in pairs(t2) do
+        t1[k] = v
+    end
+end
+
 -- Filter by a function
 function Self.CopyFilter(t, fn, index, notVal, k, ...)
     fn = Util.Functions.New(fn) or Util.Functions.Id

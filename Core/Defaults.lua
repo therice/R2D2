@@ -1,5 +1,12 @@
 local _, AddOn = ...
 
+AddOn.defaults = {
+    profile = {
+        logThreshold = AddOn.Libs.Logging.Level.Debug,
+    }
+}
+
+
 function AddOn:GetDefaultCustomItems()
     --[[
 
@@ -63,5 +70,14 @@ function AddOn:GetDefaultCustomItems()
         [22372] = { 4, 88, "INVTYPE_FEET" },        -- Desecrated Sandals
         [22520] = { 4, 90, "INVTYPE_TRINKET" },     -- The Phylactery of Kel'Thuzad
         [22726] = { 5, 90, "INVTYPE_2HWEAPON" },    -- Splinter of Atiesh
+    }
+end
+
+function AddOn:GetTestItems()
+    return {
+        16800, 18878, 16938, 17063, 18816, 19372, 19348,
+        17076, 12590, 14555, 11684, 22691, 871, -- Weapons
+        12640, 14551, 14153, 12757, -- Armor
+        18821, 19140, 19148, 1980, 942, 18813, 13143 -- Rings
     }
 end

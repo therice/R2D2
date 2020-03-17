@@ -5,10 +5,11 @@ local L             = AddOn.components.Locale
 local Logging       = AddOn.components.Logging
 local UI            = AddOn.components.UI
 local ST            = AddOn.Libs.ScrollingTable
+local Util          = AddOn.Libs.Util
 
 local ROW_HEIGHT = 40
-local sessionActive = false
-local loadingItems = false
+local sessionActive, loadingItems, showPending = false, false, false
+
 
 function LootSession:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -22,7 +23,7 @@ end
 
 function LootSession:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
-    self:Show({})
+    --self:Show({})
 end
 
 function LootSession:OnDisable()
@@ -37,6 +38,7 @@ function LootSession:Show(data)
 
     self.frame = self:GetFrame()
     self.frame:Show()
+    showPending = false
 
     if data then
         loadingItems = false
@@ -60,19 +62,20 @@ function LootSession:ExtractData(data)
     for k,v in ipairs(data) do
         -- Don't add items we've already started a session with
         if not v.transmitted then
-            -- no bonus text for classic
-            tinsert(self.frame.rows, {
-                session = k,
-                texture = v.texture or nil,
-                link = v.link,
-                owner = v.owner,
-                cols = {
-                    { DoCellUpdate = self.SetCellDeleteBtn},
-                    { DoCellUpdate = self.SetCellItemIcon},
-                    { value = " "..v.ilvl},
-                    { DoCellUpdate = self.SetCellText },
-                },
-            })
+            Util.Tables.Push(self.frame.rows,
+                    {
+                        session = k,
+                        texture = v.texture or nil,
+                        link = v.link,
+                        owner = v.owner,
+                        cols = {
+                            { DoCellUpdate = self.SetCellDeleteButton },
+                            { DoCellUpdate = self.SetCellItemIcon },
+                            { value = " " .. (v.ilvl or 'nil') },
+                            { DoCellUpdate = self.SetCellText },
+                        },
+                    }
+            )
         end
     end
 end
@@ -83,6 +86,51 @@ function LootSession:Update()
     else
         self.frame.startBtn:SetText(_G.START)
     end
+end
+
+function LootSession:DeleteItem(session, row)
+    Logging:Debug("DeleteItem(%s, %s)", session, row)
+    ML:RemoveItem(session)
+    self:Show(ML.lootTable)
+end
+
+function LootSession.SetCellText(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
+    if frame.text:GetFontObject() ~= _G.GameFontNormal then
+        frame.text:SetFontObject("GameFontNormal")
+    end
+
+    if not data[realrow].link then
+        frame.text:SetText("--".._G.RETRIEVING_ITEM_INFO.."--")
+        loadingItems = true
+        if not showPending then
+            showPending = true
+            LootSession:ScheduleTimer("Show", 0, ML.lootTable)
+        end
+    else
+        -- .. (data[realrow].owner and addon.candidates[data[realrow].owner] and "\n" .. addon:GetUnitClassColoredName(data[realrow].owner) or ""
+        frame.text:SetText(
+                data[realrow].link
+        )
+    end
+end
+
+function LootSession.SetCellDeleteButton(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
+    frame:SetNormalTexture("Interface/BUTTONS/UI-GroupLoot-Pass-Up.png")
+    frame:SetScript("OnClick", function() LootSession:DeleteItem(data[realrow].session, realrow) end)
+    frame:SetSize(20,20)
+end
+
+function LootSession.SetCellItemIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
+    local texture = data[realrow].texture or "Interface/ICONS/INV_Sigil_Thorim.png"
+    local link = data[realrow].link
+    frame:SetNormalTexture(texture)
+    frame:SetScript("OnEnter", function() UI:CreateHypertip(link) end)
+    frame:SetScript("OnLeave", function() UI:HideTooltip() end)
+    frame:SetScript("OnClick", function()
+        if IsModifiedClick() then
+            HandleModifiedItemClick(link);
+        end
+    end)
 end
 
 function LootSession:GetFrame()

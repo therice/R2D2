@@ -118,13 +118,6 @@ function UI:NewNamed(type, parent, name, ...)
     return private:New(type, parent, name, ...)
 end
 
-function UI.HideTooltip()
-    -- AddOn:HideTooltip()
-
-    GameTooltip:Hide()
-end
-
-
 function UI:RegisterElement(object, etype)
     if type(object) ~= "table" then error("R2D2.UI:RegisterElement() - 'object' isn't a table.") end
     if type(etype) ~= "string" then error("R2D2.UI:RegisterElement() - 'type' isn't a string.") end
@@ -292,6 +285,48 @@ function UI:CreateGameTooltip(module, parent)
     itemTooltip:SetClampedToScreen(false)
     itemTooltip:SetScale(parent and parent:GetScale()*.95 or 1)
     return itemTooltip
+end
+
+--- Displays a tooltip anchored to the mouse.
+-- @param ... string(s) lines to be added.
+function UI:CreateTooltip(...)
+    GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+    for i = 1, select("#", ...) do
+        GameTooltip:AddLine(select(i, ...),1,1,1)
+    end
+    GameTooltip:Show()
+end
+
+
+function UI:CreateHypertip(link)
+    if Strings.IsEmpty(link) then return end
+    -- this is to support shift click comparison on all tooltips
+    local function tip()
+        local tip = CreateFrame("GameTooltip", "R2D2_TooltipEventHandler", UIParent, "GameTooltipTemplate")
+        tip:RegisterEvent("MODIFIER_STATE_CHANGED")
+        tip:SetScript("OnEvent",
+                function(this, event, arg)
+                    if self.tooltip.sowing and event == "MODIFIER_STATE_CHANGED" and (arg == "LSHIFT" or arg == "RSHIFT") and self.tooltip.link then
+                        self:CreateHypertip(self.tooltip.link)
+                    end
+                end
+        )
+        return tip
+    end
+
+    if not self.tooltip then self.tooltip = tip() end
+    self.tooltip.showing = true
+    self.tooltip.link = link
+    GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+    GameTooltip:SetHyperlink(link)
+end
+
+--- Hide the tooltip(s) created with :CreateTooltip() and :CreateHypertip(
+function UI:HideTooltip()
+    if self.tooltip then
+        self.tooltip.showing = false
+    end
+    GameTooltip:Hide()
 end
 
 --[[
