@@ -258,9 +258,24 @@ function UnitName(unit)
 	end
 end
 
+function UnitFullName(unit)
+	if unit == "player" then
+		return "Gnomechomsky", "Atiesh"
+	else
+		return unit
+	end
+end
+
+function IsInGuild()
+	return 1
+end
+
+function GetGuildInfo(unit)
+	return "The Black Watch", "Quarter Master", 1, nil
+end
 
 function GetRealmName()
-	return "Realm Name"
+	return "Atiesh"
 end
 
 function GetCurrentRegion()
@@ -565,6 +580,8 @@ _G.string.trim = function(s)
 	return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
+_G.strfind = string.find
+_G.gsub = string.gsub
 _G.date = os.date
 _G.time = os.time
 _G.unpack = table.unpack

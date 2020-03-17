@@ -1,6 +1,7 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("R2D2", "enUS", true, true)
 if not L then return end
 
+L["announce_item_text"] = "Items under consideration:"
 L["auto_award"] = "Automatic EP awards"
 L["auto_award_defeat"] = "Defeat"
 L["auto_award_defeat_desc"] = "Automatically award EP to raid and standby for wipes on a boss"
@@ -57,6 +58,10 @@ L["raids_desc"] = "Raid Encounters"
 L["r2d2_loot_frame"] = "R2D2 Loot"
 L["r2d2_loot_session_frame"] = "R2D2 Session Setup"
 L["settings"] = "Settings"
+L["session_data_sync"] = "Please wait a few seconds while data is synchronizing."
+L["session_in_combat"] = "You cannot start a session while in combat."
+L["session_items_not_loaded"] = "Session cannot be started as not all items are loaded."
+L["session_no_items"] = "Session cannot be started as there are no items."
 L["standby"] = "Standby/Bench"
 L["standby_desc"] = "Configuration settings for standby/bench EP"
 L["standby_pct"] = "Standby/Bench EP Scaling"
@@ -66,6 +71,7 @@ L["standby_toggle_desc"] = "When enabled, allows for whispering \'r2d2 standby [
 L["slots"] = "Slots"
 L["slot_multiplier"] = "Slot Multiplier"
 L["slot_comment"] = "Slot Comment"
+L["test"] = "test"
 L["unguilded"] = "Unguilded"
 L["version"] = "Version"
 L["whisperkey_ms"] = "mainspec, ms, need, 1"

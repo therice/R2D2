@@ -18,6 +18,10 @@ function Self.False() return false end
 function Self.Zero() return 0 end
 function Self.Noop() end
 
+-- index and notVal = function(index, ...)
+-- index = function(value, index, ...)
+-- notVal = function(...)
+
 ---@param index boolean
 ---@param notVal boolean
 ---@return any

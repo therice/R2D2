@@ -124,5 +124,12 @@ function AddOn:GetPlayerInfo()
     return self.playerName, self.playerClass, "NONE", self.guildRank, enchant, lvl, ilvl, nil
 end
 
+function AddOn:GetAnnounceChannel(channel)
+    local C = AddOn.Constants
+    return channel == C.group and (IsInRaid() and C.Channels.Raid or C.Channels.Party) or channel
+end
 
-
+function AddOn.Ambiguate(name)
+    -- return db.ambiguate and Ambiguate(name, "none") or Ambiguate(name, "short")
+    return Ambiguate(name, "none")
+end

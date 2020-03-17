@@ -1,12 +1,12 @@
 local _, AddOn = ...
 local LootSession   = AddOn:NewModule("LootSession", "AceEvent-3.0", "AceTimer-3.0")
-local ML            = AddOn:GetModule("MasterLooter")
 local L             = AddOn.components.Locale
 local Logging       = AddOn.components.Logging
 local UI            = AddOn.components.UI
 local ST            = AddOn.Libs.ScrollingTable
 local Util          = AddOn.Libs.Util
 
+local ML
 local ROW_HEIGHT = 40
 local sessionActive, loadingItems, showPending = false, false, false
 
@@ -23,7 +23,7 @@ end
 
 function LootSession:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
-    --self:Show({})
+    ML = AddOn:GetModule("MasterLooter")
 end
 
 function LootSession:OnDisable()
@@ -71,7 +71,7 @@ function LootSession:ExtractData(data)
                         cols = {
                             { DoCellUpdate = self.SetCellDeleteButton },
                             { DoCellUpdate = self.SetCellItemIcon },
-                            { value = " " .. (v.ilvl or 'nil') },
+                            { value = " " .. (v.ilvl or '') },
                             { DoCellUpdate = self.SetCellText },
                         },
                     }
@@ -140,9 +140,34 @@ function LootSession:GetFrame()
     -- start button
     local start = UI:CreateButton(_G.START, f.content)
     start:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
+    start:SetScript("OnClick", function()
+        if loadingItems then
+            AddOn:Print(L["session_items_not_loaded"])
+            return
+        end
+
+        if not ML.lootTable or Util.Tables.Count(ML.lootTable) == 0 then
+            AddOn:Print(L["session_no_items"])
+            Logging:Debug("Session cannot be started as there are no items")
+            return
+        end
+
+        if not AddOn.candidates[AddOn.playerName] then
+            AddOn:Print(L["session_data_sync"])
+            Logging:Debug("Session data not yet available")
+            return
+        elseif InCombatLockdown() then
+            AddOn:Print(L["session_in_combat"])
+            return
+        else
+            ML:StartSession()
+        end
+
+        self:Disable()
+    end)
     f.startBtn = start
 
-    -- Cancel button
+    -- cancel button
     local cancel = UI:CreateButton(_G.CANCEL, f.content)
     cancel:SetPoint("LEFT", start, "RIGHT", 15, 0)
     cancel:SetScript("OnClick", function()

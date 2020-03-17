@@ -1,6 +1,8 @@
 local _, AddOn = ...
 local Logging   = AddOn.components.Logging
-local Strings = AddOn.Libs.Util.Strings
+local Strings   = AddOn.Libs.Util.Strings
+local Objects   = AddOn.Libs.Util.Objects
+local L         = AddOn.components.Locale
 
 function AddOn:SendCommand(target, command, ...)
     local C = AddOn.Constants
@@ -53,8 +55,33 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 self.candidates = unpack(data)
             elseif command == C.Commands.PlayerInfoRequest then
                 self:SendCommand(sender, C.Commands.PlayerInfo, self:GetPlayerInfo())
+            elseif command == C.Commands.LootTable then
+
+            elseif command == C.Commands.LootTableAdd and self:UnitIsUnit(sender, self.masterLooter) then
+
             end
         end
+    end
+end
+
+-- Send the msg to the channel if it is valid. Otherwise just print the message.
+function AddOn:SendAnnouncement(msg, channel)
+    Logging:Trace("SendAnnouncement(%s) : %s", channel, msg)
+
+    local C = AddOn.Constants
+    if channel == C.Channels.None then return end
+    if self.testMode then
+        msg = "(" .. L["test"] .. ") " .. msg
+    end
+
+    if (not IsInGroup() and Objects.In(channel, C.group, C.Channels.Raid, C.Channels.RaidWarning, C.Channels.Party, C.Channels.Instance))
+        or channel == C.chat
+        or (not IsInGuild() and Objects.In(channel, C.Channels.Guild, C.Channels.Officer)) then
+        self:Print(msg)
+    elseif (not IsInRaid() and Objects.In(channel, C.Channels.Raid, C.Channels.RaidWarning)) then
+        SendChatMessage(msg, C.party)
+    else
+        SendChatMessage(msg, AddOn:GetAnnounceChannel(channel))
     end
 end
 

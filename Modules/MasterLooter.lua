@@ -117,7 +117,8 @@ function ML:UpdateDb()
 end
 
 function ML:AddCandidate(name, class, role, rank, enchant, lvl, ilvl)
-    Logging:Debug("AddCandidate(%s, %s, %s, %s, %s, %s, %s)", name, class, role, rank, tostring(enchant), tostring(lvl or 'nil'), tostring(ilvl or 'nil'))
+    Logging:Debug("AddCandidate(%s, %s, %s, %s, %s, %s, %s)",
+            name, class, role, rank or 'nil', tostring(enchant), tostring(lvl or 'nil'), tostring(ilvl or 'nil'))
     Util.Tables.Insert(self.candidates, name, {
             ["class"] = class,
             ["role"] = role,
@@ -287,6 +288,81 @@ function ML:RemoveItem(session)
     Util.Tables.Remove(self.lootTable, session)
 end
 
+function ML:GetLootTableForTransmit()
+   return Util(self.lootTable):CopyFilter(
+           -- don't retransmit already sent items
+           function(item) return not item.isSent end
+   ):Call(
+           function(item) Models.Item:Update(item) end
+   )()
+end
+
+ML.AnnounceItemStrings = {
+    ["&s"] = function(ses) return ses end,
+    ["&i"] = function(...) return select(2,...) end,
+    ["&l"] = function(_, item)
+        local t = ML:GetItemInfo(item)
+        return t and Models.Item:GetLevelText(t) or "" end,
+    ["&t"] = function(_, item)
+        local t = ML:GetItemInfo(item)
+        return t and Models.Item:GetTypeText(t) or "" end,
+    ["&o"] = function(_,_,v) return v.owner and AddOn.Ambiguate(v.owner) or "" end,
+}
+
+function ML:AnnounceItems(table)
+    -- todo : should we suppress announcements via configuration?
+    Logging:Debug("AnnounceItems()")
+    AddOn:SendAnnouncement(L["announce_item_text"], AddOn.Constants.group)
+
+    Util.Tables.Iter(table,
+        function(v, i)
+            Logging:Debug("AnnounceItems(%s)", v.link)
+            local msg = "&s: &i (&t)"
+            for text, fn in pairs(self.AnnounceItemStrings) do
+                msg = gsub(msg, text, escapePatternSymbols(tostring(fn(v.session or i, v.link, v))))
+            end
+            if v.isRoll then
+                msg = _G.ROLL .. ": " .. msg
+            end
+            AddOn:SendAnnouncement(msg, AddOn.Constants.group)
+        end
+    )
+end
+
+function ML:StartSession()
+    Logging:Debug("StartSession()")
+    local C = AddOn.Constants
+
+    if not AddOn.candidates[AddOn.playerName] then
+        AddOn:Print(L["session_data_sync"])
+        Logging:Debug("Session data not yet available")
+        return
+    end
+
+    -- if a session is already running, need to add any new items
+    if self.running then
+        AddOn:SendCommand(C.group, C.Commands.LootTableAdd, self:GetLootTableForTransmit())
+    else
+        AddOn:SendCommand(C.group, C.Commands.LootTable, self:GetLootTableForTransmit())
+    end
+
+    Util.Tables.Call(self.lootTable, function(item) item.isSent = true end)
+
+    self.running = true
+    self:AnnounceItems(self.lootTable)
+
+    -- todo : do we need to emit help messages here?
+    --if not AddOn.testMode then
+    --    if not self.lootTable[1].lootSlot then
+    --
+    --    end
+    --
+    --    if self.lootTable[1].bagged then
+    --
+    --    end
+    --end
+end
+
 function ML:OnEvent(event, ...)
     Logging:Debug("OnEvent(%s)", event)
 end
@@ -302,7 +378,10 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
             if command == C.Commands.PlayerInfo then
                 self:AddCandidate(unpack(data))
                 self:SendCandidates()
-            --elseif command == C.Commands.
+
+            elseif command == C.Commands.LootTable and AddOn:UnitIsUnit(sender, AddOn.playerName) then
+                -- todo
+                -- self:ScheduleTimer("Timer", 11 + 0.5*#self.lootTable, "LootSend")
             end
         end
     end
