@@ -22,8 +22,11 @@ AddOn.Constants = {
     Commands = {
         Candidates              =   "Candidates",
         CandidatesRequest       =   "CandidatesRequest",
+        HandleLootStart         =   "HandleLootStart",
+        HandleLootStop          =   "HandleLootStop",
         LootTable               =   "LootTable",
         LootTableAdd            =   "LootTableAdd",
+        LootSessionEnd          =   "LootSessionEnd",
         MasterLooterDb          =   "MasterLooterDb",
         MasterLooterDbRequest   =   "MasterLooterDbRequest",
         MasterLooterDbCheck     =   "MasterLooterDbCheck",
@@ -33,6 +36,7 @@ AddOn.Constants = {
         Reconnect               =   "Reconnect",
         Response                =   "Response",
         Roll                    =   "Roll",
+        StartHandleLoot         =   "StartHandleLoot",
     },
 
     Messages = {

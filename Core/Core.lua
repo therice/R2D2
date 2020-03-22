@@ -44,6 +44,65 @@ function AddOn:GetMasterLooter()
     return false, nil;
 end
 
+function AddOn:NewMasterLooterCheck()
+    Logging:Debug("NewMasterLooterCheck()")
+
+    local oldMl = self.masterLooter
+    self.isMasterLooter, self.masterLooter = self:GetMasterLooter()
+    if Util.Strings.IsSet(self.masterLooter) and strfind(self.masterLooter, "Unknown") then
+        Logging:Warn("NewMasterLooterCheck() : Unknown Master Looter")
+        self:ScheduleTimer("NewMasterLooterCheck", 2)
+        return
+    end
+
+    -- We were ML, but no longer, so disable master looter module
+    if self:UnitIsUnit(oldMl, "player") and not self.isMasterLooter then
+        self:MasterLooterModule():Disable()
+    end
+
+    if self:UnitIsUnit(oldMl, self.masterLooter) then
+        Logging:Debug("NewMasterLooterCheck() : No Master Looter change")
+        return
+    end
+
+    -- Someone else has become ML
+    if not self.isMasterLooter and self.masterLooter then
+        return
+    end
+
+    -- todo : prompt for using master looter (as needed)
+    if self.isMasterLooter then
+        self:StartHandleLoot()
+    elseif self.isMasterLooter and false then -- as if using master looter
+       --  LibDialog:Spawn("R2D2_CONFIRM_USAGE")
+    end
+end
+
+function AddOn:StartHandleLoot()
+    Logging:Debug("StartHandleLoot()")
+    local C = AddOn.Constants
+    local lootMethod = GetLootMethod()
+    if lootMethod ~= "master" and GetNumGroupMembers() > 0 then
+        self:Print(L["changing_loot_method_to_ml"])
+        SetLootMethod("master", self.Ambiguate(self.playerName))
+    end
+    -- todo : probably want this to be a configuration param, not just 'epic
+    SetLootThreshold(4)
+    self:Print(format(L["player_handles_looting"], self.playerName))
+    self.handleLoot = true
+    self:SendCommand(C.group, C.Commands.HandleLootStart)
+    self:CallModule("MasterLooter")
+    self:MasterLooterModule():NewMasterLooter(self.masterLooter)
+end
+
+function AddOn:StopHandleLoot()
+    Logging:Debug("StopHandleLoot()")
+    local C = AddOn.Constants
+    self.handleLoot = false
+    self:MasterLooterModule():Disable()
+    self:SendCommand(C.group, C.Commands.HandleLootStop)
+end
+
 function AddOn:GetMasterLooterDbValue(...)
     local path = Util.Strings.Join('.', ...)
     return Util.Tables.Get(self.mlDb, path)
@@ -154,7 +213,7 @@ function AddOn:PrepareLootTable(lootTable)
                 -- Logging:Trace("PrepareLootTable() : Entry getmetatable => %s", Util.Objects.ToString(getmetatable(entry)))
                 entry:Prepare(session)
             end,
-            true -- index required
+            true -- index required (it's the session id)
     )
 end
 

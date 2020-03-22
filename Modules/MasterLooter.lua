@@ -54,6 +54,8 @@ function ML:OnEnable()
     self.candidates = {}
     -- the master looter's loot table
     self.lootTable = {}
+    -- for keeping a backup for existing loot table on session end
+    self.oldLootTable = {}
     -- items master looter has attempted to give out and waiting
     self.lootQueue = {}
     -- table of timer references, with key being timer name and value being timer id
@@ -373,6 +375,20 @@ function ML:StartSession()
     self.running = true
     self:AnnounceItems(self.lootTable)
     -- todo : do we need to emit help messages here?
+end
+
+function ML:EndSession()
+    Logging:Debug("EndSession()")
+    local C = AddOn.Constants
+    self.oldLootTable = self.lootTable
+    self.lootTable = {}
+    AddOn:SendCommand(C.group, C.Commands.LootSessionEnd)
+    self.running = false
+    self:CancelAllTimers()
+    if AddOn.testMode then
+        AddOn:ScheduleTimer("NewMasterLooterCheck", 1)
+    end
+    AddOn.testMode = false
 end
 
 function ML:OnEvent(event, ...)

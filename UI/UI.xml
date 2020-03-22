@@ -2,6 +2,7 @@
     <Script file="Namespace.lua"/>
     <Script file="UI.lua"/>
     <Include file="Widgets\Widgets.xml"/>
+    <Script file="Popups.lua"/>
     <Script file="Logging.lua"/>
     <Script file="Config.lua"/>
 </Ui>

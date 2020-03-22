@@ -169,6 +169,14 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
             elseif command == C.Commands.PlayerInfoRequest then
                 self:SendCommand(sender, C.Commands.PlayerInfo, self:GetPlayerInfo())
+            elseif command == C.Commands.LootSessionEnd and self.enabled then
+                if self:UnitIsUnit(sender, self.masterLooter) then
+                    self:Print(format(L["player_ended_session"], self.Ambiguate(self.masterLooter)))
+                    self:GetModule("Loot"):Disable()
+                    self.lootTable = {}
+                else
+                    Logging:Warn("Non-MasterLooter %s send end of session command", sender)
+                end
             end
         end
     end

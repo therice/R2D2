@@ -30,6 +30,8 @@ function R2D2:OnInitialize()
     -- should this be a local
     self.lootTable = {}
     self.enabled = true
+    -- does R2D2 handle loot?
+    self.handleLoot = false
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
     self:RegisterChatCommand(name:lower(), "ChatCommand")

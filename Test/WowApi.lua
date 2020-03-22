@@ -545,6 +545,7 @@ _G.tInvert = function(tbl)
 	return inverted;
 end
 
+_G.getfenv = function() return _G end
 
 -- define required function pointers in global space which won't be available in testing
 _G.format = string.format
