@@ -21,12 +21,15 @@ function R2D2:OnInitialize()
     self.guildRank = L["unguilded"]
     -- are we running in test mode
     self.testMode = false
-    -- sent by master loooter
+    -- sent by master looter
     self.mlDb = {}
     -- are we the master looter?
     self.isMasterLooter = false
     -- name of the master looter
     self.masterLooter = ""
+    -- should this be a local
+    self.lootTable = {}
+    self.enabled = true
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
     self:RegisterChatCommand(name:lower(), "ChatCommand")

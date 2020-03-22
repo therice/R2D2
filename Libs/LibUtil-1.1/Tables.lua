@@ -67,6 +67,10 @@ function Self.Set(t, ...)
     return t, val
 end
 
+function Self.ContainsKey(t, k)
+    return t[k] ~= nil
+end
+
 -- Get a random key from the table
 function Self.RandomKey(t)
     if not next(t) then
@@ -135,8 +139,8 @@ end
 -- SUB
 
 ---@param t table
----@param s integer
----@param e integer
+---@param s number
+---@param e number
 function Self.Sub(t, s, e)
     return {unpack(t, s or 1, e)}
 end
@@ -146,15 +150,15 @@ function Self.Head(t, n)
 end
 
 ---@param t table
----@param n integer
+---@param n number
 function Self.Tail(t, n)
     return Self.Sub(t, #t - (n or 1))
 end
 
 ---@param t table
----@param s integer
----@param e integer
----@param u integer
+---@param s number
+---@param e number
+---@param u number
 function Self.Splice(t, s, e, u)
     return Self.Merge(Self.Head(t, s), u or {}, Self.Sub(#t, e))
 end
@@ -197,7 +201,7 @@ end
 
 -- COUNT, SUM, MULTIPLY, MIN, MAX
 
----@return integer
+---@return number
 function Self.Count(t)
     return Self.FoldL(t, Util.Functions.Inc, 0)
 end

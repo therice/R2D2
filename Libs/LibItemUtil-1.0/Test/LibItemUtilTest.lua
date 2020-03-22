@@ -4,7 +4,7 @@ local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match(
 local itemUtil
 describe("LibItemUtil", function()
     setup(function()
-        loadfile('LibItemUtilTestUtil.lua')()
+        loadfile('LibItemUtilTestData.lua')()
         _G.LibItemUtil_Testing = true
         loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
         itemUtil, _ = LibStub('LibItemUtil-1.0')

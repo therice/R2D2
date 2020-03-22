@@ -20,17 +20,29 @@ AddOn.Constants = {
     },
 
     Commands = {
-        Candidates          =   "Candidates",
-        LootTable           =   "LootTable",
-        LootTableAdd        =   "LootTableAdd",
-        MasterLooterDb      =   "MasterLooterDb",
-        MasterLooterDbCheck =   "MasterLooterDbCheck",
-        PlayerInfoRequest   =   "PlayerInfoRequest",
-        PlayerInfo          =   "PlayerInfo",
+        Candidates              =   "Candidates",
+        CandidatesRequest       =   "CandidatesRequest",
+        LootTable               =   "LootTable",
+        LootTableAdd            =   "LootTableAdd",
+        MasterLooterDb          =   "MasterLooterDb",
+        MasterLooterDbRequest   =   "MasterLooterDbRequest",
+        MasterLooterDbCheck     =   "MasterLooterDbCheck",
+        OfflineCheck            =   "OfflineCheck",
+        PlayerInfo              =   "PlayerInfo",
+        PlayerInfoRequest       =   "PlayerInfoRequest",
+        Reconnect               =   "Reconnect",
+        Response                =   "Response",
+        Roll                    =   "Roll",
     },
 
     Messages = {
         MasterLooterAddItem =   name .. "_MasterLooterAddItem",
         MasterLooterBuildDb =   name .. "_MasterLooterBuildDb"
+    },
+
+    Responses = {
+        Disabled    =   "Disabled",
+        NotInRaid   =   "NotInRaid",
     }
+
 }

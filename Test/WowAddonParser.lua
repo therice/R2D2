@@ -166,5 +166,8 @@ function TestSetup(toc, preload_functions)
         print('Loading File -> ' .. toload)
         loadfile(toload)(addOnName, addOnNamespace)
     end
+
+    -- not generic, specific to this addon
+    addOnNamespace.defaults.profile.logThreshold = addOnNamespace.Libs.Logging.Level.Trace
 end
 

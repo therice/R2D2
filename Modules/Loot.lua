@@ -1,29 +1,113 @@
 local _, AddOn = ...
 local Loot      = AddOn:NewModule("Loot", "AceEvent-3.0", "AceTimer-3.0")
-local Logging   = AddOn.components.Logging
+local Logging   = AddOn.Libs.Logging
+local Util      = AddOn.Libs.Util
 local UI        = AddOn.components.UI
 local L         = AddOn.components.Locale
+local Models    = AddOn.components.Models
 
 local ENTRY_HEIGHT = 80
+local MAX_ENTRIES = 5
+local MIN_BUTTON_WIDTH = 40
 
+local awaitingRolls = {}
+local ROLL_TIMEOUT = 1.5
+local ROLL_SHOW_RESULT_TIME = 3
+
+local RANDOM_ROLL_PATTERN =
+    _G.RANDOM_ROLL_RESULT:gsub("%(", "%%(")
+            :gsub("%)", "%%)")
+            :gsub("%%%d%$", "%%")
+            :gsub("%%s", "(.+)")
+            :gsub("%%d", "(%%d+)")
+
+function Loot:OnEnable()
+    Logging:Debug("OnEnable(%s)", self:GetName())
+    self.items = {} -- item.i = {name, link, lvl, texture} (i == session)
+    self.frame = self:GetFrame()
+    self:RegisterEvent("CHAT_MSG_SYSTEM")
+end
+
+function Loot:OnDisable()
+    Logging:Debug("OnDisable(%s)", self:GetName())
+    self.frame:Hide()
+    self.items = {}
+    self:CancelAllTimers()
+end
+
+-- item will be a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
-    self.items[offset+k] = {
-        link = item.link,
-        ilvl = item.ilvl,
-        texture = item.texture,
-        rolled = false,
-        equipLoc = item.equipLoc,
-        subType = item.subType,
-        typeID = item.typeID,
-        subTypeID = item.subTypeID,
-        isTier = item.token,
-        isRelic = item.relic,
-        classes = item.classes,
-        sessions = {item.session},
-        isRoll = item.isRoll,
-        owner = item.owner,
-        typeCode = item.typeCode,
-    }
+    Logging:Debug("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
+    Logging:Debug("getmetatable => %s", Util.Objects.ToString(getmetatable(item)))
+    local toAdd = item:Clone()
+    toAdd.rolled = false
+    toAdd.sessions = { item.session }
+    toAdd.timeLeft = 60
+    self.items[offset + k] = toAdd
+end
+
+function Loot:CheckDuplicates(size, offset)
+    Logging:Debug("CheckDuplicates(%s, %s)", size, offset)
+
+    for k = offset + 1, offset + size do
+        if not self.items[k].rolled then
+            for j = offset + 1, offset + size do
+                if j ~= k and AddOn:ItemIsItem(self.items[k].link, self.items[j].link) and not self.items[j].rolled then
+                    Logging:Warn("CheckDuplicates() : %s is a duplicate of %s",
+                            Util.Objects.ToString(self.items[k].link),
+                            Util.Objects.ToString(self.items[j].link)
+                    )
+
+                    Util.Tables.Push(self.items[k].sessions, self.items[j].sessions[1])
+                    -- Pretend we have rolled it
+                    self.items[j].rolled = true
+                end
+            end
+        end
+    end
+end
+
+function Loot:Start(table, reRoll)
+    reRoll = reRoll or false
+    Logging:Debug("Start(%s, %s)", Util.Tables.Count(table), tostring(reRoll))
+
+    local offset = 0
+    -- if re-roll, insert the items at end
+    if reRoll then
+        offset = #self.items
+    -- not a re-roll, we need to restart
+    elseif #self.items > 0 then
+        -- avoid problems with loot table being received when the loot frame is shown
+        self:OnDisable()
+    end
+
+    for k =1, #table do
+        -- if auto-pass, pretend it was rolled
+        if table[k].autoPass then
+            self.items[offset + k] = {rolled = true}
+        else
+            self:AddItem(offset, k, table[k])
+        end
+    end
+
+    self:CheckDuplicates(#table, offset)
+    self:Show()
+end
+
+function Loot:AddSingleItem(item)
+    if not self:IsEnabled() then self:Enable() end
+    Logging:Debug("AddSingleItem(%s, %s)", item.link, #self.items)
+    if item.autoPass then
+        self.items[#self.items +1] = { rolled = true}
+    else
+        self:AddItem(0, #self.items + 1, item)
+        self:Show()
+    end
+end
+
+function Loot:ReRoll(table)
+    Logging:Debug("ReRoll(%s)", #table)
+    self:Start(table, true)
 end
 
 function Loot:GetFrame()
@@ -37,20 +121,259 @@ end
 
 function Loot:Show()
     self.frame:Show()
+    self:Update()
 end
+
+function Loot:Update()
+    local numEntries = 0
+    for _, item in pairs(self.items) do
+        if numEntries >= MAX_ENTRIES then break end
+        if not item.rolled then
+            numEntries = numEntries + 1
+            self.EntryManager:GetEntry(item)
+        end
+    end
+
+    if numEntries == 0 then return self:Disable() end
+    self.EntryManager:Update()
+    self.frame.content:SetHeight(numEntries * ENTRY_HEIGHT + 7)
+
+    local first = self.EntryManager.entries[1]
+    local alwaysShowTooltip = false
+
+    if first and alwaysShowTooltip then
+        self.frame.itemTooltip:SetOwner(self.frame.content, "ANCHOR_NONE")
+        self.frame.itemTooltip:SetHyperlink(first.item.link)
+        self.frame.itemTooltip:Show()
+        self.frame.itemTooltip:SetPoint("TOPRIGHT", first.frame, "TOPLEFT", 0, 0)
+    else
+        self.frame.itemTooltip:Hide()
+    end
+end
+
+function Loot:OnRoll(entry, button)
+    local C = AddOn.Constants
+    local item = entry.item
+    Logging:Debug("OnRoll(%s, %s)", tostring(item.link), tostring(button))
+
+    if not item.isRoll then
+        -- Only send minimum necessary data, because the information of currently equipped gear has been sent
+        -- when we receive the loot table
+        local response = AddOn:GetResponse(item.typeCode or item.equipLoc, button)
+
+        Logging:Debug("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
+        for _, session in ipairs(item.sessions) do
+            AddOn:SendResponse(C.group, session, button)
+        end
+        AddOn:Print(format(L["response_to_item"], AddOn:GetItemTextWithCount(item.link, #item.sessions))
+                .. " : " .. (response and response.text or "???")
+        )
+        item.rolled = true
+        self.EntryManager:Trash(entry)
+        self:Update()
+    else
+        -- request for a roll
+        if button == "ROLL" then
+            local el = { sessions = item.sessions, entry = entry}
+            Util.Tables.Push(awaitingRolls, el)
+            -- In case roll result is not received within time limit, discard the result.
+            el.timer = self:ScheduleTimer("OnRollTimeout", ROLL_TIMEOUT, el)
+            RandomRoll(1, 100)
+            -- disable roll button
+            entry.buttons[1]:Disable()
+            -- disable pass button
+            entry.buttons[2]:Hide()
+        else
+            item.rolled = true
+            self.EntryManager:Trash(entry)
+            self:Update()
+            AddOn:SendCommand(C.group, C.Commands.Roll, AddOn.playerName, "-", item.sessions)
+        end
+    end
+end
+
+function Loot:OnRollTimeout(el)
+    tDeleteItem(awaitingRolls, el)
+    local entry = el.entry
+    entry.item.rolled = true
+    self.EntryManager:Trash(entry)
+    self:Update()
+end
+
+function Loot:CHAT_MSG_SYSTEM(event, msg)
+    Logging:Debug("CHAT_MSG_SYSTEM(%s) : %s", tostring(event), tostring(msg))
+
+    local C = AddOn.Constants
+    local name, roll, low, high = msg:match(RANDOM_ROLL_PATTERN)
+    roll, low, high = tonumber(roll), tonumber(low), tonumber(high)
+
+    if name and low == 1 and high == 100 and AddOn:UnitIsUnit(Ambiguate(name, "short"), "player") and awaitingRolls[1] then
+        local el = awaitingRolls[1]
+        tremove(awaitingRolls, 1)
+        self:CancelTimer(el.timer)
+        local entry, item = el.entry, el.item
+        AddOn:SendCommand(C.group, C.Commands.Roll, AddOn.playerName, roll, item.sessions)
+        AddOn:SendAnnouncement(format(L["roll_result"], AddOn.Ambiguate(AddOn.playerName, roll, item.link)), C.group)
+        entry.rollResult:SetText(roll)
+        entry.rollResult:Show()
+        self:ScheduleTimer("OnRollTimeout", ROLL_SHOW_RESULT_TIME, el)
+    end
+end
+
 
 do
     local EntryProto = {
+        type = "normal",
         Update = function(entry, item)
             if not item then
                 Logging:Warn("EntryProto.Update() : No item provided")
+                return
             end
 
             entry.item = item
+            entry.itemText:SetText(
+                    item.isRoll and (_G.ROLL .. ": ") or "" ..
+                    AddOn:GetItemTextWithCount(entry.item.link or "error", #entry.item.sessions)
+            )
+            entry.icon:SetNormalTexture(entry.item.texture or "Interface\\InventoryItems\\WoWUnknownItem01")
+            entry.itemCount:SetText(#entry.item.sessions > 1 and #entry.item.sessions or "")
+            entry.itemLvl:SetText(item:GetLevelText() .. " |cff7fffff".. item:GetTypeText() .. "|r")
+            -- todo : implement timeouts via settings
+            local showTimeout = false
+            if showTimeout then
+                entry.timeoutBar:SetMinMaxValues(0, 60)
+                entry.timeoutBar:Show()
+            else
+                entry.timeoutBar:Hide()
+            end
+
+            -- entry.timeoutBar:Hide()
+            if AddOn:UnitIsUnit(item.owner, "player") then
+                entry.frame:SetBackdrop({
+                    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+                    edgeSize = 20,
+                    insets = { left = 2, right = 2, top = -2, bottom = -14 }
+                })
+                entry.frame:SetBackdropBorderColor(0,1,1,1)
+            else
+                entry.frame:SetBackdrop(nil)
+            end
+            entry:UpdateButtons()
+            entry:Show()
         end,
         Show = function(entry) entry.frame:Show() end,
         Hide = function(entry) entry.frame:Hide() end,
         Create = function(entry, parent)
+            entry.width = parent:GetWidth()
+            entry.frame = CreateFrame("Frame", "R2D2_LootFrame_Entry(" .. Loot.EntryManager.numEntries .. ")", parent)
+            entry.frame:SetWidth(entry.width)
+            entry.frame:SetHeight(ENTRY_HEIGHT)
+            entry.frame:SetPoint("TOPLEFT", parent, "TOPLEFT")
+            -- item icon
+            entry.icon = UI:New("IconBordered", entry.frame)
+            entry.icon:SetBorderColor()
+            entry.icon:SetSize(ENTRY_HEIGHT * 0.78, ENTRY_HEIGHT * 0.78)
+            entry.icon:SetPoint("TOPLEFT", entry.frame, "TOPLEFT", 9, -5)
+            entry.icon:SetMultipleScripts({
+                OnEnter = function()
+                    if not entry.item.link then return end
+                    UI:CreateHypertip(entry.item.link)
+                    GameTooltip:AddLine("")
+                    GameTooltip:AddLine(L["always_show_tooltip_howto"], nil, nil, nil, true)
+                    GameTooltip:Show()
+                end,
+                OnClick = function()
+                    if not entry.item.link then return end
+                    if IsModifiedClick() then
+                        HandleModifiedItemClick(entry.item.link)
+                    end
+                    if entry.icon.lastClick and GetTime() - entry.icon.lastClick <= 0.5 then
+                        Loot:Update()
+                    else
+                        entry.icon.lastClick = GetTime()
+                    end
+                end,
+            })
+            entry.itemCount = entry.icon:CreateFontString(nil, "OVERLAY", "NumberFontNormalLarge")
+            local fileName, _, flags = entry.itemCount:GetFont()
+            entry.itemCount:SetFont(fileName, 20, flags)
+            entry.itemCount:SetJustifyH("RIGHT")
+            entry.itemCount:SetPoint("BOTTOMRIGHT", entry.icon, "BOTTOMRIGHT", -2, 2)
+            entry.itemCount:SetText("error")
+            -- buttons
+            entry.buttons = {}
+            entry.UpdateButtons = function(entry)
+                local b = entry.buttons
+                local numButtons = AddOn:GetNumButtons(entry.type)
+                local buttons = AddOn:GetButtons(entry.type)
+                local width = 113 + numButtons * 5
+                for i = 1, numButtons + 1 do
+                    if i > numButtons then
+                        b[i] = b[i] or UI:CreateButton(_G.PASS, entry.frame)
+                        b[i]:SetText(_G.PASS)
+                        b[i]:SetScript("OnClick", function() Loot:OnRoll(entry, "PASS") end)
+                    else
+                        b[i] = b[i] or UI:CreateButton(buttons[i].text, entry.frame)
+                        b[i]:SetText(buttons[i].text)
+                        b[i]:SetScript("OnClick", function() Loot:OnRoll(entry, i) end)
+                    end
+                    b[i]:SetWidth(b[i]:GetTextWidth() + 10)
+                    if b[i]:GetWidth() < MIN_BUTTON_WIDTH then b[i]:SetWidth(MIN_BUTTON_WIDTH) end
+                    width = width + b[i]:GetWidth()
+                    if i == 1 then
+                        b[i]:SetPoint("BOTTOMLEFT", entry.icon, "BOTTOMRIGHT", 5, 0)
+                    else
+                        b[i]:SetPoint("LEFT", b[i-1], "RIGHT", 5, 0)
+                    end
+                    b[i]:Show()
+                end
+                -- Check if we've more buttons than we should
+                if #b > numButtons + 1 then
+                    for i = numButtons + 2, #b do b[i]:Hide() end
+                end
+                entry.width = width
+                entry.width = math.max(entry.width, 90 + entry.itemText:GetStringWidth())
+                entry.width = math.max(entry.width, 89 + entry.itemLvl:GetStringWidth())
+            end
+            -- item level/text
+            entry.itemText = entry.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            entry.itemText:SetPoint("TOPLEFT", entry.icon, "TOPRIGHT", 6, -1)
+            entry.itemText:SetText("Um, ...")
+
+            entry.itemLvl = entry.frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            entry.itemLvl:SetPoint("TOPLEFT", entry.itemText, "BOTTOMLEFT", 1, -4)
+            entry.itemLvl:SetTextColor(1, 1, 1)
+            entry.itemLvl:SetText("error")
+            -- timeoutBar
+            entry.timeoutBar = CreateFrame("StatusBar", nil, entry.frame, "TextStatusBar")
+            entry.timeoutBar:SetSize(entry.frame:GetWidth(), 6)
+            entry.timeoutBar:SetPoint("BOTTOMLEFT", 9,3)
+            entry.timeoutBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+            entry.timeoutBar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
+            entry.timeoutBar:SetMinMaxValues(0, 60)
+            entry.timeoutBar:SetScript("OnUpdate", function(this, elapsed)
+                --Timeout!
+                if entry.item.timeLeft <= 0 then
+                    this.text:SetText(L["timeout"])
+                    this:SetValue(0)
+                    return Loot:OnRoll(entry, "TIMEOUT")
+                end
+                entry.item.timeLeft = entry.item.timeLeft - elapsed
+                this.text:SetText(_G.CLOSES_IN .. ": " .. ceil(entry.item.timeLeft))
+                this:SetValue(entry.item.timeLeft)
+            end)
+
+            local main_width = entry.frame.SetWidth
+            function entry:SetWidth(width)
+                self.timeoutBar:SetWidth(width - 18)
+                main_width(self.frame, width)
+                self.width = width
+            end
+
+            entry.timeoutBar.text = entry.timeoutBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            entry.timeoutBar.text:SetPoint("CENTER", entry.timeoutBar)
+            entry.timeoutBar.text:SetTextColor(1,1,1)
+            entry.timeoutBar.text:SetText("Timeout")
         end,
     }
 
@@ -61,16 +384,118 @@ do
         entries = {},
         trashPool = {},
     }
+
+    function Loot.EntryManager:Trash(entry)
+        Logging:Debug("Trash(%s, %s)", entry.position or 0, entry.item.link)
+        entry:Hide()
+        if not Util.Tables.ContainsKey(self.trashPool, entry.type) then Util.Tables.Set(self.trashPool, entry.type, {}) end
+        Util.Tables.Set(self.trashPool, entry.type, entry, true)
+        tDeleteItem(self.entries, entry)
+        Util.Tables.Remove(self.entries, entry.item)
+        self.numEntries = self.numEntries - 1
+    end
+
+    function Loot.EntryManager:Get(type)
+        if not self.trashPool[type] then return nil end
+        local t = next(self.trashPool[type])
+        if t then
+            Util.Tables.Set(self.trashPool, type, t, nil)
+            return t
+        end
+    end
+
+    function Loot.EntryManager:Update()
+        local max = 0
+        for i, entry in ipairs(self.entries) do
+            if entry.width > max then max = entry.width end
+            if i == 1 then
+                entry.frame:SetPoint("TOPLEFT", Loot.frame.content, "TOPLEFT",0,-5)
+            else
+                entry.frame:SetPoint("TOPLEFT", self.entries[i-1].frame, "BOTTOMLEFT")
+            end
+            entry.position = i
+        end
+        Loot.frame:SetWidth(max)
+        for _, entry in ipairs(self.entries) do
+            entry:SetWidth(max)
+        end
+    end
+
+    function Loot.EntryManager:GetEntry(item)
+        if not item then return Logging:Warn("GetEntry(%s) : No such item!", tostring(item)) end
+        if self.entries[item] then return self.entries[item] end
+        local entry
+        if item.isRoll then
+            entry = self:Get("roll")
+        else
+            entry = self:Get(item.typeCode or item.equipLoc)
+        end
+
+        if entry then
+            entry:Update(item)
+        else
+            if item.isRoll then
+                entry = self:GetRollEntry(item)
+            else
+                entry = self:GetNewEntry(item)
+            end
+        end
+        entry:SetWidth(entry.width)
+        entry:Show()
+        self.numEntries = self.numEntries + 1
+        entry.position = self.numEntries
+        self.entries[self.numEntries] = entry
+        self.entries[item] = entry
+        return entry
+    end
+
+    function Loot.EntryManager:GetNewEntry(item)
+        local Entry = setmetatable({}, mt)
+        Entry.type = item.typeCode or item.equipLoc
+        Entry:Create(Loot.frame.content)
+        Entry:Update(item)
+        return Entry
+    end
+
+    function Loot.EntryManager:GetRollEntry(item)
+        local Entry = setmetatable({}, mt)
+        Entry.type = "roll"
+        Entry:Create(Loot.frame.content)
+        function Entry.UpdateButtons(entry)
+            local b = entry.buttons
+            b[1] = b[1] or CreateFrame("Button", nil, entry.frame)
+            b[2] = b[2] or CreateFrame("Button", nil, entry.frame)
+            local roll, pass = b[1], b[2]
+
+            roll:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Dice-Up")
+            roll:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Dice-Highlight")
+            roll:SetPushedTexture("Interface\\Buttons\\UI-GroupLoot-Dice-Down")
+            roll:SetScript("OnClick", function() Loot:OnRoll(entry, "ROLL") end)
+            roll:SetSize(32, 32)
+            roll:SetPoint("BOTTOMLEFT", entry.icon, "BOTTOMRIGHT", 5, -7)
+            roll:Enable()
+            roll:Show()
+
+            pass:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
+            pass:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight")
+            pass:SetPushedTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Down")
+            pass:SetScript("OnClick", function() LootFrame:OnRoll(entry, "PASS") end)
+            pass:SetSize(32, 32)
+            pass:SetPoint("LEFT", roll, "RIGHT", 5, 3)
+            pass:Show()
+
+            entry.rollResult = entry.rollResult or entry.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            entry.rollResult:SetPoint("LEFT", roll, "RIGHT", 5, 3)
+            entry.rollResult:SetText("")
+            entry.rollResult:Hide()
+
+            local width = 113 + 1 * 5 + 32 + 32
+            entry.width = width
+            entry.width = math.max(entry.width, 90 + entry.itemText:GetStringWidth())
+            entry.width = math.max(entry.width, 89 + entry.itemLvl:GetStringWidth())
+        end
+        Entry:Update(item)
+        return Entry
+    end
 end
 
-function Loot:OnEnable()
-    Logging:Debug("OnEnable(%s)", self:GetName())
-    self.items = {} -- item.i = {name, link, lvl, texture} (i == session)
-    self.frame = self:GetFrame()
-end
-
-function Loot:OnDisable()
-    Logging:Debug("OnDisable(%s)", self:GetName())
-    self.frame:Hide()
-    self.items = {}
-end

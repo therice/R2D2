@@ -285,6 +285,19 @@ function lib:ItemLinkToId(link)
     return tonumber(strmatch(link or "", "item:(%d+):"))
 end
 
+function lib:ItemLinkToItemString(link)
+    return strmatch(strmatch(link or "", "item:[%d:-]+") or "", "(item:.-):*$")
+end
+
+
+local NEUTRALIZE_ITEM_PATTERN = "item:(%d*):(%d*):(%d*):(%d*):(%d*):(%d*):(%d*):%d*:%d*:%d*"
+local NEUTRALIZE_ITEM_REPLACEMENT = "item:%1:%2:%3:%4:%5:%6:%7:::"
+
+function lib:NeutralizeItem(item)
+    return item:gsub(NEUTRALIZE_ITEM_PATTERN, NEUTRALIZE_ITEM_REPLACEMENT)
+end
+
+
 -- determine if specified class is compatible with item
 --function lib:ClassCanUse(class, item)
 --    -- this will be localized
@@ -343,14 +356,16 @@ function lib:GetItemClassesAllowedFlag(itemLink)
     tooltip:SetOwner(UIParent, "ANCHOR_NONE")
     tooltip:SetHyperlink(itemLink)
 
-    Logging:Trace("GetItemClassesAllowedFlag(%s)", itemLink)
+    Logging:Trace("GetItemClassesAllowedFlag(%s) : NumLines=%s", itemLink, tooltip:NumLines())
 
     local delimiter = ", "
     for i = 1, tooltip:NumLines() or 0 do
         local line = getglobal(restrictedClassFrameNameFormat:format(i))
         if line and line.GetText then
             local text = line:GetText() or ""
+            Logging:Trace("GetItemClassesAllowedFlag(%s) : Text=%s", itemLink, text)
             local classesText = Deformat(text, ITEM_CLASSES_ALLOWED)
+            Logging:Trace("GetItemClassesAllowedFlag(%s) : classesText=%s", itemLink, classesText or 'nil')
             if classesText then
                 tooltip:Hide()
                 if LIST_DELIMITER and LIST_DELIMITER ~= "" and classesText:find(LIST_DELIMITER:gsub("%%s","")) then
@@ -363,11 +378,14 @@ function lib:GetItemClassesAllowedFlag(itemLink)
                 for className in string.gmatch(classesText..delimiter, "(.-)"..delimiter) do
                     local classID = self.ClassDisplayNameToId[className]
                     if classID then
+                        Logging:Trace("GetItemClassesAllowedFlag(%s) : ClassName=%s ClassId=%s", itemLink, className, classID)
                         result = result + bit.lshift(1, classID-1)
                     else
                         Logging:Warn("Error while getting classes flag of %s  Class %s does not exist", itemLink, className)
                     end
                 end
+
+                Logging:Trace("GetItemClassesAllowedFlag(%s) : Result=%s", itemLink, result)
                 return result
             end
         end
@@ -378,15 +396,20 @@ function lib:GetItemClassesAllowedFlag(itemLink)
 end
 
 function lib:ClassCanUse(class, classesFlag, equipLoc, typeId, subTypeId)
+    Logging:Debug("ClassCanUse(%s) : Classes=%s EquipLoc=%s, TypeId=%s, SubTypeId=%s",
+            class, classesFlag, equipLoc or 'nil' or 'nil', typeId or 'nil', subTypeId or 'nil')
+
     local classId = self.ClassTagNameToId[class]
     -- if the classes flag, parsed from tooltip, doesn't contain the class id then it cannot be used
     if bit.band(classesFlag, bit.lshift(1, classId-1)) == 0 then
         return false
     end
 
-    if DisallowedByClass[class] and DisallowedByClass[class][typeId] then
-        local canUse = DisallowedByClass[class][typeId][subTypeId]
-        if canUse then return not canUse end
+    if not equipLoc ~= "INVTYPE_CLOAK" then
+        if DisallowedByClass[class] and DisallowedByClass[class][typeId] then
+            local canUse = DisallowedByClass[class][typeId][subTypeId]
+            if canUse then return not canUse end
+        end
     end
 
     return true

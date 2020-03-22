@@ -1,6 +1,7 @@
 local _, AddOn = ...
 local Logging   = AddOn.Libs.Logging
 local Util      = AddOn.Libs.Util
+local ItemUtil  = AddOn.Libs.ItemUtil
 
 function AddOn:IsInNonInstance()
     local instance_type = select(2, IsInInstance())
@@ -63,37 +64,6 @@ function AddOn:UnitName(unit)
     return name and name.."-"..realm
 end
 
-function AddOn:GetMasterLooter()
-    Logging:Trace("GetMasterLooter()")
-    local MLDbCheck = AddOn.Constants.Commands.MasterLooterDbCheck
-
-    -- always the player when testing alone
-    if GetNumGroupMembers() == 0 and self.testMode then
-        self:ScheduleTimer("Timer", 5, MLDbCheck)
-        return true, self.playerName
-    end
-
-    local lootMethod, mlPartyId, mlRaidId = GetLootMethod()
-    if lootMethod == "master" then
-        local name
-        -- Someone in raid
-        if mlRaidId then
-            name = self:UnitName("raid"..mlRaidId)
-        -- Player in party
-        elseif mlPartyId == 0 then
-            name = self.playerName
-        -- Someone in party
-        elseif mlPartyId then
-            name = self:UnitName("party"..mlPartyId)
-        end
-
-        -- Check to see if we have received mldb within 15 secs, otherwise request it
-        self:ScheduleTimer("Timer", 15, MLDbCheck)
-        return IsMasterLooter(), name
-    end
-    return false, nil;
-end
-
 local function GetAverageItemLevel()
     local sum, count = 0, 0
     for i=_G.INVSLOT_FIRST_EQUIPPED, _G.INVSLOT_LAST_EQUIPPED do
@@ -107,7 +77,7 @@ local function GetAverageItemLevel()
     return Util.Numbers.Round(sum / count, 2)
 end
 
-local enchanting_localized_name = nil
+local enchanting_localized_name
 function AddOn:GetPlayerInfo()
     local enchant, lvl = false, 0
     if not enchanting_localized_name then
@@ -119,17 +89,34 @@ function AddOn:GetPlayerInfo()
         lvl = "?"
     end
 
-    -- GetAverageItemLevel() isn't implemented
+    -- GetAverageItemLevel() isn't implemented via provided API
     local ilvl = GetAverageItemLevel()
     return self.playerName, self.playerClass, "NONE", self.guildRank, enchant, lvl, ilvl, nil
 end
 
-function AddOn:GetAnnounceChannel(channel)
-    local C = AddOn.Constants
-    return channel == C.group and (IsInRaid() and C.Channels.Raid or C.Channels.Party) or channel
-end
-
+-- https://wow.gamepedia.com/API_Ambiguate
+-- Returns a version of a character-realm string suitable for use in a given context.
 function AddOn.Ambiguate(name)
     -- return db.ambiguate and Ambiguate(name, "none") or Ambiguate(name, "short")
     return Ambiguate(name, "none")
+end
+
+-- The link of same item generated from different players, or if two links are generated between player spec switch, are NOT the same
+-- This function compares the raw item strings with link level and spec ID removed.
+--
+-- Also compare with unique id removed, because wowpedia says that:
+-- "In-game testing indicates that the UniqueId can change from the first loot to successive loots on the same item."
+-- Although log shows item in the loot actually has no uniqueId in Legion, but just in case Blizzard changes it in the future.
+--
+-- @return true if two items are the same item
+function AddOn:ItemIsItem(item1, item2)
+    if type(item1) ~= "string" or type(item2) ~= "string" then return item1 == item2 end
+    item1 = ItemUtil:ItemLinkToItemString(item1)
+    item2 = ItemUtil:ItemLinkToItemString(item2)
+    if not (item1 and item2) then return false end
+    return ItemUtil:NeutralizeItem(item1) ==  ItemUtil:NeutralizeItem(item2)
+end
+
+function AddOn:GetItemTextWithCount(link, count)
+    return link .. (count and count > 1 and (" x" .. count) or "")
 end

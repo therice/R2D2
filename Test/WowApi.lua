@@ -612,9 +612,14 @@ end
 
 string.split = _G.strsplit
 
+
 -- https://wowwiki.fandom.com/wiki/API_GetItemInfo
 -- https://wowwiki.fandom.com/wiki/ItemString
--- "itemName", "itemLink", itemRarity, itemLevel, itemMinLevel, "itemType", "itemSubType", itemStackCount, "itemEquipLoc", "invTexture", "itemSellPrice"
+--
+-- itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount,
+-- itemEquipLoc, itemIcon, itemSellPrice, typeId, subTypeId, bindType, expacID, itemSetID
+-- isCraftingReagent
+--
 -- itemLink - e.g. |cFFFFFFFF|Hitem:12345:0:0:0|h[Item Name]|h|r
 -- itemType : Localized name of the item’s class/type.
 -- itemSubType : Localized name of the item’s subclass/subtype.
@@ -625,19 +630,67 @@ IdToInfo[18832] = {
 	'Brutality Blade',
 	-- there are attributes in this link which aren't standard/plain, but bonuses (e.g. enchant at 2564)
 	'|cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r',
-	4,
-	70,
-	60,
-	"Weapon", --?? INVTYPE_WEAPON
-	'One-Handed Swords', --??
-	1,
-	"INVTYPE_WEAPON",
-	nil,
-	nil,
+	4, --itemRarity
+	70, --itemLevel
+	60, --itemMinLevel
+	"Weapon", --itemType
+	'One-Handed Swords', --itemSubType
+	1, --itemStackCount
+	"INVTYPE_WEAPON", --itemEquipLoc
+	135313,--itemIcon
+	104089, --itemSellPrice
+	2, --typeId
+	7, --subTypeId
+	1, --bindType
+	254, --expacID
+	nil, --itemSetID
+	false --isCraftingReagent
 }
+
+-- item can be one of following input types
+-- 	Numeric ID of the item. e.g. 30234
+-- 	Name of an item owned by the player at some point during this play session, e.g. "Nordrassil Wrath-Kilt"
+--  A fragment of the itemString for the item, e.g. "item:30234:0:0:0:0:0:0:0" or "item:30234"
+--  The full itemLink (e.g. |cff9d9d9d|Hitem:7073:0:0:0:0:0:0:0:80:0|h[Broken Fang]|h|r )
+local function ItemInfo(item)
+	-- Numeric ID of the item. e.g. 30234
+	if type(item) == 'number' then
+		return item, IdToInfo[item]
+	end
+
+	if type(item) == 'string' then
+		-- Check if item string or full link
+		local id = strmatch(item or "", "item:(%d+):")
+		if id and id ~= "" then
+			return tonumber(id), IdToInfo[tonumber(id)]
+		-- it's an item name
+		else
+			for id, info in pairs(IdToInfo) do
+				if info[1] == item then
+					return id, info
+				end
+			end
+		end
+	end
+
+	return 0, {}
+end
+
+-- todo : GetItemInfo and GetItemInfoInstant only support number params at moment
 _G.GetItemInfo = function(item)
-	itemInfo = IdToInfo[item] or {}
-	return table.unpack(itemInfo)
+	local _, info = ItemInfo(item)
+	return table.unpack(info)
+end
+
+-- itemID, itemType, itemSubType, itemEquipLoc, icon, itemClassID, itemSubClassID
+-- GetItemInfoInstant(itemID or "itemString" or "itemName" or "itemLink")
+-- https://wow.gamepedia.com/API_GetItemInfoInstant
+_G.GetItemInfoInstant = function(item)
+	local id, info = ItemInfo(item)
+
+	if id > 0 then
+		return id, info[6], info[7], info[9], info[10], info[12], info[13]
+	end
 end
 
 --[[
@@ -711,3 +764,5 @@ _G.LE_ITEM_ARMOR_RELIC = 11
 
 _G.LE_ITEM_CLASS_WEAPON = 2
 _G.LE_ITEM_CLASS_ARMOR = 4
+
+_G.RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"

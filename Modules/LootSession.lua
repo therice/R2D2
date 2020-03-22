@@ -71,7 +71,7 @@ function LootSession:ExtractData(data)
                         cols = {
                             { DoCellUpdate = self.SetCellDeleteButton },
                             { DoCellUpdate = self.SetCellItemIcon },
-                            { value = " " .. (v.ilvl or '') },
+                            { value = " " .. (v.ilvl or "") },
                             { DoCellUpdate = self.SetCellText },
                         },
                     }
@@ -89,7 +89,7 @@ function LootSession:Update()
 end
 
 function LootSession:DeleteItem(session, row)
-    Logging:Debug("DeleteItem(%s, %s)", session, row)
+    Logging:Debug("DeleteItem(session=%s, row=%s)", session, row)
     ML:RemoveItem(session)
     self:Show(ML.lootTable)
 end
