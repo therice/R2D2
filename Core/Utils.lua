@@ -120,3 +120,114 @@ end
 function AddOn:GetItemTextWithCount(link, count)
     return link .. (count and count > 1 and (" x" .. count) or "")
 end
+
+function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, class)
+    local celldata = data and (data[realrow].cols and data[realrow].cols[column] or data[realrow][column])
+    local class = celldata and celldata.args and celldata.args[1] or class
+    if class then
+        frame:SetNormalTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
+        local coords = CLASS_ICON_TCOORDS[class]
+        frame:GetNormalTexture():SetTexCoord(unpack(coords))
+    else
+        frame:SetNormalTexture("Interface/ICONS/INV_Sigil_Thorim.png")
+    end
+end
+
+function AddOn:GetClassColor(class)
+    local color = RAID_CLASS_COLORS[class]
+    if not color then
+        -- if class not found, return epic color.
+        return {r=1,g=1,b=1,a=1}
+    else
+        color.a = 1.0
+        return color
+    end
+end
+
+-- @param link the item link for what we wish to compare against
+-- @param equipLoc the location at which gear can be equipped
+-- @param current if specified, compare against gear stored in this table (key is slot # and value is item link)
+-- @return the gear currently equipped with the same slot as input
+function AddOn:GetPlayersGear(link, equipLoc, current)
+    Logging:Trace("GetPlayersGear(%s, %s) : %s", link, equipLoc, Util.Objects.ToString(current))
+    local GetInventoryItemLink = GetInventoryItemLink
+    if current then
+        GetInventoryItemLink = function(_, slot) return current[slot] end
+    end
+
+    -- todo : need to handle tokens and trinkeys
+    local item1, item2
+    -- map equipment location to slots where it can be equipped
+    local gearSlots = ItemUtil:GetGearSlots(equipLoc)
+    Logging:Trace("GetPlayersGear() : %s -> %s", equipLoc, Util.Objects.ToString(gearSlots))
+    if not gearSlots then return nil, nil end
+    -- index 1 will always have a value if returned
+
+    item1 = GetInventoryItemLink("player", GetInventorySlotInfo(gearSlots[1]))
+    -- gear slots supports an 'or' construct with the value being other potential gear slot
+    if not item1 and gearSlots['or'] then
+        item1 = GetInventoryItemLink("player", GetInventorySlotInfo(gearSlots['or']))
+    end
+    if gearSlots[2] then
+        item2 = GetInventoryItemLink("player", GetInventorySlotInfo(gearSlots[2]))
+    end
+    Logging:Trace("GetPlayersGear() : %s, %s", item1 or 'empty', item2 or 'empty')
+    return item1, item2
+end
+
+function AddOn:GetGear(link, equipLoc)
+    return self:GetPlayersGear(link, equipLoc, self.playersData.gear)
+end
+
+function AddOn:UpdatePlayersGear(startSlot, endSlot)
+    startSlot = startSlot or INVSLOT_FIRST_EQUIPPED
+    endSlot = endSlot or INVSLOT_LAST_EQUIPPED
+    for i = startSlot, endSlot do
+        local link = GetInventoryItemLink("player", i)
+        if link then
+            local name = GetItemInfo(link)
+            if name then
+                self.playersData.gear[i] = link
+            else
+                self:ScheduleTimer("UpdatePlayersGears", 1, i, i)
+            end
+        else
+            self.playersData.gear[i] = nil
+        end
+    end
+end
+
+function AddOn:UpdatePlayersData()
+    Logging:Trace("UpdatePlayersData()")
+    self.playersData.ilvl = GetAverageItemLevel()
+    self:UpdatePlayersGear()
+end
+
+function AddOn:GetItemLevelDifference(item, g1, g2)
+    if not g1 and g2 then error("You can't provide g2 without g1 in :GetItemLevelDifference()") end
+    local _, link, _, ilvl, _, _, _, _, equipLoc = GetItemInfo(item)
+    if not g1 then
+        g1, g2 = self:GetPlayersGear(link, equipLoc, self.playersData.gear)
+    end
+
+    if equipLoc == "INVTYPE_TRINKET" or equipLoc == "INVTYPE_FINGER" then
+       local itemId = ItemUtil:ItemLinkToId(link)
+        if itemId == ItemUtil:ItemLinkToId(g1) then
+            local ilvl2 = select(4, GetItemInfo(g1))
+            return ilvl - ilvl2
+        elseif g2 and itemId == ItemUtil:ItemLinkToId(g2) then
+            local ilvl2 = select(4, GetItemInfo(g2))
+            return ilvl - ilvl2
+        end
+    end
+
+    local diff = 0
+    local g1diff, g2diff = g1 and select(4, GetItemInfo(g1)), g2 and select(4, GetItemInfo(g2))
+    if g1diff and g2diff then
+        diff = g1diff >= g2diff and ilvl - g2diff or ilvl - g1diff
+    elseif g1diff then
+        diff = ilvl - g1diff
+    end
+
+    return diff
+end

@@ -321,7 +321,7 @@ function UI:CreateHypertip(link)
     GameTooltip:SetHyperlink(link)
 end
 
---- Hide the tooltip(s) created with :CreateTooltip() and :CreateHypertip(
+--- Hide the tooltip(s) created with :CreateTooltip() and :CreateHypertip()
 function UI:HideTooltip()
     if self.tooltip then
         self.tooltip.showing = false

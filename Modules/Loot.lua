@@ -23,6 +23,15 @@ local RANDOM_ROLL_PATTERN =
 
 function Loot:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
+    --[[
+    session = {
+        name = ...,
+        link = ...,
+        lvl = ...,
+        gp = ...,
+        texture = ...,
+    }
+    --]]
     self.items = {} -- item.i = {name, link, lvl, texture} (i == session)
     self.frame = self:GetFrame()
     self:RegisterEvent("CHAT_MSG_SYSTEM")
@@ -37,8 +46,8 @@ end
 
 -- item will be a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
-    Logging:Debug("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
-    Logging:Debug("getmetatable => %s", Util.Objects.ToString(getmetatable(item)))
+    Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
+    Logging:Trace("getmetatable => %s", Util.Objects.ToString(getmetatable(item)))
     local toAdd = item:Clone()
     toAdd.rolled = false
     toAdd.sessions = { item.session }
@@ -47,7 +56,7 @@ function Loot:AddItem(offset, k, item)
 end
 
 function Loot:CheckDuplicates(size, offset)
-    Logging:Debug("CheckDuplicates(%s, %s)", size, offset)
+    Logging:Trace("CheckDuplicates(%s, %s)", size, offset)
 
     for k = offset + 1, offset + size do
         if not self.items[k].rolled then
@@ -69,7 +78,7 @@ end
 
 function Loot:Start(table, reRoll)
     reRoll = reRoll or false
-    Logging:Debug("Start(%s, %s)", Util.Tables.Count(table), tostring(reRoll))
+    Logging:Trace("Start(%s, %s)", Util.Tables.Count(table), tostring(reRoll))
 
     local offset = 0
     -- if re-roll, insert the items at end
@@ -96,9 +105,9 @@ end
 
 function Loot:AddSingleItem(item)
     if not self:IsEnabled() then self:Enable() end
-    Logging:Debug("AddSingleItem(%s, %s)", item.link, #self.items)
+    Logging:Trace("AddSingleItem(%s, %s)", item.link, #self.items)
     if item.autoPass then
-        self.items[#self.items +1] = { rolled = true}
+        self.items[#self.items + 1] = { rolled = true}
     else
         self:AddItem(0, #self.items + 1, item)
         self:Show()
@@ -106,7 +115,7 @@ function Loot:AddSingleItem(item)
 end
 
 function Loot:ReRoll(table)
-    Logging:Debug("ReRoll(%s)", #table)
+    Logging:Trace("ReRoll(%s)", #table)
     self:Start(table, true)
 end
 
@@ -154,14 +163,14 @@ end
 function Loot:OnRoll(entry, button)
     local C = AddOn.Constants
     local item = entry.item
-    Logging:Debug("OnRoll(%s, %s)", tostring(item.link), tostring(button))
+    Logging:Trace("OnRoll(%s, %s)", tostring(item.link), tostring(button))
 
     if not item.isRoll then
         -- Only send minimum necessary data, because the information of currently equipped gear has been sent
         -- when we receive the loot table
         local response = AddOn:GetResponse(item.typeCode or item.equipLoc, button)
 
-        Logging:Debug("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
+        Logging:Trace("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
         for _, session in ipairs(item.sessions) do
             AddOn:SendResponse(C.group, session, button)
         end
@@ -220,7 +229,6 @@ function Loot:CHAT_MSG_SYSTEM(event, msg)
     end
 end
 
-
 do
     local EntryProto = {
         type = "normal",
@@ -237,7 +245,10 @@ do
             )
             entry.icon:SetNormalTexture(entry.item.texture or "Interface\\InventoryItems\\WoWUnknownItem01")
             entry.itemCount:SetText(#entry.item.sessions > 1 and #entry.item.sessions or "")
-            entry.itemLvl:SetText(item:GetLevelText() .. " |cff7fffff".. item:GetTypeText() .. "|r")
+            entry.itemLvl:SetText("GP " .. item:GetGpText() ..
+                    " Level " .. item:GetLevelText() ..
+                    " |cff7fffff".. item:GetTypeText() .. "|r"
+            )
             -- todo : implement timeouts via settings
             local showTimeout = false
             if showTimeout then
@@ -247,7 +258,6 @@ do
                 entry.timeoutBar:Hide()
             end
 
-            -- entry.timeoutBar:Hide()
             if AddOn:UnitIsUnit(item.owner, "player") then
                 entry.frame:SetBackdrop({
                     edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -386,7 +396,7 @@ do
     }
 
     function Loot.EntryManager:Trash(entry)
-        Logging:Debug("Trash(%s, %s)", entry.position or 0, entry.item.link)
+        Logging:Trace("Trash(%s, %s)", entry.position or 0, entry.item.link)
         entry:Hide()
         if not Util.Tables.ContainsKey(self.trashPool, entry.type) then Util.Tables.Set(self.trashPool, entry.type, {}) end
         Util.Tables.Set(self.trashPool, entry.type, entry, true)

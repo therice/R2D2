@@ -5,6 +5,9 @@ local Util      = AddOn.Libs.Util
 local ItemUtil  = AddOn.Libs.ItemUtil
 local L         = AddOn.components.Locale
 
+-- keep track of whether we need to re-request data due to a reload
+local relogged = true
+
 function AddOn:CallModule(module)
     self:EnableModule(module)
 end
@@ -133,7 +136,7 @@ end
 -- @see MasterLooter.db.responses
 -- @return A table from db.responses containing the response info
 function AddOn:GetResponse(type, name)
-    Logging:Debug('GetResponse(%s, %s)', type, name)
+    Logging:Trace('GetResponse(%s, %s)', type, name)
     Logging:Trace('GetResponse() - mlDb = %s', Util.Objects.ToString(self.mlDb, 5))
 
     type = type and type or "default"
@@ -177,6 +180,10 @@ function AddOn:GetResponse(type, name)
     return {}
 end
 
+function AddOn:GetResponseColor(type, name)
+    return unpack(self:GetResponse(type, name).color)
+end
+
 function AddOn:GetNumButtons(type)
     type = type and type or "default"
     local ML = self:MasterLooterModule()
@@ -218,7 +225,7 @@ function AddOn:PrepareLootTable(lootTable)
 end
 
 function AddOn:Timer(type, ...)
-    Logging:Debug("Timer(%s)", type)
+    Logging:Trace("Timer(%s)", type)
     local C = AddOn.Constants
 
     if type == C.Commands.MasterLooterDbCheck then
@@ -233,24 +240,64 @@ end
 function AddOn:DoAutoPass(table, skip)
     for sess, entry in ipairs(table) do
         local session = entry.session or sess
-        Logging:Debug("DoAutoPass(%s) : %s", session, Util.Objects.ToString(entry))
+        Logging:Trace("DoAutoPass(%s) : %s", session, Util.Objects.ToString(entry))
         if session > (skip or 0) then
             -- todo : add configuration setting for auto pass to parameterize this
             if not entry.boe then
-                -- if self:AutoPassCheck(v.link, v.equipLoc, v.typeID, v.subTypeID, v.classes, v.token, v.relic) then
-                if not ItemUtil:ClassCanUse(self.playerClass, entry.classes,
-                        entry.link, entry.equipLoc, entry.typeId, entry.subTypeId) then
-                    Logging:Debug("Auto-passing on %s", entry.link)
+                if not ItemUtil:ClassCanUse(self.playerClass, entry.classes, entry.equipLoc, entry.typeId, entry.subTypeId) then
+                    Logging:Trace("Auto-passing on %s", entry.link)
                     self:Print(format(L["auto_passed_on_item"], entry.link))
                     entry.autoPass = true
                 end
             else
-                Logging:Debug("Skipped auto-pass on %s as it's BOE", entry.link)
+                Logging:Trace("Skipped auto-pass on %s as it's BOE", entry.link)
             end
         end
     end
 end
 
-function AddOn:SendLootAck(table, skip)
+function AddOn:ResetReconnectRequest()
+    Logging:Debug("ResetReconnectRequest")
+    self.reconnectPending = false
+end
+
+function AddOn:OnEvent(event, ...)
+    Logging:Debug("OnEvent(%s)", event)
+    local C = AddOn.Constants.Commands
+    local E = AddOn.Constants.Events
+    if event == E.PlayerEnteringWorld then
+        self:NewMasterLooterCheck()
+        self:ScheduleTimer(
+                function()
+                    local name, _, _, difficulty = GetInstanceInfo()
+                    self.instanceName = name .. (Util.Strings.IsEmpty(difficulty) and "" or "-" .. difficulty)
+                end,
+                5
+        )
+        if relogged then
+            if not self.isMasterLooter and Util.Strings.IsSet(self.masterLooter) then
+                Logging:Debug("Player re-logged")
+                self:ScheduleTimer("SendCommand", 2, self.masterLooter, C.Reconnect)
+                self:SendCommand(self.masterLooter, C.PlayerInfo, self:GetPlayerInfo())
+            end
+        end
+        self:UpdatePlayersData()
+        relogged = false
+    end
+end
+
+function AddOn:LootOpened (...)
+
+end
+
+function AddOn:LootClosed()
+
+end
+
+function AddOn:EnterCombat()
+
+end
+
+function AddOn:LeaveCombat()
 
 end

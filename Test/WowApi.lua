@@ -8,11 +8,15 @@ FrameClass.methods = {
 	"SetScript", "RegisterEvent", "UnregisterEvent", "UnregisterAllEvents", "Show", "Hide", "IsShown",
 	"ClearAllPoints", "SetParent", "GetName", "SetOwner", "SetHyperlink", "NumLines", "SetPoint", "SetSize", "SetFrameStrata",
 	"SetBackdrop", "CreateFontString", "SetNormalFontObject", "SetHighlightFontObject", "SetNormalTexture", "GetNormalTexture",
-	"SetPushedTexture", "GetPushedTexture", "SetHighlightTexture", "GetHighlightTexture", "SetText", "GetScript"
+	"SetPushedTexture", "GetPushedTexture", "SetHighlightTexture", "GetHighlightTexture", "SetText", "GetScript",
+	"EnableMouse", "SetAllPoints", "SetBackdropColor", "SetBackdropBorderColor", "SetWidth", "SetHeight", "GetParent",
+	"GetFrameLevel", "SetFrameLevel", "CreateTexture", "SetFontString", "SetDisabledFontObject", "SetID", "SetToplevel",
+	"GetFont"
 }
 
 TextureClass.methods = {
-	"SetTexCoord"
+	"SetTexCoord", "SetAllPoints", "Hide", "SetTexture", "SetBlendMode", "SetWidth", "SetHeight", "SetPoint",
+	"SetVertexColor"
 }
 
 function FrameClass:New(name)
@@ -46,6 +50,14 @@ function TextureClass:New(t)
 	}
 
 	return texture, textureProps
+end
+
+function FrameClass:SetID(id)
+
+end
+
+function FrameClass:SetToplevel(top)
+
 end
 
 function FrameClass:SetText(text)
@@ -95,6 +107,19 @@ function FrameClass:SetParent(parent)
 	frames[self].parent = parent
 end
 
+function FrameClass:GetParent()
+	return frames[self].parent
+end
+
+function FrameClass:SetFrameLevel(l)
+end
+
+
+
+function FrameClass:GetFrameLevel()
+	return 0
+end
+
 function FrameClass:GetName()
 	return frames[self].name
 end
@@ -131,12 +156,36 @@ function FrameClass:CreateFontString(name, layer, inheritsFrom)
 	return CreateFrame("FontString", name)
 end
 
+function FrameClass:SetWidth(width)
+
+end
+
+function FrameClass:SetHeight(width)
+
+end
+
 function FrameClass:SetNormalFontObject(font)
 
 end
 
 function FrameClass:SetHighlightFontObject(font)
 
+end
+
+function FrameClass:SetFontString(font)
+
+end
+
+function FrameClass:GetFont()
+	return nil, nil, nil
+end
+
+function FrameClass:SetDisabledFontObject(font)
+
+end
+
+function FrameClass:CreateTexture(name, texture, texturePath)
+	return CreateTexture(name, texture, texturePath)
 end
 
 function FrameClass:SetNormalTexture(texture, texturePath)
@@ -166,8 +215,56 @@ function FrameClass:GetHighlightTexture()
 	return frames[self].textures['highlight']
 end
 
+function FrameClass:EnableMouse(on)
+
+end
+
+function FrameClass:SetAllPoints()
+
+end
+
+function FrameClass:SetBackdropColor(r, g, b)
+
+end
+
+function FrameClass:SetBackdropBorderColor(r, g, b)
+
+end
 
 function TextureClass:SetTexCoord(left, right, top, bottom)
+
+end
+
+function TextureClass:SetAllPoints()
+
+end
+
+function TextureClass:Hide()
+
+end
+
+function TextureClass:SetTexture(texture)
+
+end
+
+function TextureClass:SetBlendMode(mode)
+
+end
+
+function TextureClass:SetWidth(width)
+
+end
+
+function TextureClass:SetHeight(width)
+
+end
+
+function TextureClass:SetPoint(point, relativeFrame, relativePoint, ofsx, ofsy)
+
+end
+
+function TextureClass:SetVertexColor(r, g, b)
+
 end
 
 function CreateFrame(kind, name, parent)
@@ -180,9 +277,9 @@ function CreateFrame(kind, name, parent)
 	return frame
 end
 
-function CreateTexture(texture, texturePath)
-	local tex, internal = TextureClass:New(type)
-	internal.texture = texturePath
+function CreateTexture(name, texture, texturePath)
+	local tex, internal = TextureClass:New(name)
+	internal.texture = texture
 	internal.texturePath = texturePath
 	internal.coord = {}
 	textures[tex] = internal
@@ -767,3 +864,14 @@ _G.LE_ITEM_CLASS_WEAPON = 2
 _G.LE_ITEM_CLASS_ARMOR = 4
 
 _G.RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"
+
+_G.TOOLTIP_DEFAULT_BACKGROUND_COLOR = {
+	r = 0,
+	g = 0,
+	b = 0,
+}
+_G.TOOLTIP_DEFAULT_COLOR = {
+	r = 0,
+	g = 0,
+	b = 0,
+}

@@ -229,6 +229,37 @@ end
 lib.ClassIdToDisplayName = tInvert(lib.ClassDisplayNameToId)
 lib.ClassIdToFileName = tInvert(lib.ClassTagNameToId)
 
+local EquipLocationToGearSlots = {
+    INVTYPE_HEAD            = {"HeadSlot"},
+    INVTYPE_NECK            = {"NeckSlot"},
+    INVTYPE_SHOULDER        = {"ShoulderSlot"},
+    INVTYPE_CLOAK           = {"BackSlot"},
+    INVTYPE_CHEST           = {"ChestSlot"},
+    INVTYPE_WRIST           = {"WristSlot"},
+    INVTYPE_HAND            = {"HandsSlot"},
+    INVTYPE_WAIST           = {"WaistSlot"},
+    INVTYPE_LEGS            = {"LegsSlot"},
+    INVTYPE_FEET            = {"FeetSlot"},
+    INVTYPE_SHIELD          = {"SecondaryHandSlot"},
+    INVTYPE_ROBE            = {"ChestSlot"},
+    INVTYPE_2HWEAPON        = {"MainHandSlot", "SecondaryHandSlot"},
+    INVTYPE_WEAPONMAINHAND  = {"MainHandSlot"},
+    INVTYPE_WEAPONOFFHAND   = {"SecondaryHandSlot", ["or"] = "MainHandSlot"},
+    INVTYPE_WEAPON          = {"MainHandSlot", "SecondaryHandSlot"},
+    INVTYPE_THROWN          = {"MainHandSlot", ["or"] = "SecondaryHandSlot"},
+    INVTYPE_RANGED          = {"MainHandSlot", ["or"] = "SecondaryHandSlot"},
+    INVTYPE_RANGEDRIGHT     = {"MainHandSlot", ["or"] = "SecondaryHandSlot"},
+    INVTYPE_FINGER          = {"Finger0Slot", "Finger1Slot"},
+    INVTYPE_HOLDABLE        = {"SecondaryHandSlot", ["or"] = "MainHandSlot"},
+    INVTYPE_TRINKET         = {"TRINKET0SLOT", "TRINKET1SLOT"}
+}
+
+-- @return a table containing corresponding gear slots (or nil if not found)
+function lib:GetGearSlots(equipLoc)
+    if not equipLoc then return nil end
+
+    return EquipLocationToGearSlots[equipLoc]
+end
 
 -- Support for custom item definitions
 --
@@ -297,51 +328,6 @@ function lib:NeutralizeItem(item)
     return item:gsub(NEUTRALIZE_ITEM_PATTERN, NEUTRALIZE_ITEM_REPLACEMENT)
 end
 
-
--- determine if specified class is compatible with item
---function lib:ClassCanUse(class, item)
---    -- this will be localized
---    local subType = select(7, GetItemInfo(item))
---    if not subType then return true end
---
---    -- Check if this is a restricted class token.
---    -- Possibly cache this check if performance is an issue.
---    local link = select(2, GetItemInfo(item))
---    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
---    tooltip:SetHyperlink(link)
---    -- lets see if we can find a 'Classes: Mage, Druid' string on the itemtooltip
---    -- Only scanning line 2 is not enough, we need to scan all the lines
---    for lineID = 1, tooltip:NumLines(), 1 do
---        local line = _G[restrictedClassFrameNameFormat:format(lineID)]
---        if line then
---            local text = line:GetText()
---            if text then
---                local classList = Deformat(text, ITEM_CLASSES_ALLOWED)
---                if classList then
---                    tooltip:Hide()
---                    for _, restrictedClass in pairs({strsplit(',', classList)}) do
---                        restrictedClass = strtrim(strupper(restrictedClass))
---                        restrictedClass = strupper(LOCALIZED_CLASS_NAMES_FEMALE[restrictedClass] or LOCALIZED_CLASS_NAMES_MALE[restrictedClass])
---                        if class == restrictedClass then
---                            return true
---                        end
---                    end
---                    return false
---                end
---            end
---        end
---    end
---    tooltip:Hide()
---
---    -- Check if players can equip this item.
---    subType = BabbleInv[subType]
---    if Disallowed[class][subType] then
---        return false
---    end
---
---    return true
---end
-
 local restrictedClassFrameNameFormat = tooltip:GetName().."TextLeft%d"
 
 -- @return The bitwise flag indicates the classes allowed for the item, as specified on the tooltip by "Classes: xxx"
@@ -395,8 +381,11 @@ function lib:GetItemClassesAllowedFlag(itemLink)
     return 0xffffffff -- The item works for all classes
 end
 
+--[[
+ClassCanUse(PRIEST) : Classes=4294967295 EquipLoc=[Helm of Endless Rage], TypeId=INVTYPE_HEAD, SubTypeId=4
+--]]
 function lib:ClassCanUse(class, classesFlag, equipLoc, typeId, subTypeId)
-    Logging:Debug("ClassCanUse(%s) : Classes=%s EquipLoc=%s, TypeId=%s, SubTypeId=%s",
+    Logging:Trace("ClassCanUse(%s) : Classes=%s EquipLoc=%s, TypeId=%s, SubTypeId=%s",
             class, classesFlag, equipLoc or 'nil' or 'nil', typeId or 'nil', subTypeId or 'nil')
 
     local classId = self.ClassTagNameToId[class]

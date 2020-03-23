@@ -1,7 +1,7 @@
 local _, AddOn = ...
 local Util = AddOn.Libs.Util
 local ItemUtil = AddOn.Libs.ItemUtil
--- local Logging = AddOn.Libs.Logging
+local GP = AddOn.Libs.GearPoints
 
 local Item = { }
 Item.__index = Item
@@ -122,10 +122,21 @@ function Item:GetTypeText()
     end
 end
 
+-- @return number
+function Item:GetGp()
+    -- todo : could do this at initialization time instead
+    if not self.gp then
+        self.gp = GP:GetValue(self.link)
+    end
 
+    return self.gp
+end
 
--- does stuff
-
+function Item:GetGpText()
+    local gp = self:GetGp()
+    gp = gp or 0
+    return tostring(gp)
+end
 
 --[[
 {
@@ -212,4 +223,12 @@ end
 
 function ItemEntry:GetTypeText()
     return Item.GetTypeText(self)
+end
+
+function ItemEntry:GetGpText(includeLevel)
+    return Item.GetGpText(self, includeLevel)
+end
+
+function ItemEntry:GetGp()
+    return Item.GetGp(self)
 end

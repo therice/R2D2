@@ -15,6 +15,11 @@ function Self.Round(num, p)
     return floor(num * p + .5) / p
 end
 
+function Self.Round2(num, p)
+    if type(num) ~= "number" then return nil end
+    return tonumber(string.format("%." .. (p or 0) .. "f", num))
+end
+
 -- Check if num is in interval (exclusive)
 ---@param num number
 ---@param a number

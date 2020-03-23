@@ -3,7 +3,6 @@ local ML        = AddOn:NewModule("MasterLooter", "AceEvent-3.0", "AceBucket-3.0
 local L         = AddOn.components.Locale
 local Logging   = AddOn.components.Logging
 local Util      = AddOn.Libs.Util
-local ItemUtil  = AddOn.Libs.ItemUtil
 local Models    = AddOn.components.Models
 
 local CANDIDATE_SEND_COOLDOWN = 10
@@ -40,8 +39,6 @@ ML.defaults = {
         }
     }
 }
-
--- local addOnDb = AddOn.db
 
 function ML:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -146,14 +143,14 @@ function ML:BuildDb()
 end
 
 function ML:UpdateDb()
-    Logging:Debug("UpdateDb()")
+    Logging:Trace("UpdateDb()")
     local C = AddOn.Constants
     AddOn:OnMasterLooterDbReceived(self:BuildDb())
     AddOn:SendCommand(C.group, C.Commands.MasterLooterDb, AddOn.mlDb)
 end
 
 function ML:AddCandidate(name, class, role, rank, enchant, lvl, ilvl)
-    Logging:Debug("AddCandidate(%s, %s, %s, %s, %s, %s, %s)",
+    Logging:Trace("AddCandidate(%s, %s, %s, %s, %s, %s, %s)",
             name, class, role, rank or 'nil', tostring(enchant),
             tostring(lvl or 'nil'), tostring(ilvl or 'nil')
     )
@@ -161,12 +158,12 @@ function ML:AddCandidate(name, class, role, rank, enchant, lvl, ilvl)
 end
 
 function ML:RemoveCandidate(name)
-    Logging:Debug("RemoveCandidate(%s)", name)
+    Logging:Trace("RemoveCandidate(%s)", name)
     Util.Tables.Remove(self.candidates, name)
 end
 
 function ML:UpdateCandidates(ask)
-    Logging:Debug("UpdateCandidates(%s)", tostring(ask))
+    Logging:Trace("UpdateCandidates(%s)", tostring(ask))
     if type(ask) ~= "boolean" then ask = false end
 
     local C = AddOn.Constants
@@ -259,7 +256,7 @@ function ML:NewMasterLooter(ml)
 end
 
 function ML:Timer(type, ...)
-    Logging:Debug("Timer(%s)", type)
+    Logging:Trace("Timer(%s)", type)
     local C = AddOn.Constants
     if type == "AddItem" then
         self:AddItem(...)
@@ -278,7 +275,7 @@ end
 -- @param owner the owner of the item (if any). Defaults to 'BossName'
 -- @param index the index at which to add the entry, only needed on callbacks where item info was not available prev.
 function ML:AddItem(item, slotIndex, owner, index)
-    Logging:Debug("AddItem(%s)", item)
+    Logging:Trace("AddItem(%s)", item)
     -- todo : determine type code (as needed)
     index = index or nil
     local entry = Models.ItemEntry:New(item, slotIndex, false, owner, false, "default")
@@ -297,7 +294,7 @@ function ML:AddItem(item, slotIndex, owner, index)
 
     if not entry:IsValid() then
         self:ScheduleTimer("Timer", 0, "AddItem", item, slotIndex, owner, index)
-        Logging:Debug("AddItem() : Started timer %s for %s (%s)", "AddItem", item, tostring(index))
+        Logging:Trace("AddItem() : Started timer %s for %s (%s)", "AddItem", item, tostring(index))
     else
         AddOn:SendMessage(AddOn.Constants.Messages.MasterLooterAddItem, item, entry)
     end
@@ -397,12 +394,12 @@ function ML:OnEvent(event, ...)
 end
 
 function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
-    Logging:Debug("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
+    Logging:Trace("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
     Logging:Trace("OnCommReceived() : %s", serializedMsg)
     local C = AddOn.Constants
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : test=%s, command=%s", tostring(success), command)
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data))
         -- only ML receives these commands
         if success and AddOn.isMasterLooter then
             if command == C.Commands.PlayerInfo then
@@ -413,7 +410,11 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
             elseif command == C.Commands.CandidatesRequest then
                 self:SendCandidates()
             elseif command == C.Commands.Reconnect and AddOn:UnitIsUnit(sender, AddOn.playerName) then
-
+                AddOn:SendCommand(sender, C.Commands.MasterLooterDb, AddOn.mlDb)
+                AddOn:ScheduleTimer("SendCommand", 2, sender, C.Commands.Candidates, self.candidates)
+                if self.running then
+                    AddOn:ScheduleTimer("SendCommand", 4, sender,  C.Commands.LootTable, self:GetLootTableForTransmit())
+                end
             elseif command == C.Commands.LootTable and AddOn:UnitIsUnit(sender, AddOn.playerName) then
                 self:ScheduleTimer("Timer", 11 + 0.5 * #self.lootTable, "LootSend")
             end

@@ -23,4 +23,5 @@
     <Include file="LibDialog-1.0\LibDialog-1.0.xml" />
     <Script file="LibWindow-1.1\LibWindow-1.1.lua" />
     <Include file="lib-st\lib-st.xml" />
+    <Include file="MSA-DropDownMenu-1.0\MSA-DropDownMenu-1.0.xml" />
 </Ui>

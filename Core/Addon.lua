@@ -17,6 +17,13 @@ function R2D2:OnInitialize()
     }
     -- the player class
     self.playerClass = select(2, UnitClass("player"))
+    -- tracks information about player at time of login and encounters beginning
+    self.playersData = {
+        -- slot number -> item link
+        gear = {
+
+        }
+    }
     -- our guild
     self.guildRank = L["unguilded"]
     -- are we running in test mode
@@ -27,11 +34,14 @@ function R2D2:OnInitialize()
     self.isMasterLooter = false
     -- name of the master looter
     self.masterLooter = ""
+    self.candidates = {}
     -- should this be a local
     self.lootTable = {}
     self.enabled = true
     -- does R2D2 handle loot?
     self.handleLoot = false
+    self.reconnectPending = false
+    self.instanceName = ""
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
     self:RegisterChatCommand(name:lower(), "ChatCommand")
@@ -49,6 +59,11 @@ function R2D2:OnEnable()
 
     self.realmName = select(2, UnitFullName(self.Constants.player))
     self.playerName = self:UnitName(self.Constants.player)
+
+    -- register events
+    for event, method in pairs(self.Events) do
+        self:RegisterEvent(event, method)
+    end
 
     if IsInGuild() then
         self.guildRank = select(2, GetGuildInfo("player"))
