@@ -12,7 +12,7 @@ local MIN_BUTTON_WIDTH = 40
 
 local awaitingRolls = {}
 local ROLL_TIMEOUT = 1.5
-local ROLL_SHOW_RESULT_TIME = 3
+local ROLL_SHOW_RESULT_TIME = 5
 
 local RANDOM_ROLL_PATTERN =
     _G.RANDOM_ROLL_RESULT:gsub("%(", "%%(")

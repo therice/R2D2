@@ -13,7 +13,7 @@ local DefaultScrollTableData = {}
 local GuildRankSort, ResponseSort
 local MenuFrame, FilterMenu
 local session, sessionButtons, lootTable, active, moreInfo = 1, {}, {}, false, false
-local updatePending, updateIntervalRemanining, updateFrame = false, 0, CreateFrame("FRAME")
+local updatePending, updateIntervalRemaining, updateFrame = false, 0, CreateFrame("FRAME")
 
 LootAllocate.defaults = {
 
@@ -52,7 +52,7 @@ function LootAllocate:OnEnable()
     self:ScheduleTimer("CandidateCheck", 20)
     updateFrame:Show()
     updatePending = false
-    updateIntervalRemanining = 0
+    updateIntervalRemaining = 0
 end
 
 function LootAllocate:OnDisable()
@@ -65,7 +65,7 @@ function LootAllocate:OnDisable()
     self:UnregisterAllComm()
     updateFrame:Hide()
     updatePending = false
-    updateIntervalRemanining = 0
+    updateIntervalRemaining = 0
 end
 
 function LootAllocate:Hide()
@@ -555,7 +555,7 @@ end
 function LootAllocate:Update(forceUpdate)
     Logging:Trace("Update(%s)", tostring(forceUpdate))
     updatePending = false
-    if not forceUpdate and updateIntervalRemanining > 0 then
+    if not forceUpdate and updateIntervalRemaining > 0 then
         updatePending = true
         return
     end
@@ -566,7 +566,7 @@ function LootAllocate:Update(forceUpdate)
         return
     end
 
-    updateIntervalRemanining = MIN_UPDATE_INTERVAL
+    updateIntervalRemaining = MIN_UPDATE_INTERVAL
     -- twice?
     self.frame.st:SortData()
     self.frame.st:SortData()
@@ -618,12 +618,12 @@ function LootAllocate:Update(forceUpdate)
 end
 
 updateFrame:SetScript("OnUpdate", function(self, elapsed)
-    if updateIntervalRemanining > elapsed then
-        updateIntervalRemanining = updateIntervalRemanining - elapsed
+    if updateIntervalRemaining > elapsed then
+        updateIntervalRemaining = updateIntervalRemaining - elapsed
     else
-        updateIntervalRemanining = 0
+        updateIntervalRemaining = 0
     end
-    if updatePending and updateIntervalRemanining <= 0 then
+    if updatePending and updateIntervalRemaining <= 0 then
         LootAllocate:Update()
     end
 end)
