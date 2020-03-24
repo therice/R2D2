@@ -19,6 +19,7 @@ LootAllocate.defaults = {
 
 }
 
+
 function LootAllocate:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     local C = AddOn.Constants
@@ -26,14 +27,13 @@ function LootAllocate:OnInitialize()
         { name = "",                DoCellUpdate = LootAllocate.SetCellClass,       colName = "class",      sortnext = 2,       width = 20, }, -- 1 Class
         { name = _G.NAME,			DoCellUpdate = LootAllocate.SetCellName,		colName = "name",		defaultsort = 1,	width = 120,}, -- 2 Candidate Name
         { name = _G.RANK,			DoCellUpdate = LootAllocate.SetCellRank,		colName = "rank",		sortnext = 5,		width = 95, comparesort = GuildRankSort,}, -- 3 Guild rank
-        { name = _G.ROLE,			DoCellUpdate = LootAllocate.SetCellRole,		colName = "role",		sortnext = 5,		width = 55, }, -- 4 Role
-        { name = L["response"],	    DoCellUpdate = LootAllocate.SetCellResponse,	colName = "response",   sortnext = 13,		width = 240,comparesort = ResponseSort,},-- 5 Response
-        { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = LootAllocate.SetCellIlvl,	    colName = "ilvl",		sortnext = 7,		width = 45, }, -- 6 Total ilvl
-        { name = L["diff"],		    DoCellUpdate = LootAllocate.SetCellDiff,		colName = "diff",							width = 40, }, -- 7 ilvl difference
-        { name = L["g1"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear1",	    sortnext = 5,		width = 20, align = "CENTER", }, -- 8 Current gear 1
-        { name = L["g2"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear2",	    sortnext = 5,		width = 20, align = "CENTER", }, -- 9 Current gear 2
-        { name = L["notes"],		DoCellUpdate = LootAllocate.SetCellNote,		colName = "note",							width = 50, align = "CENTER", }, -- 12 Note icon
-        { name = _G.ROLL,			DoCellUpdate = LootAllocate.SetCellRoll, 		colName = "roll",		sortnext = 10,		width = 50, align = "CENTER", }, -- 13 Roll
+        { name = L["response"],	    DoCellUpdate = LootAllocate.SetCellResponse,	colName = "response",   sortnext = 13,		width = 240,comparesort = ResponseSort,}, -- 4 Response
+        { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = LootAllocate.SetCellIlvl,	    colName = "ilvl",		sortnext = 7,		width = 45, }, -- 5 Total ilvl
+        { name = L["diff"],		    DoCellUpdate = LootAllocate.SetCellDiff,		colName = "diff",							width = 40, }, -- 6 ilvl difference
+        { name = L["g1"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear1",	    sortnext = 5,		width = 20, align = "CENTER", }, -- 7 Current gear 1
+        { name = L["g2"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear2",	    sortnext = 5,		width = 20, align = "CENTER", }, -- 8 Current gear 2
+        { name = L["notes"],		DoCellUpdate = LootAllocate.SetCellNote,		colName = "note",							width = 50, align = "CENTER", }, -- 9 Note icon
+        { name = _G.ROLL,			DoCellUpdate = LootAllocate.SetCellRoll, 		colName = "roll",		sortnext = 10,		width = 50, align = "CENTER", }, -- 10 Roll
     }
     self.scrollCols = { unpack(DefaultScrollTableData) }
     self.db = AddOn.db:RegisterNamespace(self:GetName(), LootAllocate.defaults)
@@ -104,7 +104,7 @@ end
 function LootAllocate:EndSession(hide)
     if active then
         Logging:Debug("EndSesion(%s)", tostring(hide))
-        active = false
+        active = falseG
         self:Update(true)
         if hide then self:Hide() end
     end
@@ -119,7 +119,6 @@ function LootAllocate:SetupSession(session, t)
         t.candidates[name] = {
             class = v.class,
             rank = v.rank,
-            role = v.role,
             response = "ANNOUNCED",
             ilvl = "",
             diff = "",
@@ -215,10 +214,10 @@ end
 
 function LootAllocate:SetCandidateData(session, candidate, data, val)
     local function Set(session, candidate, data, val)
-        Logging:Debug("SetCandidateData(%s, %s) : data=%s val=%s", session, candidate, Util.Objects.ToString(data), Util.Objects.ToString(val))
+        Logging:Trace("SetCandidateData(%s, %s) : data=%s val=%s", session, candidate, Util.Objects.ToString(data), Util.Objects.ToString(val))
         lootTable[session].candidates[candidate][data] = val
     end
-    local ok, arg = pcall(Set, session, candidate, data, val)
+    local ok, _ = pcall(Set, session, candidate, data, val)
     if not ok then
         Logging:Warn("SetCandidateData() : Error for candidate=%s", candidate)
     end
@@ -255,7 +254,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
     local C = AddOn.Constants
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 4))
         if success then
             if command == C.Commands.LootAck then
                 local name, ilvl, sessionData = unpack(data)
@@ -276,10 +275,18 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
 
                 self:Update()
-            elseif command == C.Commands.Awarded and AddOn:UnitIsUnit(sender, addon.masterLooter) then
+            elseif command == C.Commands.Awarded and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
 
-            elseif command == C.Commands.OfflineTimer and AddOn:UnitIsUnit(sender, addon.masterLooter) then
-
+            elseif command == C.Commands.OfflineTimer and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+                for i = 1, #lootTable do
+                    for candidate in pairs(lootTable[i].candidates) do
+                        if self:GetCandidateData(i, candidate, "response") == "ANNOUNCED" then
+                            Logging:Warn("No response from %s", candidate)
+                            self:SetCandidateData(i, candidate, "response", "NOTHING")
+                        end
+                    end
+                end
+                self:Update()
             elseif command == C.Commands.Response then
                 local session, name, t = unpack(data)
                 for key, value in pairs(t) do
@@ -290,16 +297,17 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
 
             elseif command == C.Commands.Roll then
 
-            elseif command == C.Commands.ReconnectData and AddOn:UnitIsUnit(sender, addon.masterLooter) then
+            elseif command == C.Commands.ReconnectData and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
 
-            elseif command == C.Commands.LootTableAdd and AddOn:UnitIsUnit(sender, addon.masterLooter) then
-                local len = #lootTable
-                for k,v in pairs(unpack(data)) do
-                    lootTable[k] = v
+            elseif command == C.Commands.LootTableAdd and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+                local oldLen = #lootTable
+                for index, entry in pairs(unpack(data)) do
+                    Logging:Debug("LootTableAdd(%s, %s) : %s", tostring(oldLen), tostring(index), Util.Objects.ToString(entry, 4))
+                    lootTable[index] = Models.ItemEntry:Reconstitute(entry)
                 end
 
                 local autoRolls = false
-                for i = len + 1, #lootTable do
+                for i = oldLen + 1, #lootTable do
                     self:SetupSession(i, lootTable[i])
                     if AddOn.isMasterLooter and autoRolls then self:DoRandomRolls(i) end
                 end

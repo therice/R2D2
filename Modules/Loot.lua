@@ -31,8 +31,9 @@ function Loot:OnEnable()
         gp = ...,
         texture = ...,
     }
+    -- item.i = {name, link, lvl, texture} (i == session)
     --]]
-    self.items = {} -- item.i = {name, link, lvl, texture} (i == session)
+    self.items = {}
     self.frame = self:GetFrame()
     self:RegisterEvent("CHAT_MSG_SYSTEM")
 end

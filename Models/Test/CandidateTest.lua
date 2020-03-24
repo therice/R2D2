@@ -5,7 +5,7 @@ local Models
 local function CreateCandidate()
     local player = R2D2:UnitName("player")
     local class = select(2, UnitClass("player"))
-    return Models.Candidate:New(player, class, "NONE", "Officer", false, 0, 62)
+    return Models.Candidate:New(player, class, "Officer", false, 0, 62)
 end
 
 describe("Item Model", function()
@@ -23,7 +23,7 @@ describe("Item Model", function()
     describe("Candidate", function()
         it("is created", function()
             local candidate = CreateCandidate()
-            assert.equals(candidate.role, "NONE")
+            assert.equals(candidate.rank, "Officer")
         end)
         it("is cloned", function()
             local candidate1 = CreateCandidate()

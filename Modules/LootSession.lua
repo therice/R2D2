@@ -42,7 +42,9 @@ function LootSession:Show(data)
 
     if data then
         loadingItems = false
-        -- todo : sorting?
+        --if not ML.running then
+        --    ML:SortLootTable(data)
+        --end
         self:ExtractData(data)
         self.frame.st:SetData(self.frame.rows)
         self:Update()

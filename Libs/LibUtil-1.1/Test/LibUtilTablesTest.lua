@@ -28,6 +28,7 @@ describe("LibUtil", function()
 
             local T = {
                 tp = {
+
                 }
             }
 
@@ -37,6 +38,18 @@ describe("LibUtil", function()
             assert.equal('b', Util.Tables.Get(T, 'tp', K1, 'a'))
             assert.equal(0, Util.Tables.Count(Util.Tables.Get(T, 'tp', K2)))
             assert.equal(true, Util.Tables.Get(T, 'tp.a.big.path'))
+        end)
+        it("copy and map", function()
+            local copy =
+                Util(TestTable2)
+                    :Copy()
+                    :Map(
+                        function(entry)
+                            return entry.test and {} or entry
+                        end
+                )()
+
+            print(Util.Objects.ToString(copy))
         end)
     end)
 end)

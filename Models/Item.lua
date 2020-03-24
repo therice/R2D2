@@ -193,6 +193,7 @@ end
 
 function ItemEntry:UpdateForTransmit()
     self.equipLoc = select(4, GetItemInfoInstant(self.link))
+    -- todo : nil these out?
     --self.typeId = nil
     --self.subTypeId = nil
     return self

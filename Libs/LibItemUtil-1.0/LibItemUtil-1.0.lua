@@ -320,6 +320,10 @@ function lib:ItemLinkToItemString(link)
     return strmatch(strmatch(link or "", "item:[%d:-]+") or "", "(item:.-):*$")
 end
 
+function lib:ItemLinkToItemName(link)
+    return strmatch(link or "", "%[(.+)%]")
+end
+
 
 local NEUTRALIZE_ITEM_PATTERN = "item:(%d*):(%d*):(%d*):(%d*):(%d*):(%d*):(%d*):%d*:%d*:%d*"
 local NEUTRALIZE_ITEM_REPLACEMENT = "item:%1:%2:%3:%4:%5:%6:%7:::"

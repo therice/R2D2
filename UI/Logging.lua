@@ -55,7 +55,7 @@ LoggingUI.options = {
                     [7] = Logging.Level.Fatal,
                 },
                 function() return Logging:GetRootThreshold() end,
-                function(info, logThreshold)
+                function(_, logThreshold)
                     AddOn.db.profile.logThreshold = logThreshold
                     Logging:SetRootThreshold(logThreshold)
                 end
@@ -94,12 +94,14 @@ function LoggingUI:OnInitialize()
                 .SetFullHeight(true)
                 .DisableButton(true)
                 .SetLabel(nil)
+                --.SetMaxLetters(128 * 250)
                 .AddTo(detailsContainer)()
 
 
         -- now set logging to emit to frame
         Logging:SetWriter(
                 function(msg)
+                    -- todo : limit the amount of lines in logging
                     local txt = msg .. '\n' .. loggingDetail:GetText()
                     loggingDetail:SetText(txt)
                 end

@@ -286,7 +286,7 @@ function AddOn:OnEvent(event, ...)
     end
 end
 
-function AddOn:LootOpened (...)
+function AddOn:LootOpened(...)
 
 end
 

@@ -15,3 +15,18 @@ TestTable  = {
         }
     }
 }
+
+TestTable2 = {
+    a = {
+        test = true,
+    },
+    b = {
+        test = false,
+    },
+    c = {
+        test = false,
+    },
+    d = {
+        test = true,
+    }
+}

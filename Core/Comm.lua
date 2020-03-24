@@ -145,7 +145,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
 
     if prefix == C.name then
         local success, command, data = self:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 4))
 
         if success then
             if command == C.Commands.LootTable then
@@ -156,6 +156,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                             self:SendResponse(C.group, i, C.Responses.Disabled)
                         end
                         Logging:Trace("Sent Disabled response to %s", sender)
+                        return
                     end
 
                     -- determine how many uncached items there are
@@ -206,20 +207,21 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                     self:Warn("Received LootTable from %s, but they are not MasterLooter", sender)
                 end
             elseif command == C.Commands.LootTableAdd and self:UnitIsUnit(sender, self.masterLooter) then
-                local len = #self.lootTable
+                local oldLen = #self.lootTable
                 for index, entry in pairs(unpack(data)) do
                     self.lootTable[index] = Models.ItemEntry:Reconstitute(entry)
                 end
                 self:PrepareLootTable(self.lootTable)
-                self:DoAutoPass(self.lootTable)
-                self:SendLootAck(self.lootTable, len)
+                self:DoAutoPass(self.lootTable, oldLen)
+                self:SendLootAck(self.lootTable, oldLen)
                 for index, entry in ipairs(self.lootTable) do
-                    if index > len then
+                    if index > oldLen then
                         AddOn:GetModule("Loot"):AddSingleItem(entry)
                     end
                 end
             elseif command == C.Commands.Candidates then
                 self.candidates = unpack(data)
+                Util.Tables.Map(self.candidates, function (entry) return Models.Candidate:Reconstitute(entry) end)
             elseif command == C.Commands.MasterLooterDb and not self.isMasterLooter then
                 if self:UnitIsUnit(sender, self.masterLooter) then
                     self:OnMasterLooterDbReceived(unpack(data))

@@ -32,7 +32,6 @@ AddOn.Constants = {
         MasterLooterDb          =   "MasterLooterDb",
         MasterLooterDbRequest   =   "MasterLooterDbRequest",
         MasterLooterDbCheck     =   "MasterLooterDbCheck",
-        OfflineCheck            =   "OfflineCheck",
         OfflineTimer            =   "OfflineTimer",
         PlayerInfo              =   "PlayerInfo",
         PlayerInfoRequest       =   "PlayerInfoRequest",

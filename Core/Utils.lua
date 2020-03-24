@@ -91,7 +91,7 @@ function AddOn:GetPlayerInfo()
 
     -- GetAverageItemLevel() isn't implemented via provided API
     local ilvl = GetAverageItemLevel()
-    return self.playerName, self.playerClass, "NONE", self.guildRank, enchant, lvl, ilvl, nil
+    return self.playerName, self.playerClass, self.guildRank, enchant, lvl, ilvl, nil
 end
 
 -- https://wow.gamepedia.com/API_Ambiguate
@@ -189,7 +189,7 @@ function AddOn:UpdatePlayersGear(startSlot, endSlot)
             if name then
                 self.playersData.gear[i] = link
             else
-                self:ScheduleTimer("UpdatePlayersGears", 1, i, i)
+                self:ScheduleTimer("UpdatePlayersGear", 1, i, i)
             end
         else
             self.playersData.gear[i] = nil

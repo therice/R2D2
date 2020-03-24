@@ -564,7 +564,13 @@ if not wipe then
 			tbl[k]=nil
 		end
 	end
+
+	if not table.wipe then
+		table.wipe = wipe
+	end
 end
+
+
 
 function hooksecurefunc(func_name, post_hook_func)
 	local orig_func = _G[func_name]

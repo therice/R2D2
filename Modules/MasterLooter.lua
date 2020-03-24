@@ -3,6 +3,7 @@ local ML        = AddOn:NewModule("MasterLooter", "AceEvent-3.0", "AceBucket-3.0
 local L         = AddOn.components.Locale
 local Logging   = AddOn.components.Logging
 local Util      = AddOn.Libs.Util
+local ItemUtil  = AddOn.Libs.ItemUtil
 local Models    = AddOn.components.Models
 
 local CANDIDATE_SEND_COOLDOWN = 10
@@ -149,12 +150,12 @@ function ML:UpdateDb()
     AddOn:SendCommand(C.group, C.Commands.MasterLooterDb, AddOn.mlDb)
 end
 
-function ML:AddCandidate(name, class, role, rank, enchant, lvl, ilvl)
-    Logging:Trace("AddCandidate(%s, %s, %s, %s, %s, %s, %s)",
-            name, class, role, rank or 'nil', tostring(enchant),
+function ML:AddCandidate(name, class, rank, enchant, lvl, ilvl)
+    Logging:Trace("AddCandidate(%s, %s, %s, %s, %s, %s)",
+            name, class, rank or 'nil', tostring(enchant),
             tostring(lvl or 'nil'), tostring(ilvl or 'nil')
     )
-    Util.Tables.Insert(self.candidates, name, Models.Candidate:New(name, class, role, rank, enchant, lvl, ilvl))
+    Util.Tables.Insert(self.candidates, name, Models.Candidate:New(name, class, rank, enchant, lvl, ilvl))
 end
 
 function ML:RemoveCandidate(name)
@@ -261,7 +262,7 @@ function ML:Timer(type, ...)
     if type == "AddItem" then
         self:AddItem(...)
     elseif type == "LootSend" then
-        AddOn:SendCommand(C.group, C.Commands.OfflineCheck)
+        AddOn:SendCommand(C.group, C.Commands.OfflineTimer)
     end
 end
 
@@ -306,15 +307,18 @@ end
 
 function ML:GetLootTableForTransmit()
     Logging:Trace("GetLootTableForTransmit(PRE) : %s", Util.Objects.ToString(self.lootTable))
-    local ltTransmit = Util(self.lootTable):CopyFilter(
-        -- don't retransmit already sent items
-        function(entry) return not entry.isSent end
-    ):Map(
-        -- update the items as needed
-        function(entry)
-            Logging:Trace("getmetatable => %s", Util.Objects.ToString(getmetatable(entry)))
-            return entry:UpdateForTransmit()
-        end
+    local ltTransmit = Util(self.lootTable)
+        :Copy()
+        :Map(
+            -- update the items as needed
+            function(entry)
+                Logging:Trace("getmetatable => %s", Util.Objects.ToString(getmetatable(entry)))
+                if entry.isSent then
+                    return nil
+                else
+                    return entry:UpdateForTransmit()
+                end
+            end
     )()
     Logging:Trace("GetLootTableForTransmit(POST) : %s", Util.Objects.ToString(ltTransmit))
     return ltTransmit
@@ -334,7 +338,7 @@ ML.AnnounceItemStrings = {
 
 function ML:AnnounceItems(table)
     -- todo : should we suppress announcements via configuration?
-    Logging:Debug("AnnounceItems()")
+    Logging:Trace("AnnounceItems()")
     AddOn:SendAnnouncement(L["announce_item_text"], AddOn.Constants.group)
     Util.Tables.Iter(table,
             function(v, i)
@@ -359,6 +363,11 @@ function ML:StartSession()
         Logging:Debug("Session data not yet available")
         return
     end
+
+    -- only sort if we not currently in-flight
+    --if not self.running then
+    --    self:SortLootTable(self.lootTable)
+    --end
 
     -- if a session is already running, need to add any new items
     if self.running then
@@ -427,7 +436,7 @@ function ML:Test(items)
     local C = AddOn.Constants
 
     if not tContains(self.candidates, AddOn.playerName) then
-        self:AddCandidate(AddOn.playerName, AddOn.playerClass, "NONE", AddOn.guildRank)
+        self:AddCandidate(AddOn.playerName, AddOn.playerClass, AddOn.guildRank)
     end
     AddOn:SendCommand(C.group, C.Commands.Candidates, self.candidates)
     for _, name in ipairs(items) do
@@ -435,4 +444,111 @@ function ML:Test(items)
     end
     AddOn:CallModule("LootSession")
     AddOn:GetModule("LootSession"):Show(self.lootTable)
+end
+
+ML.EquipmentLocationSortOrder = {
+    "INVTYPE_HEAD",
+    "INVTYPE_NECK",
+    "INVTYPE_SHOULDER",
+    "INVTYPE_CLOAK",
+    "INVTYPE_ROBE",
+    "INVTYPE_CHEST",
+    "INVTYPE_WRIST",
+    "INVTYPE_HAND",
+    "INVTYPE_WAIST",
+    "INVTYPE_LEGS",
+    "INVTYPE_FEET",
+    "INVTYPE_FINGER",
+    "INVTYPE_TRINKET",
+    "", -- miscellaneous (tokens, relics, etc.)
+    "INVTYPE_RELIC",
+    "INVTYPE_QUIVER",
+    "INVTYPE_RANGED",
+    "INVTYPE_RANGEDRIGHT",
+    "INVTYPE_THROWN",
+    "INVTYPE_2HWEAPON",
+    "INVTYPE_WEAPON",
+    "INVTYPE_WEAPONMAINHAND",
+    "INVTYPE_WEAPONMAINHAND_PET",
+    "INVTYPE_WEAPONOFFHAND",
+    "INVTYPE_HOLDABLE",
+    "INVTYPE_SHIELD",
+}
+-- invert it with equipment location as index and prev. index as value
+ML.EquipmentLocationSortOrder = tInvert(ML.EquipmentLocationSortOrder)
+-- add robes at same index as chest
+ML.EquipmentLocationSortOrder["INVTYPE_ROBE"] = ML.EquipmentLocationSortOrder["INVTYPE_CHEST"]
+
+function ML:SortLootTable(lootTable)
+    table.sort(lootTable, self.LootTableCompare)
+end
+
+local function GetItemStatsSum(link)
+    local stats = GetItemStats(link)
+    local sum = 0
+    for _, value in pairs(stats or {}) do
+        sum = sum + value
+    end
+    return sum
+end
+
+-- The loot table sort compare function
+-- Sorted by:
+-- 1. equipment slot: head, neck, ...
+-- 2. trinket category name
+-- 3. subType: junk(armor token), plate, mail, ...
+-- 4. relicType: Arcane, Life, ..
+-- 5. Item level from high to low
+-- 6. The sum of item stats, to make sure items with bonuses(socket, leech, etc) are sorted first.
+-- 7. Item name
+--
+-- @param a: an entry in the lootTable
+-- @param b: The other entry in the looTable
+-- @return true if a is sorted before b
+function ML.LootTableCompare(a, b)
+    if not a.link then return false end
+    if not b.link then return true end
+
+    -- todo : add support for item tokens
+    local elA = ML.EquipmentLocationSortOrder[a.equipLoc] or math.huge
+    local elB = ML.EquipmentLocationSortOrder[b.equipLoc] or math.huge
+    if elA ~= elB then
+        Logging:Trace("LootTableCompare(%s, %s) : %s", a.equipLoc, b.equipLoc, tostring(elA < elB))
+        return elA < elB
+    end
+
+    -- todo : add support for trinkets
+    --if a.equipLoc == "INVTYPE_TRINKET" and b.equipLoc == "INVTYPE_TRINKET" then
+    --
+    --end
+
+    if a.typeId ~= b.typeId then
+        Logging:Trace("LootTableCompare(%s, %s) : %s", a.typeId, b.typeId, tostring(a.typeId > b.typeId))
+        return a.typeId > b.typeId
+    end
+
+    if a.subTypeId ~= b.subTypeId then
+        Logging:Trace("LootTableCompare(%s, %s) : %s", a.subTypeId, b.subTypeId, tostring(a.subTypeId > b.subTypeId))
+        return a.subTypeId > b.subTypeId
+    end
+
+    -- todo: add support for relics
+
+    if a.ilvl ~= b.ilvl then
+        Logging:Trace("LootTableCompare(%s, %s) : %s", a.ilvl, b.ilvl, tostring( a.ilvl > b.ilvl))
+        return a.ilvl > b.ilvl
+    end
+
+    local statsA = GetItemStatsSum(a.link)
+    local statsB = GetItemStatsSum(b.link)
+    if statsA ~= statsB then
+        Logging:Trace("LootTableCompare(%s, %s) : %s", a.link, b.link, tostring(  statsA > statsB))
+        return statsA > statsB
+    end
+
+    local nameA = ItemUtil:ItemLinkToItemName(a.link)
+    local nameB = ItemUtil:ItemLinkToItemName(b.link)
+    Logging:Trace("LootTableCompare(%s, %s) : %s", a.link, b.link, tostring(  nameA < nameB))
+
+    return nameA < nameB
 end
