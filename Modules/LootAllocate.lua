@@ -6,6 +6,7 @@ local L             = AddOn.components.Locale
 local UI            = AddOn.components.UI
 local ST            = AddOn.Libs.ScrollingTable
 local Util          = AddOn.Libs.Util
+local GP            = AddOn.Libs.GearPoints
 local Models        = AddOn.components.Models
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 15, 0.2
@@ -18,7 +19,6 @@ local updatePending, updateIntervalRemaining, updateFrame = false, 0, CreateFram
 LootAllocate.defaults = {
 
 }
-
 
 function LootAllocate:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -115,7 +115,7 @@ function LootAllocate:SetupSession(session, t)
     t.candidates = {}
 
     for name, v in pairs(AddOn.candidates) do
-        Logging:Debug("SetupSession(%s, %s) : %s", session, name, Util.Objects.ToString(v))
+        Logging:Debug("SetupSession(%s, %s) : %s", session, name, Util.Objects.ToString(v, 1))
         t.candidates[name] = {
             class = v.class,
             rank = v.rank,
@@ -177,13 +177,14 @@ function LootAllocate:SwitchSession(s)
 
     session = s
     local t = lootTable[s]
-    local e = Models.ItemEntry:Reconstitute(t)
+    local e = Models.ItemEntry:new():reconstitute(t)
 
     self.frame.itemIcon:SetNormalTexture(t.texture)
     self.frame.itemIcon:SetBorderColor("purple")
     self.frame.itemText:SetText(t.link)
-    self.frame.iState:SetText(self:GetItemStatus(t.link))
+    self.frame.iState:SetText("ABADABA"..self:GetItemStatus(t.link))
     self.frame.itemLvl:SetText(_G.ITEM_LEVEL_ABBR..": " .. e:GetLevelText())
+    self.frame.gp:SetText("GP: " .. tostring(GP:GetValue(e.link)))
     self.frame.itemType:SetText(e:GetTypeText())
 
     --[[
@@ -254,7 +255,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
     local C = AddOn.Constants
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 4))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 3))
         if success then
             if command == C.Commands.LootAck then
                 local name, ilvl, sessionData = unpack(data)
@@ -303,7 +304,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 local oldLen = #lootTable
                 for index, entry in pairs(unpack(data)) do
                     Logging:Debug("LootTableAdd(%s, %s) : %s", tostring(oldLen), tostring(index), Util.Objects.ToString(entry, 4))
-                    lootTable[index] = Models.ItemEntry:Reconstitute(entry)
+                    lootTable[index] = Models.ItemEntry:new():reconstitute(entry)
                 end
 
                 local autoRolls = false
@@ -341,7 +342,23 @@ function LootAllocate:UpdateMoreInfo(row, data)
 end
 
 function LootAllocate:GetAwardPopupData(session, name, data, reason)
-
+    return {
+        session     = session,
+        winner		= name,
+        class       = lootTable[session].candidates[name].class,
+        responseId	= data.response,
+        reason		= reason,
+        gear1 		= data.gear1,
+        gear2		= data.gear2,
+        isTierRoll	= data.isTier,
+        isRelicRoll	= data.isRelic,
+        link 		= lootTable[session].link,
+        isToken		= lootTable[session].token,
+        note		= data.note,
+        equipLoc	= lootTable[session].equipLoc,
+        texture 	= lootTable[session].texture,
+        typeCode 	= lootTable[session].typeCode,
+    }
 end
 
 function LootAllocate:GetFrame()
@@ -435,11 +452,18 @@ function LootAllocate:GetFrame()
     ilvl:SetText("")
     f.itemLvl = ilvl
 
+    local iGp = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    iGp:SetPoint("LEFT", ilvl, "RIGHT", 5, 0)
+    iGp:SetTextColor(0,1,0,1)
+    iGp:SetText("")
+    f.gp = iGp
+
     local iState = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    iState:SetPoint("LEFT", ilvl, "RIGHT", 5, 0)
+    iState:SetPoint("LEFT", iGp, "RIGHT", 5, 0)
     iState:SetTextColor(0,1,0,1)
     iState:SetText("")
     f.iState = iState
+
 
     local iType = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     iType:SetPoint("TOPLEFT", ilvl, "BOTTOMLEFT", 0, -4)
@@ -545,11 +569,81 @@ function LootAllocate:GetFrame()
     return f
 end
 
+
+LootAllocate.RightClickEntries = {
+    { -- Level 1
+        { -- 1 Title, player name
+            text = function(name) return AddOn.Ambiguate(name) end,
+            isTitle = true,
+            notCheckable = true,
+            disabled = true,
+        },
+        { -- 2 Spacer
+            text = "",
+            notCheckable = true,
+            disabled = true,
+        },
+        { -- 3 Award
+            text = L["award"],
+            notCheckable = true,
+            func = function(name, data)
+                Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name, data))
+            end,
+        },
+        { -- 4 Award for
+            text = L["award_for"],
+            value = "AWARD_FOR",
+            notCheckable = true,
+            hasArrow = true,
+        },
+        { -- 5 Spacer
+            text = "",
+            notCheckable = true,
+            disabled = true,
+        },
+    }
+}
+
 local info = MSA_DropDownMenu_CreateInfo()
 function LootAllocate.RightClickMenu(menu, level)
     Logging:Trace("RightClickMenu()")
     if not AddOn.isMasterLooter then return end
+
+    local candidateName = menu.name
+    local data = lootTable[session].candidates[candidateName]
+    local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
+    for _, entry in ipairs(LootAllocate.RightClickEntries[level]) do
+        info = MSA_DropDownMenu_CreateInfo()
+        if not entry.special then
+            if not entry.onValue or entry.onValue == value or (type(entry.onValue)=="function" and entry.onValue(candidateName, data)) then
+                if (entry.hidden and type(entry.hidden) == "function" and not entry.hidden(candidateName, data)) or not entry.hidden then
+                    for name, val in pairs(entry) do
+                        if name == "func" then
+                            info[name] = function() return val(candidateName, data) end
+                        elseif type(val) == "function" then
+                            info[name] = val(candidateName, data)
+                        else
+                            info[name] = val
+                        end
+                    end
+                    MSA_DropDownMenu_AddButton(info, level)
+                end
+            end
+        elseif value == "AWARD_FOR" and entry.special == value then
+            for k,v in ipairs(db.awardReasons) do
+                if k > db.numAwardReasons then break end
+                info.text = v.text
+                info.notCheckable = true
+                info.func = function()
+                    Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, candidateName, data, v))
+                end
+                MSA_DropDownMenu_AddButton(info, level)
+            end
+        elseif value == "CHANGE_RESPONSE" and entry.special == value then
+        end
+    end
 end
+
 
 function LootAllocate.FilterMenu(menu, level)
     Logging:Trace("FilterMenu()")
@@ -681,6 +775,7 @@ function LootAllocate:GetItemStatus(item)
     if GameTooltip:NumLines() > 1 then
         local line = getglobal('GameTooltipTextLeft2')
         local t = line:GetText()
+        --Logging:Debug("GetItemStatus() : %s", t)
         if t then
             if strfind(t, "cFF 0FF 0") then
                 text = t

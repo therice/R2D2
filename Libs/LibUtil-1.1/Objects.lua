@@ -179,7 +179,13 @@ function Self.ToString(val, depth)
                     val,
                     function (s, v, i)
                         if s ~= "{" then s = s .. ", " end
-                        if i ~= j then s = s .. i .. " = " end
+                        if i ~= j then
+                            if type(i) == 'table' then
+                                s = s .. Self.ToString(i, depth - 1) .. " = "
+                            else
+                                s = s .. i .. " = "
+                            end
+                        end
                         j = j + 1
                         return s .. Self.ToString(v, depth-1)
                     end,

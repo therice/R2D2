@@ -218,7 +218,7 @@ function AddOn:PrepareLootTable(lootTable)
             function(entry, session)
                 -- Logging:Trace("PrepareLootTable() : %s - %s", tostring(session), Util.Objects.ToString(entry))
                 -- Logging:Trace("PrepareLootTable() : Entry getmetatable => %s", Util.Objects.ToString(getmetatable(entry)))
-                entry:Prepare(session)
+                entry:Validate(session)
             end,
             true -- index required (it's the session id)
     )

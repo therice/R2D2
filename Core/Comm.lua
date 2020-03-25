@@ -32,11 +32,45 @@ function AddOn:SendAnnouncement(msg, channel)
     end
 end
 
+-- scrubs passed value for transmission over the wire
+-- specifically, entries that are modeled as classes via LibClass
+-- need to have their functions removed as not serializable
+-- when they are received, they will be reconstitued into the appropriate class
+local function ScrubValue(value)
+    local vt = type(value)
+
+    if vt == 'table' and not value.clazz then
+        local t = {}
+        for k, v in pairs(value) do
+            local k1 = ScrubValue(k)
+            local v1 = ScrubValue(v)
+            t[k1] = v1
+        end
+        return t
+    elseif vt == 'table' and value.clazz then
+        return value:toTable()
+    else
+        return value
+    end
+end
+
+-- goes through passed arguments, scrubbing them for transmission over the wire
+function AddOn.ScrubData(...)
+    local scrubbed = Util.Tables.New()
+    for i=1,select("#", ...) do
+        local v = select(i, ...)
+        Util.Tables.Push(scrubbed, ScrubValue(v))
+    end
+    return scrubbed
+end
+
 
 function AddOn:SendCommand(target, command, ...)
     local C = AddOn.Constants
+
     -- send all data as a table, and let receiver unpack it
-    local toSend = self:Serialize(command, {...})
+    -- before sending, we scrub to insure it can be serialized
+    local toSend = self:Serialize(command, self.ScrubData(...))
     local prefix = C.name
 
     Logging:Trace("SendCommand(%s, %s) : %s", target, command, Util.Objects.ToString(toSend))
@@ -64,16 +98,6 @@ function AddOn:SendCommand(target, command, ...)
     end
 end
 
---[[
-DEBUG [03/23/20 13:46:06] (Comm.lua:42): SendCommand(group, LootAck) :
-^1^SLootAck^T^N1^SDebugme-Atiesh^N3^T^Sresponse^T^t^Sdiff^T^N1^N0^N2^N0^N3^N0^N4^N0^t^Sgear1^T^t^Sgear2^T^t^t^t^^
-
-DEBUG [03/23/20 13:46:07] (LootAllocate.lua:257): OnCommReceived() :
-success=true, command=LootAck, data={Debugme-Atiesh, 3 = {gear2 = {}, gear1 = {}, diff = {0, 0, 0, 0}, response = {}}}
-DEBUG [03/23/20 13:46:07] (LootAllocate.lua:252): OnCommReceived() :
-prefix=R2D2, via=WHISPER, sender=Debugme
---]]
-
 -- Sends a response.
 -- @paramsig session [, ...]
 -- link, ilvl, and equipLoc must be provided to send out gear information.
@@ -86,7 +110,7 @@ prefix=R2D2, via=WHISPER, sender=Debugme
 -- @param ilvl			The ilvl of the item in the session.
 -- @param equipLoc		The item in the session's equipLoc.
 -- @param sendAvgIlvl   Indicates whether we send average ilvl.
-function AddOn:SendResponse(target, session, response, roll, link, ilvl, equipLoc, sendAvgIlvl)
+function AddOn:SendResponse(target, session, response, note, roll, link, ilvl, equipLoc, sendAvgIlvl)
     Logging:Trace("SendResponse()")
     local C = AddOn.Constants
     local g1, g2, diff
@@ -104,7 +128,7 @@ function AddOn:SendResponse(target, session, response, roll, link, ilvl, equipLo
                 gear2 = g2 and ItemUtil:ItemLinkToItemString(g2) or nil,
                 ilvl = sendAvgIlvl and self.playersData.ilvl or nil,
                 diff = diff,
-                note = nil,
+                note = note,
                 response = response,
                 roll = roll
             }
@@ -145,7 +169,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
 
     if prefix == C.name then
         local success, command, data = self:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 4))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 3))
 
         if success then
             if command == C.Commands.LootTable then
@@ -170,7 +194,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                     end
 
                     -- Unpacking doesn't bring back class meta-data, need to reconstitute the entries
-                    Util.Tables.Map(self.lootTable, function (entry) return Models.ItemEntry:Reconstitute(entry) end)
+                    Util.Tables.Map(self.lootTable, function (entry) return Models.ItemEntry:new():reconstitute(entry) end)
                     self:PrepareLootTable(self.lootTable)
 
                     -- Received LootTable without having received MasterLooterDb, well...
@@ -192,7 +216,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                         Util.Tables.Iter(self.lootTable,
                                 function(entry, session)
                                     self:SendResponse(C.group, session, C.Responses.NotInRaid,
-                                            nil, entry.link, entry.ilvl, entry.equipLoc, true
+                                            nil, nil, entry.link, entry.ilvl, entry.equipLoc, true
                                     )
                                 end
                         )
@@ -209,7 +233,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
             elseif command == C.Commands.LootTableAdd and self:UnitIsUnit(sender, self.masterLooter) then
                 local oldLen = #self.lootTable
                 for index, entry in pairs(unpack(data)) do
-                    self.lootTable[index] = Models.ItemEntry:Reconstitute(entry)
+                    self.lootTable[index] = Models.ItemEntry:new():reconstitute(entry)
                 end
                 self:PrepareLootTable(self.lootTable)
                 self:DoAutoPass(self.lootTable, oldLen)
@@ -221,7 +245,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
             elseif command == C.Commands.Candidates then
                 self.candidates = unpack(data)
-                Util.Tables.Map(self.candidates, function (entry) return Models.Candidate:Reconstitute(entry) end)
+                Util.Tables.Map(self.candidates, function (entry) return Models.Candidate:new():reconstitute(entry) end)
             elseif command == C.Commands.MasterLooterDb and not self.isMasterLooter then
                 if self:UnitIsUnit(sender, self.masterLooter) then
                     self:OnMasterLooterDbReceived(unpack(data))

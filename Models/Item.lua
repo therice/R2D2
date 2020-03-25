@@ -1,16 +1,21 @@
 local _, AddOn = ...
-local Util = AddOn.Libs.Util
-local ItemUtil = AddOn.Libs.ItemUtil
-local GP = AddOn.Libs.GearPoints
+local Util      = AddOn.Libs.Util
+local Class     = AddOn.Libs.Class
+local Logging  = AddOn.Libs.Logging
+local ItemUtil  = AddOn.Libs.ItemUtil
+local GP        = AddOn.Libs.GearPoints
 
-local Item = { }
-Item.__index = Item
-
-local ItemEntry = { }
-ItemEntry.__index = ItemEntry
+local Item = Class('Item')
+local ItemEntry = Class('ItemEntry', Item)
+local LootEntry = Class('LootEntry', ItemEntry)
 
 AddOn.components.Models.Item = Item
 AddOn.components.Models.ItemEntry = ItemEntry
+AddOn.components.Models.LootEntry = LootEntry
+
+--
+-- Item
+--
 
 --[[
 Example Item(s)
@@ -44,22 +49,19 @@ Example Item(s)
 --]]
 
 -- create an Item from invidiual attributes
-function Item:New(id, link, quality, ilvl, type, equipLoc, subType, texture, typeId, subTypeId, bindType, classes)
-    local instance = {
-        id          = id,
-        link        = link,
-        quality     = quality,
-        ilvl        = ilvl,
-        typeId      = typeId,
-        type        = type,
-        equipLoc    = equipLoc,
-        subTypeId   = subTypeId,
-        subType     = subType,
-        texture     = texture,
-        boe         = bindType == LE_ITEM_BIND_ON_EQUIP,
-        classes     = classes
-    }
-    return setmetatable(instance, Item)
+function Item:initialize(id, link, quality, ilvl, type, equipLoc, subType, texture, typeId, subTypeId, bindType, classes)
+    self.id          = id
+    self.link        = link
+    self.quality     = quality
+    self.ilvl        = ilvl
+    self.typeId      = typeId
+    self.type        = type
+    self.equipLoc    = equipLoc
+    self.subTypeId   = subTypeId
+    self.subType     = subType
+    self.texture     = texture
+    self.boe         = bindType == LE_ITEM_BIND_ON_EQUIP
+    self.classes     = classes
 end
 
 -- create an Item via GetItemInfo
@@ -71,7 +73,7 @@ function Item:FromGetItemInfo(item)
     local id = link and ItemUtil:ItemLinkToId(link)
     if name then
         local customItem = ItemUtil:GetCustomItem(itemId)
-        return Item:New(
+        return Item:new(
                 id,
                 link,
                 (customItem and customItem[1]) or rarity,
@@ -90,9 +92,8 @@ function Item:FromGetItemInfo(item)
     end
 end
 
-function Item:Clone()
-    local copy = Util.Tables.Copy(self)
-    return setmetatable(copy, Item)
+function Item:IsValid()
+    return ((self.id and self.id > 0) and Util.Strings.IsSet(self.link))
 end
 
 function Item:GetLevelText()
@@ -158,6 +159,9 @@ end
 }
 --]]
 
+--
+-- ItemEntry
+--
 
 -- @param item      ItemID|itemString|itemLink|Item
 -- @param slotIndex Index of the entry
@@ -165,42 +169,56 @@ end
 -- @param owner     The owner of the item (if any)
 -- @param sent      Has entry been transmitted to others
 -- @param typeCode  The associated type code used to determine which set of buttons to use for this entry
-function ItemEntry:New(item, slotIndex, awarded, owner, sent, typeCode)
-    local instance
-    -- already an Item, just clone it
-    if type(item) == 'table' then
-        instance = item:Clone()
-    -- need to create a new item Item instance
-    else
-        -- Chance we cannot get the item info, if that happens then instantiate a new table
-        instance = Item:FromGetItemInfo(item)
-        if not instance then instance = {} end
+function ItemEntry:initialize(item, slotIndex, awarded, owner, sent, typeCode)
+    if not item then return end
+
+    if type(item) ~= 'table' then
+        item = Item:FromGetItemInfo(item)
+        -- if it couldn't be created, just set to an empty instance
+        if not item then
+            item = Item:new()
+        end
     end
+    Item.initialize(self,
+            item.id,
+            item.link,
+            item.quality,
+            item.ilvl,
+            item.type,
+            item.equipLoc,
+            item.subType,
+            item.texture,
+            item.typeId,
+            item.subTypeId,
+            item.boe,
+            item.classes
+    )
 
     -- now add the entry attributes
-    instance.lootSlot = slotIndex
-    instance.awarded = awarded
-    instance.owner = owner
-    instance.isSent = sent
-    instance.typeCode = typeCode
-
-    return setmetatable(instance, ItemEntry)
-end
-
-function ItemEntry:Reconstitute(instance)
-    return setmetatable(instance, ItemEntry)
+    self.lootSlot = slotIndex
+    self.awarded = awarded
+    self.owner = owner
+    self.isSent = sent
+    self.typeCode = typeCode
+    self.isRoll = false
 end
 
 function ItemEntry:UpdateForTransmit()
-    self.equipLoc = select(4, GetItemInfoInstant(self.link))
+    -- if no equipment location set and we have a link
+    -- then update it
+    if not self.equipLoc and self.link then
+        self.equipLoc = select(4, GetItemInfoInstant(self.link))
+    end
     -- todo : nil these out?
-    --self.typeId = nil
-    --self.subTypeId = nil
+    -- self.typeId = nil
+    -- self.subTypeId = nil
     return self
 end
 
 -- validates item entry is valid, re-populating as necessary
-function ItemEntry:Prepare(session)
+-- then associates passed session if not set
+function ItemEntry:Validate(session)
+    -- if we're missing necessary item data, bring it in
     if not self:IsValid() then
         Util.Tables.CopyInto(self, Item:FromGetItemInfo(self.link))
     end
@@ -209,27 +227,51 @@ function ItemEntry:Prepare(session)
     return self
 end
 
-function ItemEntry:Clone()
-    local copy = Util.Tables.Copy(self)
-    return setmetatable(copy, ItemEntry)
+-- converts an ItemEntry into a table which is suitable for displaying in LootSession UI
+-- this doesn't return an instance with metatable set, just a simple table
+function ItemEntry:ToRow(session, cols)
+    local row = {
+        session = session,
+        texture = self.texture or nil,
+        link = self.link,
+        owner = self.owner,
+        cols = cols
+    }
+    return row
 end
 
-function ItemEntry:IsValid()
-    return self.id and self.link
+function ItemEntry:ToLootEntry()
+    return LootEntry:new(self)
 end
 
-function ItemEntry:GetLevelText()
-    return Item.GetLevelText(self)
+--
+-- LootEntry
+--
+
+function LootEntry:initialize(itemEntry)
+    if itemEntry and type(itemEntry) == 'table' then
+        ItemEntry.initialize(
+                self,
+                -- this is going to pull along extra attributes, but the super constructor will
+                -- ignore them and take remainder from parameters
+                itemEntry:toTable(),
+                itemEntry.lootSlot,
+                itemEntry.awarded,
+                itemEntry.owner,
+                itemEntry.isSent,
+                itemEntry.typeCode
+        )
+
+        self.rolled = false
+        self.note = nil
+        self.sessions = itemEntry.session and { itemEntry.session } or {}
+        self.timeLeft = 60
+    end
 end
 
-function ItemEntry:GetTypeText()
-    return Item.GetTypeText(self)
-end
-
-function ItemEntry:GetGpText(includeLevel)
-    return Item.GetGpText(self, includeLevel)
-end
-
-function ItemEntry:GetGp()
-    return Item.GetGp(self)
+-- return an instance with only rolled attribute, set to true
+function LootEntry.Rolled()
+    local instance = LootEntry:new()
+    instance.rolled = true
+    return instance
 end

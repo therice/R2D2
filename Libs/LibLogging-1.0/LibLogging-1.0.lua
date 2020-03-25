@@ -1,5 +1,5 @@
 local MAJOR_VERSION = "LibLogging-1.0"
-local MINOR_VERSION = tonumber(("$Revision: 1023 $"):match("%d+")) or 0
+local MINOR_VERSION = 11303
 
 local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end

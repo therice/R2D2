@@ -23,16 +23,7 @@ local RANDOM_ROLL_PATTERN =
 
 function Loot:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
-    --[[
-    session = {
-        name = ...,
-        link = ...,
-        lvl = ...,
-        gp = ...,
-        texture = ...,
-    }
-    -- item.i = {name, link, lvl, texture} (i == session)
-    --]]
+    -- mapping from session to ItemEntry
     self.items = {}
     self.frame = self:GetFrame()
     self:RegisterEvent("CHAT_MSG_SYSTEM")
@@ -48,12 +39,7 @@ end
 -- item will be a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
     Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
-    Logging:Trace("getmetatable => %s", Util.Objects.ToString(getmetatable(item)))
-    local toAdd = item:Clone()
-    toAdd.rolled = false
-    toAdd.sessions = { item.session }
-    toAdd.timeLeft = 60
-    self.items[offset + k] = toAdd
+    self.items[offset + k] = item:ToLootEntry()
 end
 
 function Loot:CheckDuplicates(size, offset)
@@ -94,7 +80,7 @@ function Loot:Start(table, reRoll)
     for k =1, #table do
         -- if auto-pass, pretend it was rolled
         if table[k].autoPass then
-            self.items[offset + k] = {rolled = true}
+            self.items[offset + k] = Models.LootEntry.Rolled()
         else
             self:AddItem(offset, k, table[k])
         end
@@ -108,7 +94,7 @@ function Loot:AddSingleItem(item)
     if not self:IsEnabled() then self:Enable() end
     Logging:Trace("AddSingleItem(%s, %s)", item.link, #self.items)
     if item.autoPass then
-        self.items[#self.items + 1] = { rolled = true}
+        self.items[#self.items + 1] = Models.LootEntry.Rolled()
     else
         self:AddItem(0, #self.items + 1, item)
         self:Show()
@@ -173,7 +159,7 @@ function Loot:OnRoll(entry, button)
 
         Logging:Trace("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
         for _, session in ipairs(item.sessions) do
-            AddOn:SendResponse(C.group, session, button)
+            AddOn:SendResponse(C.group, session, button, item.note)
         end
         AddOn:Print(format(L["response_to_item"], AddOn:GetItemTextWithCount(item.link, #item.sessions))
                 .. " : " .. (response and response.text or "???")
@@ -246,10 +232,16 @@ do
             )
             entry.icon:SetNormalTexture(entry.item.texture or "Interface\\InventoryItems\\WoWUnknownItem01")
             entry.itemCount:SetText(#entry.item.sessions > 1 and #entry.item.sessions or "")
-            entry.itemLvl:SetText("GP " .. item:GetGpText() ..
-                    " Level " .. item:GetLevelText() ..
+            entry.itemLvl:SetText("Level " .. item:GetLevelText() ..
+                    " |cff00ff00GP " .. item:GetGpText() ..
                     " |cff7fffff".. item:GetTypeText() .. "|r"
             )
+            if entry.item.note then
+                entry.noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up")
+            else
+                entry.noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Disabled")
+            end
+
             -- todo : implement timeouts via settings
             local showTimeout = false
             if showTimeout then
@@ -346,6 +338,57 @@ do
                 entry.width = math.max(entry.width, 90 + entry.itemText:GetStringWidth())
                 entry.width = math.max(entry.width, 89 + entry.itemLvl:GetStringWidth())
             end
+
+            -- note
+            entry.noteButton = CreateFrame("Button", nil, entry.frame)
+            entry.noteButton:SetSize(24,24)
+            entry.noteButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+            entry.noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Disabled")
+            entry.noteButton:SetPoint("BOTTOMRIGHT", entry.frame, "TOPRIGHT", -9, -entry.icon:GetHeight()-5)
+            entry.noteButton:SetScript("OnEnter", function()
+                if entry.item.note then
+                    UI:CreateTooltip(L["your_note"], entry.item.note .. "\n", L["change_note"])
+                else
+                    UI:CreateTooltip(L["add_note"], L["add_note_desc"])
+                end
+            end)
+            entry.noteButton:SetScript("OnLeave", function() UI:HideTooltip() end)
+            entry.noteButton:SetScript("OnClick", function()
+                if not entry.noteEditbox:IsShown() then
+                    entry.noteEditbox:Show()
+                else
+                    entry.noteEditbox:Hide()
+                    entry.item.note = entry.noteEditbox:GetText() ~= "" and entry.noteEditbox:GetText()
+                    entry:Update(entry.item)
+                end
+            end)
+
+            entry.noteEditbox = CreateFrame("EditBox", nil, entry.frame, "AutoCompleteEditBoxTemplate")
+            entry.noteEditbox:SetMaxLetters(64)
+            entry.noteEditbox:SetBackdrop(Loot.frame.title:GetBackdrop())
+            entry.noteEditbox:SetBackdropColor(Loot.frame.title:GetBackdropColor())
+            entry.noteEditbox:SetBackdropBorderColor(Loot.frame.title:GetBackdropBorderColor())
+            entry.noteEditbox:SetFontObject(_G.ChatFontNormal)
+            entry.noteEditbox:SetJustifyV("BOTTOM")
+            entry.noteEditbox:SetWidth(100)
+            entry.noteEditbox:SetHeight(24)
+            entry.noteEditbox:SetPoint("BOTTOMLEFT", entry.frame, "TOPRIGHT", 0, -entry.icon:GetHeight()-5)
+            entry.noteEditbox:SetTextInsets(5, 5, 0, 0)
+            entry.noteEditbox:SetScript("OnEnterPressed", function(self)
+                self:Hide()
+                entry:Update(entry.item)
+            end)
+            entry.noteEditbox:SetScript("OnTextChanged", function(self)
+                entry.item.note = self:GetText() ~= "" and self:GetText()
+                -- Change the note button instead of calling entry:Update on every single input
+                if entry.item.note then
+                    entry.noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up")
+                else
+                    entry.noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Disabled")
+                end
+            end)
+            entry.noteEditbox:Hide()
+
             -- item level/text
             entry.itemText = entry.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
             entry.itemText:SetPoint("TOPLEFT", entry.icon, "TOPRIGHT", 6, -1)

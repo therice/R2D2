@@ -73,11 +73,13 @@ function ML:OnDisable()
     self:UnhookAll()
 end
 
+-- @return the 'db' value at specified path
 function ML:GetDbValue(...)
     local path = Util.Strings.Join('.', ...)
     return Util.Tables.Get(self.db.profile, path)
 end
 
+-- @return the 'default' value at specified path
 function ML:GetDefaultDbValue(...)
     local path = Util.Strings.Join('.', ...)
     return Util.Tables.Get(ML.defaults, path)
@@ -155,7 +157,7 @@ function ML:AddCandidate(name, class, rank, enchant, lvl, ilvl)
             name, class, rank or 'nil', tostring(enchant),
             tostring(lvl or 'nil'), tostring(ilvl or 'nil')
     )
-    Util.Tables.Insert(self.candidates, name, Models.Candidate:New(name, class, rank, enchant, lvl, ilvl))
+    Util.Tables.Insert(self.candidates, name, Models.Candidate:new(name, class, rank, enchant, lvl, ilvl))
 end
 
 function ML:RemoveCandidate(name)
@@ -168,7 +170,8 @@ function ML:UpdateCandidates(ask)
     if type(ask) ~= "boolean" then ask = false end
 
     local C = AddOn.Constants
-    local candidates_copy = Util.Tables.Copy(self.candidates, function() return true end)
+    -- Util.Tables.Copy(self.candidates, function() return true end)
+    local candidates_copy = Util(self.candidates):Copy()()
     local updates = false
 
     for i = 1, GetNumGroupMembers() do
@@ -177,7 +180,7 @@ function ML:UpdateCandidates(ask)
         --
         -- name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole
         --      = GetRaidRosterInfo(raidIndex)
-        local name, _, _, _, _, class, _, _, _, _, _, role  = GetRaidRosterInfo(i)
+        local name, _, _, _, _, class, _, _, _, _, _, _  = GetRaidRosterInfo(i)
         if name then
             name = AddOn:UnitName(name)
             if candidates_copy[name] then
@@ -188,7 +191,7 @@ function ML:UpdateCandidates(ask)
                 if ask then
                     AddOn:SendCommand(name, C.Commands.PlayerInfoRequest)
                 end
-                self:AddCandidate(name, class, role)
+                self:AddCandidate(name, class)
                 updates = true
             end
         else
@@ -198,9 +201,11 @@ function ML:UpdateCandidates(ask)
     end
 
     -- these folks no longer around (in raid)
-    for n, _ in pairs(candidates_copy) do
-        self:RemoveCandidate(n)
-        updates = true
+    for n, v in pairs(candidates_copy) do
+        if v then
+            self:RemoveCandidate(n)
+            updates = true
+        end
     end
 
     -- send updates to candidate list and db
@@ -279,7 +284,7 @@ function ML:AddItem(item, slotIndex, owner, index)
     Logging:Trace("AddItem(%s)", item)
     -- todo : determine type code (as needed)
     index = index or nil
-    local entry = Models.ItemEntry:New(item, slotIndex, false, owner, false, "default")
+    local entry = Models.ItemEntry:new(item, slotIndex, false, owner, false, "default")
 
     -- Need to insert entry regardless of fully populated (IsValid) as the
     -- session frame needs each of them to start and will update as entries are
@@ -322,6 +327,16 @@ function ML:GetLootTableForTransmit()
     )()
     Logging:Trace("GetLootTableForTransmit(POST) : %s", Util.Objects.ToString(ltTransmit))
     return ltTransmit
+end
+
+--@param session the session to award.
+--@param winner	Nil/false if items should be stored in inventory and awarded later.
+--@param response the candidates response, used for announcement.
+--@param reason	entry in awardReasons
+--@param callback This function will be called as callback(awarded, session, winner, status, ...)
+--@returns true if award is success. false if award is failed. nil if we don't know the result yet.
+function ML:Award(session, winner, response, reason, callback, ...)
+
 end
 
 ML.AnnounceItemStrings = {
@@ -383,6 +398,16 @@ function ML:StartSession()
     -- todo : do we need to emit help messages here?
 end
 
+function ML:HasAllItemsBeenAwarded()
+    local moreItems = true
+    for i = 1, #self.lootTable do
+        if not self.lootTable[i].awarded then
+            moreItems = false
+        end
+    end
+    return moreItems
+end
+
 function ML:EndSession()
     Logging:Debug("EndSession()")
     local C = AddOn.Constants
@@ -408,7 +433,7 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
     local C = AddOn.Constants
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 3))
         -- only ML receives these commands
         if success and AddOn.isMasterLooter then
             if command == C.Commands.PlayerInfo then
@@ -445,6 +470,45 @@ function ML:Test(items)
     AddOn:CallModule("LootSession")
     AddOn:GetModule("LootSession"):Show(self.lootTable)
 end
+
+-- Award popup control functions
+-- data contains: session, winner, responseId, reason, gear1, gear2, isTierRoll, isRelicRoll, link, isToken
+function ML.AwardPopupOnShow(frame, data)
+    local awardTo =  AddOn.Ambiguate(data.winner)
+    local c = AddOn:GetClassColor(data.class)
+    frame:SetFrameStrata("FULLSCREEN")
+    frame.text:SetText(format(L["confirm_award_item_to_player"], data.link, c:WrapTextInColorCode(awardTo)))
+    frame.icon:SetTexture(data.texture)
+end
+
+function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data, callback, ...)
+    if callback and type(callback) == "function" then
+        callback(awarded, session, winner, status, data, ...)
+    end
+    if awarded then
+        -- todo : add to history
+    end
+end
+
+function ML.AwardPopupOnClickYes(frame, data, callback, ...)
+    ML:Award(
+        data.session,
+        data.winner,
+        data.responseId and AddOn:GetResponse(data.typeCode or data.equipLoc, data.responseId).text,
+        data.reason,
+        ML.AwardPopupOnClickYesCallback,
+        data,
+        callback,
+        ...
+    )
+    -- we need to delay the test mode disabling so comms have a chance to be sent first
+    if AddOn.testMode and ML:HasAllItemsBeenAwarded() then ML:EndSession() end
+end
+
+function ML.AwardPopupOnClickNo(frame, data)
+    -- Intentionally left empty
+end
+
 
 ML.EquipmentLocationSortOrder = {
     "INVTYPE_HEAD",

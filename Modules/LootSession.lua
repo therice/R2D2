@@ -59,24 +59,21 @@ function LootSession:IsRunning()
     return self.frame and self.frame:IsVisible()
 end
 
+
 function LootSession:ExtractData(data)
     self.frame.rows = {}
-    for k,v in ipairs(data) do
+
+    for sess, entry in ipairs(data) do
         -- Don't add items we've already started a session with
-        if not v.transmitted then
-            Util.Tables.Push(self.frame.rows,
+        if not entry.isSent then
+            Util.Tables.Push(self.frame.rows, entry:ToRow(sess,
                     {
-                        session = k,
-                        texture = v.texture or nil,
-                        link = v.link,
-                        owner = v.owner,
-                        cols = {
-                            { DoCellUpdate = self.SetCellDeleteButton },
-                            { DoCellUpdate = self.SetCellItemIcon },
-                            { value = " " .. (v.ilvl or "") },
-                            { DoCellUpdate = self.SetCellText },
-                        },
+                        { DoCellUpdate = LootSession.SetCellDeleteButton },
+                        { DoCellUpdate = LootSession.SetCellItemIcon },
+                        { value = " " .. (entry.ilvl or "") },
+                        { DoCellUpdate = LootSession.SetCellText },
                     }
+                )
             )
         end
     end
@@ -110,9 +107,7 @@ function LootSession.SetCellText(rowFrame, frame, data, cols, row, realrow, colu
         end
     else
         -- .. (data[realrow].owner and addon.candidates[data[realrow].owner] and "\n" .. addon:GetUnitClassColoredName(data[realrow].owner) or ""
-        frame.text:SetText(
-                data[realrow].link
-        )
+        frame.text:SetText(data[realrow].link)
     end
 end
 
