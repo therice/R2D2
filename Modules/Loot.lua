@@ -23,7 +23,7 @@ local RANDOM_ROLL_PATTERN =
 
 function Loot:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
-    -- mapping from session to ItemEntry
+    -- mapping from session to Item.LootEntry
     self.items = {}
     self.frame = self:GetFrame()
     self:RegisterEvent("CHAT_MSG_SYSTEM")
@@ -36,7 +36,7 @@ function Loot:OnDisable()
     self:CancelAllTimers()
 end
 
--- item will be a Model.ItemEntry
+-- @param item a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
     Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
     self.items[offset + k] = item:ToLootEntry()
@@ -63,6 +63,7 @@ function Loot:CheckDuplicates(size, offset)
     end
 end
 
+-- table will be entries of ItemEntry
 function Loot:Start(table, reRoll)
     reRoll = reRoll or false
     Logging:Trace("Start(%s, %s)", Util.Tables.Count(table), tostring(reRoll))

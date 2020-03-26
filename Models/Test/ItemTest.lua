@@ -103,6 +103,7 @@ describe("Item Model", function()
 
             assert.equals(itemEntry.id, lootEntry.id)
             assert(lootEntry:IsValid())
+            assert(60, lootEntry.timeLeft)
         end)
         it("is cloned", function()
             local lootEntry1 = Models.LootEntry:new(CreateItemEntry(18832))

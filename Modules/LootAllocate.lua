@@ -13,6 +13,9 @@ local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 15, 0.2
 local DefaultScrollTableData = {}
 local GuildRankSort, ResponseSort
 local MenuFrame, FilterMenu
+-- session is a number mapping to item
+-- sessionButtons is mapping of session to IconBordered instances
+-- lootTable is a mapping of session to AllocateEntry instances
 local session, sessionButtons, lootTable, active, moreInfo = 1, {}, {}, false, false
 local updatePending, updateIntervalRemaining, updateFrame = false, 0, CreateFrame("FRAME")
 
@@ -59,7 +62,7 @@ function LootAllocate:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
     self.frame:SetParent(nil)
     self.frame = nil
-    wipe(lootTable)
+    Util.Tables.Wipe(lootTable)
     active = false
     session = 1
     self:UnregisterAllComm()
@@ -92,68 +95,52 @@ function LootAllocate:HasUnawardedItems()
     return false
 end
 
-
+-- lt is a table of ItemEntry(s), which is passed in from AddOn (via Comm)
+-- when LootTable command is received (provided applicable conditions are met)
 function LootAllocate:ReceiveLootTable(lt)
     active = true
-    lootTable = Util(lt):Copy()()
+    Logging:Trace("ReceiveLootTable(BEFORE) : %s", Util.Objects.ToString(lt, 4))
+    lootTable = Util(lt):Copy():Map(function(entry) return entry:ToAllocateEntry() end)()
+    Logging:Trace("ReceiveLootTable(AFTER) : %s", Util.Objects.ToString(lootTable, 4))
     self:Setup(lootTable)
     if not AddOn.enabled then return end
     self:Show()
 end
 
+function LootAllocate.GetLootTableEntry(session)
+    return lootTable[session]
+end
+
+function LootAllocate.GetLootTableEntryResponse(session, candidate)
+    return LootAllocate.GetLootTableEntry(session):GetCandidateResponse(candidate)
+end
+
 function LootAllocate:EndSession(hide)
     if active then
         Logging:Debug("EndSesion(%s)", tostring(hide))
-        active = falseG
+        active = false
         self:Update(true)
         if hide then self:Hide() end
     end
 end
 
-function LootAllocate:SetupSession(session, t)
-    t.added = true
-    t.candidates = {}
-
+-- entry must be of type Item.AllocateEntry
+function LootAllocate:SetupSession(session, entry)
+    entry.added = true
+    Logging:Trace("SetupSession(%s) : %s", tostring(session), Util.Objects.ToString(entry))
     for name, v in pairs(AddOn.candidates) do
-        Logging:Debug("SetupSession(%s, %s) : %s", session, name, Util.Objects.ToString(v, 1))
-        t.candidates[name] = {
-            class = v.class,
-            rank = v.rank,
-            response = "ANNOUNCED",
-            ilvl = "",
-            diff = "",
-            gear1 = nil,
-            gear2 = nil,
-            note = nil,
-            roll = nil,
-        }
+        entry:AddCandidateResponse(name, v.class, v.rank)
     end
     -- Init session toggle
-    sessionButtons[session] = self:UpdateSessionButton(session, t.texture, t.link, t.awarded)
+    sessionButtons[session] = self:UpdateSessionButton(session, entry.texture, entry.link, entry.awarded)
     sessionButtons[session]:Show()
 end
 
-function LootAllocate:Setup(table)
-    --[[
-        lootTable[session] = {
-            bagged,
-            lootSlot,
-            awarded,
-            name,
-            link,
-            quality,
-            ilvl,
-            type,
-            subType,
-            equipLoc,
-            texture,
-            boe
-        }
-    --]]
-    --
-    for session, t in ipairs(table) do
-        if not t.added then
-            self:SetupSession(session, t)
+-- entries is a table of Item.AllocateEntry(s)
+function LootAllocate:Setup(entries)
+    for session, entry in ipairs(entries) do
+        if not entry.added then
+            self:SetupSession(session, entry)
         end
     end
     -- Hide unused session buttons
@@ -171,26 +158,24 @@ function LootAllocate:Setup(table)
 end
 
 
-function LootAllocate:SwitchSession(s)
-    Logging:Trace("SwitchSession(%s)", tostring(s))
+function LootAllocate:SwitchSession(sess)
+    Logging:Trace("SwitchSession(%s)", tostring(sess))
     local C = AddOn.Constants
 
-    session = s
-    local t = lootTable[s]
-    local e = Models.ItemEntry:new():reconstitute(t)
-
-    self.frame.itemIcon:SetNormalTexture(t.texture)
+    session = sess
+    local entry = LootAllocate.GetLootTableEntry(sess)
+    self.frame.itemIcon:SetNormalTexture(entry.texture)
     self.frame.itemIcon:SetBorderColor("purple")
-    self.frame.itemText:SetText(t.link)
-    self.frame.iState:SetText("ABADABA"..self:GetItemStatus(t.link))
-    self.frame.itemLvl:SetText(_G.ITEM_LEVEL_ABBR..": " .. e:GetLevelText())
-    self.frame.gp:SetText("GP: " .. tostring(GP:GetValue(e.link)))
-    self.frame.itemType:SetText(e:GetTypeText())
+    self.frame.itemText:SetText(entry.link)
+    self.frame.iState:SetText(self:GetItemStatus(entry.link))
+    self.frame.itemLvl:SetText(_G.ITEM_LEVEL_ABBR..": " .. entry:GetLevelText())
+    self.frame.gp:SetText("GP: " .. tostring(GP:GetValue(entry.link)))
+    self.frame.itemType:SetText(entry:GetTypeText())
 
     --[[
-    if t.owner then
+    if entry.owner then
         self.frame.ownerString.icon:Hide()
-        self.frame.ownerString.owner:SetText(t.owner)
+        self.frame.ownerString.owner:SetText(entry.owner)
         self.frame.ownerString.owner:SetTextColor(1,1,1,1)
         self.frame.ownerString.owner:Show()
     else
@@ -209,14 +194,14 @@ function LootAllocate:SwitchSession(s)
     FauxScrollFrame_OnVerticalScroll(self.frame.st.scrollframe, 0, self.frame.st.rowHeight, function() self.frame.st:Refresh() end)
     self:Update(true)
 
-    AddOn:SendMessage(C.Messages.SessionChangedPost, s)
+    AddOn:SendMessage(C.Messages.SessionChangedPost, sess)
 end
 
 
 function LootAllocate:SetCandidateData(session, candidate, data, val)
     local function Set(session, candidate, data, val)
         Logging:Trace("SetCandidateData(%s, %s) : data=%s val=%s", session, candidate, Util.Objects.ToString(data), Util.Objects.ToString(val))
-        lootTable[session].candidates[candidate][data] = val
+        LootAllocate.GetLootTableEntryResponse(session, candidate):Set(data, val)
     end
     local ok, _ = pcall(Set, session, candidate, data, val)
     if not ok then
@@ -227,7 +212,7 @@ end
 function LootAllocate:GetCandidateData(session, candidate, data)
     local function Get(session, candidate, data)
         Logging:Trace("GetCandidateData(%s, %s) : data=%s", session, candidate, Util.Objects.ToString(data))
-        return lootTable[session].candidates[candidate][data]
+        return LootAllocate.GetLootTableEntryResponse(session, candidate):Get(data)
     end
     local ok, arg = pcall(Get, session, candidate, data)
     if not ok then
@@ -304,7 +289,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 local oldLen = #lootTable
                 for index, entry in pairs(unpack(data)) do
                     Logging:Debug("LootTableAdd(%s, %s) : %s", tostring(oldLen), tostring(index), Util.Objects.ToString(entry, 4))
-                    lootTable[index] = Models.ItemEntry:new():reconstitute(entry)
+                    lootTable[index] = Models.ItemEntry:new():reconstitute(entry):ToAllocateEntry()
                 end
 
                 local autoRolls = false
@@ -339,26 +324,26 @@ end
 
 function LootAllocate:UpdateMoreInfo(row, data)
     Logging:Trace("UpdateMoreInfo(%s) : %s", tostring(row), Util.Objects.ToString(data, 2))
+    local name
+    if data and row then
+        name = data[row].name
+    else
+        local selection = self.frame.st:GetSelection()
+        name = selection and self.frame.st:GetRow(selection).name or nil
+    end
+
+    if not moreInfo or not name then
+        return self.frame.moreInfo:Hide()
+    end
+
+
 end
 
-function LootAllocate:GetAwardPopupData(session, name, data, reason)
-    return {
-        session     = session,
-        winner		= name,
-        class       = lootTable[session].candidates[name].class,
-        responseId	= data.response,
-        reason		= reason,
-        gear1 		= data.gear1,
-        gear2		= data.gear2,
-        isTierRoll	= data.isTier,
-        isRelicRoll	= data.isRelic,
-        link 		= lootTable[session].link,
-        isToken		= lootTable[session].token,
-        note		= data.note,
-        equipLoc	= lootTable[session].equipLoc,
-        texture 	= lootTable[session].texture,
-        typeCode 	= lootTable[session].typeCode,
-    }
+-- @param session the session id
+-- @param name the candidate name
+-- param reason the reason for award
+function LootAllocate:GetAwardPopupData(session, name, reason)
+    return LootAllocate.GetLootTableEntry(session):GetAwardData(session, name, reason)
 end
 
 function LootAllocate:GetFrame()
@@ -384,7 +369,7 @@ function LootAllocate:GetFrame()
                     self:UpdateMoreInfo(realrow, data)
                     if IsAltKeyDown() then
                         local name = data[realrow].name
-                        Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, self:GetAwardPopupData(session, name, lootTable[session].candidates[name]))
+                        Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, self:GetAwardPopupData(session, name))
                     end
                 end
                 -- Return false to have the default OnClick handler take care of left clicks
@@ -586,8 +571,8 @@ LootAllocate.RightClickEntries = {
         { -- 3 Award
             text = L["award"],
             notCheckable = true,
-            func = function(name, data)
-                Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name, data))
+            func = function(name)
+                Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name))
             end,
         },
         { -- 4 Award for
@@ -610,18 +595,17 @@ function LootAllocate.RightClickMenu(menu, level)
     if not AddOn.isMasterLooter then return end
 
     local candidateName = menu.name
-    local data = lootTable[session].candidates[candidateName]
     local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
     for _, entry in ipairs(LootAllocate.RightClickEntries[level]) do
         info = MSA_DropDownMenu_CreateInfo()
         if not entry.special then
-            if not entry.onValue or entry.onValue == value or (type(entry.onValue)=="function" and entry.onValue(candidateName, data)) then
-                if (entry.hidden and type(entry.hidden) == "function" and not entry.hidden(candidateName, data)) or not entry.hidden then
+            if not entry.onValue or entry.onValue == value or (type(entry.onValue)=="function" and entry.onValue(candidateName)) then
+                if (entry.hidden and type(entry.hidden) == "function" and not entry.hidden(candidateName)) or not entry.hidden then
                     for name, val in pairs(entry) do
                         if name == "func" then
-                            info[name] = function() return val(candidateName, data) end
+                            info[name] = function() return val(candidateName) end
                         elseif type(val) == "function" then
-                            info[name] = val(candidateName, data)
+                            info[name] = val(candidateName)
                         else
                             info[name] = val
                         end
@@ -635,7 +619,7 @@ function LootAllocate.RightClickMenu(menu, level)
                 info.text = v.text
                 info.notCheckable = true
                 info.func = function()
-                    Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, candidateName, data, v))
+                    Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, candidateName, v))
                 end
                 MSA_DropDownMenu_AddButton(info, level)
             end
@@ -672,15 +656,18 @@ function LootAllocate:Update(forceUpdate)
     -- twice?
     self.frame.st:SortData()
     self.frame.st:SortData()
-    if lootTable[session] and lootTable[session].awarded then
+    local entry = LootAllocate.GetLootTableEntry(session)
+
+    if entry and entry.awarded then
+        local response = entry:GetCandidateResponse(name)
         self.frame.awardString:SetText(L["item_awarded_to"])
         self.frame.awardString:Show()
-        local name = lootTable[session].awarded
+        local name = entry.awarded
         self.frame.awardStringPlayer:SetText(AddOn.Ambiguate(name))
-        local c = AddOn:GetClassColor(lootTable[session].candidates[name].class)
+        local c = AddOn:GetClassColor(response.class)
         self.frame.awardStringPlayer:SetTextColor(c.r,c.g,c.b,c.a)
         self.frame.awardStringPlayer:Show()
-        AddOn.SetCellClassIcon(nil,self.frame.awardStringPlayer.classIcon,nil,nil,nil,nil,nil,nil,nil, lootTable[session].candidates[name].class)
+        AddOn.SetCellClassIcon(nil,self.frame.awardStringPlayer.classIcon,nil,nil,nil,nil,nil,nil,nil,response.class)
         self.frame.awardStringPlayer.classIcon:Show()
     else
         self.frame.awardString:Hide()
@@ -710,7 +697,7 @@ function LootAllocate:Update(forceUpdate)
 
     if alwaysShowTooltip then
         self.frame.itemTooltip:SetOwner(self.frame.content, "ANCHOR_NONE")
-        self.frame.itemTooltip:SetHyperlink(lootTable[session].link)
+        self.frame.itemTooltip:SetHyperlink(entry.link)
         self.frame.itemTooltip:Show()
         self.frame.itemTooltip:SetPoint("TOP", self.frame, "TOP", 0, 0)
         self.frame.itemTooltip:SetPoint("RIGHT", sessionButtons[#lootTable], "LEFT", 0, 0)
@@ -732,32 +719,34 @@ end)
 
 
 function LootAllocate:UpdateSessionButtons()
-    for i, t in ipairs(lootTable) do
-        sessionButtons[i] = self:UpdateSessionButton(i, t.texture, t.link, t.awarded)
+    for session, entry in ipairs(lootTable) do
+        sessionButtons[session] = self:UpdateSessionButton(session, entry.texture, entry.link, entry.awarded)
     end
 end
 
-function LootAllocate:UpdateSessionButton(i, texture, link, awarded)
-    local btn = sessionButtons[i]
+-- if button not present for session, then creates one and associates with session
+-- any newly created or existing button is then updates to reflect the sstatus
+function LootAllocate:UpdateSessionButton(session, texture, link, awarded)
+    local btn = sessionButtons[session]
     if not btn then
-        btn = UI:NewNamed("IconBordered", self.frame.sessionToggleFrame, "R2D2_AllocateButton"..i, texture)
-        if i == 1 then
+        btn = UI:NewNamed("IconBordered", self.frame.sessionToggleFrame, "R2D2_AllocateButton".. session, texture)
+        if session == 1 then
             btn:SetPoint("TOPRIGHT", self.frame.sessionToggleFrame)
-        elseif mod(i,10) == 1 then
-            btn:SetPoint("TOPRIGHT", sessionButtons[i - 10], "TOPLEFT", -2, 0)
+        elseif mod(session,10) == 1 then
+            btn:SetPoint("TOPRIGHT", sessionButtons[session - 10], "TOPLEFT", -2, 0)
         else
-            btn:SetPoint("TOP", sessionButtons[i - 1], "BOTTOM", 0, -2)
+            btn:SetPoint("TOP", sessionButtons[session - 1], "BOTTOM", 0, -2)
         end
-        btn:SetScript("Onclick", function() LootAllocate:SwitchSession(i) end)
+        btn:SetScript("Onclick", function() LootAllocate:SwitchSession(session) end)
     end
     -- then update it
     btn:SetNormalTexture(texture or "Interface\\InventoryItems\\WoWUnknownItem01")
-    local lines = { format(L["Click to switch to 'item'"], link) }
-    if i == session then
+    local lines = { format(L["click_to_switch_item"], link) }
+    if session == session then
         btn:SetBorderColor("yellow")
     elseif awarded then
         btn:SetBorderColor("green")
-        tinsert(lines, L["This item has been awarded"])
+        tinsert(lines, L["item_has_been_awarded"])
     else
         btn:SetBorderColor("white") -- white
     end
@@ -799,7 +788,8 @@ end
 --
 function LootAllocate.SetCellClass(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, lootTable[session].candidates[name].class)
+
+    AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, LootAllocate.GetLootTableEntryResponse(session, name).class)
     data[realrow].cols[column].value = lootTable[session].candidates[name].class or ""
 end
 
@@ -810,22 +800,27 @@ function LootAllocate.SetCellName(rowFrame, frame, data, cols, row, realrow, col
     else
         frame.text:SetText(AddOn.Ambiguate(name))
     end
-    local c = AddOn:GetClassColor(lootTable[session].candidates[name].class)
+    local c = AddOn:GetClassColor(LootAllocate.GetLootTableEntryResponse(session, name).class)
     frame.text:SetTextColor(c.r, c.g, c.b, c.a)
     data[realrow].cols[column].value = name or ""
 end
 
 function LootAllocate.SetCellRank(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
+    local entry = LootAllocate.GetLootTableEntry(session)
+    local response = entry:GetCandidateResponse(name)
+
     Logging:Trace("SetCellRank(%s) : %s", name, lootTable[session].candidates[name].rank)
     frame.text:SetText(lootTable[session].candidates[name].rank)
-    frame.text:SetTextColor(AddOn:GetResponseColor(lootTable[session].typeCode or lootTable[session].equipLoc, lootTable[session].candidates[name].response))
-    data[realrow].cols[column].value = lootTable[session].candidates[name].rank or ""
+    frame.text:SetTextColor(AddOn:GetResponseColor(entry.typeCode or  entry.equipLoc, response.response))
+    data[realrow].cols[column].value = response.rank or ""
 end
 
 function LootAllocate.SetCellResponse(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local response = AddOn:GetResponse(lootTable[session].typeCode or lootTable[session].equipLoc, lootTable[session].candidates[name].response)
+    local entry = LootAllocate.GetLootTableEntry(session)
+    local cresponse = entry:GetCandidateResponse(name)
+    local response = AddOn:GetResponse(entry.typeCode or entry.equipLoc, cresponse.response)
     local text = response.text
     if (IsInInstance() and select(4, UnitPosition("player")) ~= select(4, UnitPosition(Ambiguate(name, "short")))) or
         ((not IsInInstance()) and UnitPosition(Ambiguate(name, "short")) ~= nil) then
@@ -838,23 +833,26 @@ end
 function LootAllocate.SetCellIlvl(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local iLvlDecimal = true
     local name = data[realrow].name
-    Logging:Trace("SetCellIlvl(%s) : %s (%s)", name, lootTable[session].candidates[name].ilvl, type(lootTable[session].candidates[name].ilvl))
-    frame.text:SetText(iLvlDecimal and Util.Numbers.Round2(lootTable[session].candidates[name].ilvl, 2) or Util.Numbers.Round2(lootTable[session].candidates[name].ilvl))
-    data[realrow].cols[column].value = lootTable[session].candidates[name].ilvl or ""
+    local cresponse = LootAllocate.GetLootTableEntryResponse(session, name)
+    Logging:Trace("SetCellIlvl(%s) : %s (%s)", name,cresponse.ilvl, type(cresponse.ilvl))
+    frame.text:SetText(iLvlDecimal and Util.Numbers.Round2(cresponse.ilvl, 2) or Util.Numbers.Round2(cresponse.ilvl))
+    data[realrow].cols[column].value = cresponse.ilvl or ""
 end
 
 function LootAllocate.SetCellDiff(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    Logging:Trace("SetCellDiff(%s) : %s", name, lootTable[session].candidates[name].diff)
+    local cresponse = LootAllocate.GetLootTableEntryResponse(session, name)
+
+    Logging:Trace("SetCellDiff(%s) : %s", name, cresponse.diff)
     frame.text:SetText(lootTable[session].candidates[name].diff)
-    frame.text:SetTextColor(unpack(LootAllocate:GetDiffColor(lootTable[session].candidates[name].diff)))
-    data[realrow].cols[column].value = lootTable[session].candidates[name].diff or ""
+    frame.text:SetTextColor(unpack(LootAllocate:GetDiffColor(cresponse.diff)))
+    data[realrow].cols[column].value = cresponse.diff or ""
 end
 
 function LootAllocate.SetCellGear(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local gear = data[realrow].cols[column].colName
     local name = data[realrow].name
-    gear = lootTable[session].candidates[name][gear]
+    gear = LootAllocate.GetLootTableEntryResponse(session, name)[gear]
     if gear then
         local texture = select(5, GetItemInfoInstant(gear))
         frame:SetNormalTexture(texture)
@@ -873,7 +871,7 @@ end
 
 function LootAllocate.SetCellNote(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local note = lootTable[session].candidates[name].note
+    local note = LootAllocate.GetLootTableEntryResponse(session, name).note
     local f = frame.noteBtn or CreateFrame("Button", nil, frame)
     f:SetSize(ROW_HEIGHT, ROW_HEIGHT)
     f:SetPoint("CENTER", frame, "CENTER")
@@ -892,6 +890,7 @@ end
 
 function LootAllocate.SetCellRoll(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    frame.text:SetText(lootTable[session].candidates[name].roll or "")
-    data[realrow].cols[column].value = lootTable[session].candidates[name].roll or ""
+    local cresponse = LootAllocate.GetLootTableEntryResponse(session, name)
+    frame.text:SetText(cresponse.roll or "")
+    data[realrow].cols[column].value = cresponse.roll or ""
 end

@@ -204,6 +204,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                         return self:ScheduleTimer("OnCommReceived", 5, prefix, serializedMsg, dist, sender)
                     end
 
+                    -- we're the master looter, then start allocation
                     if self.isMasterLooter then
                         AddOn:CallModule("LootAllocate")
                         AddOn:GetModule("LootAllocate"):ReceiveLootTable(self.lootTable)

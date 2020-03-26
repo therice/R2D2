@@ -8,6 +8,7 @@ local GP        = AddOn.Libs.GearPoints
 local Item = Class('Item')
 local ItemEntry = Class('ItemEntry', Item)
 local LootEntry = Class('LootEntry', ItemEntry)
+local AllocateEntry = Class('AllocateEntry', ItemEntry)
 
 AddOn.components.Models.Item = Item
 AddOn.components.Models.ItemEntry = ItemEntry
@@ -15,6 +16,9 @@ AddOn.components.Models.LootEntry = LootEntry
 
 --
 -- Item
+--
+-- This is intended to be a wrapper around item information obtained via native APIs, with additional attributes
+-- such as classes which can use
 --
 
 --[[
@@ -48,7 +52,6 @@ Example Item(s)
 }
 --]]
 
--- create an Item from invidiual attributes
 function Item:initialize(id, link, quality, ilvl, type, equipLoc, subType, texture, typeId, subTypeId, bindType, classes)
     self.id          = id
     self.link        = link
@@ -162,9 +165,12 @@ end
 --
 -- ItemEntry
 --
+-- Extends Item with support for additional attributes required to represent the item
+-- as an entry during the allocation process (which isn't associated with a specific candidate)
+--
 
 -- @param item      ItemID|itemString|itemLink|Item
--- @param slotIndex Index of the entry
+-- @param slotIndex Index of the item within the loot table
 -- @param awarded   Has associated item been awarded?
 -- @param owner     The owner of the item (if any)
 -- @param sent      Has entry been transmitted to others
@@ -244,29 +250,43 @@ function ItemEntry:ToLootEntry()
     return LootEntry:new(self)
 end
 
---
--- LootEntry
---
+function ItemEntry:ToAllocateEntry()
+    return AllocateEntry:new(self)
+end
 
-function LootEntry:initialize(itemEntry)
-    if itemEntry and type(itemEntry) == 'table' then
+local function CreateItemEntry(self, data, callback)
+    if data and type(data) == 'table' then
         ItemEntry.initialize(
                 self,
                 -- this is going to pull along extra attributes, but the super constructor will
                 -- ignore them and take remainder from parameters
-                itemEntry:toTable(),
-                itemEntry.lootSlot,
-                itemEntry.awarded,
-                itemEntry.owner,
-                itemEntry.isSent,
-                itemEntry.typeCode
+                data:toTable(),
+                data.lootSlot,
+                data.awarded,
+                data.owner,
+                data.isSent,
+                data.typeCode
         )
 
-        self.rolled = false
-        self.note = nil
-        self.sessions = itemEntry.session and { itemEntry.session } or {}
-        self.timeLeft = 60
+        if callback then callback() end
     end
+end
+
+--
+-- LootEntry
+--
+-- Extends ItemEntry with support for additional attributes required to present the
+-- entry to candidates for stating interest (need, greed, etc.)
+--
+function LootEntry:initialize(itemEntry)
+    CreateItemEntry(self, itemEntry,
+            function()
+                self.rolled = false
+                self.note = nil
+                self.sessions = itemEntry.session and { itemEntry.session } or {}
+                self.timeLeft = 60
+            end
+    )
 end
 
 -- return an instance with only rolled attribute, set to true
@@ -274,4 +294,48 @@ function LootEntry.Rolled()
     local instance = LootEntry:new()
     instance.rolled = true
     return instance
+end
+
+--
+-- AllocateEntry
+--
+-- Extends ItemEntry with support for additional attributes required to allocate (award) the
+-- associated item to a character
+--
+
+function AllocateEntry:initialize(itemEntry)
+    CreateItemEntry(self, itemEntry,
+            function()
+                self.added = false
+                self.candidates = {}
+            end
+    )
+end
+
+function AllocateEntry:GetAwardData(session, candidate, reason)
+    local cr = self.candidates[candidate]
+
+    return {
+        session     = session,
+        winner		= candidate,
+        class       = cr.class,
+        responseId	= cr.response,
+        reason		= reason,
+        gear1 		= cr.gear1,
+        gear2		= cr.gear2,
+        link 		= self.link,
+        isToken		= self.token,
+        note		= cr.note,
+        equipLoc	= self.equipLoc,
+        texture 	= self.texture,
+        typeCode 	= self.typeCode,
+    }
+end
+
+function AllocateEntry:GetCandidateResponse(name)
+    return self.candidates[name]
+end
+
+function AllocateEntry:AddCandidateResponse(name, class, rank)
+    self.candidates[name] = AddOn.components.Models.CandidateResponse:new(name, class, rank)
 end

@@ -49,8 +49,9 @@ end
 function ML:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     -- mapping of candidateName = { class, role, rank }
+    -- entrie will be of type Candidate.Candidate
     self.candidates = {}
-    -- the master looter's loot table
+    -- the master looter's loot table (entries will be of type Item.ItemEntry)
     self.lootTable = {}
     -- for keeping a backup for existing loot table on session end
     self.oldLootTable = {}
@@ -317,7 +318,6 @@ function ML:GetLootTableForTransmit()
         :Map(
             -- update the items as needed
             function(entry)
-                Logging:Trace("getmetatable => %s", Util.Objects.ToString(getmetatable(entry)))
                 if entry.isSent then
                     return nil
                 else
@@ -391,6 +391,7 @@ function ML:StartSession()
         AddOn:SendCommand(C.group, C.Commands.LootTable, self:GetLootTableForTransmit())
     end
 
+    -- update the loot table to mark entries as having been transmitted
     Util.Tables.Call(self.lootTable, function(entry) entry.isSent = true end)
 
     self.running = true

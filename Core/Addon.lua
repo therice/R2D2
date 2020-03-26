@@ -34,8 +34,10 @@ function R2D2:OnInitialize()
     self.isMasterLooter = false
     -- name of the master looter
     self.masterLooter = ""
+    -- entries are type Candidate
     self.candidates = {}
     -- should this be a local
+    -- entries are type ItemEntry
     self.lootTable = {}
     self.enabled = true
     -- does R2D2 handle loot?
