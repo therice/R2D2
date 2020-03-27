@@ -11,7 +11,7 @@ local Models        = AddOn.components.Models
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 15, 0.2
 local DefaultScrollTableData = {}
-local GuildRankSort, ResponseSort
+local GuildRankSort, ResponseSort, EpSort, GpSort, PrSort
 local MenuFrame, FilterMenu
 -- session is a number mapping to item
 -- sessionButtons is mapping of session to IconBordered instances
@@ -29,14 +29,17 @@ function LootAllocate:OnInitialize()
     DefaultScrollTableData = {
         { name = "",                DoCellUpdate = LootAllocate.SetCellClass,       colName = "class",      sortnext = 2,       width = 20, }, -- 1 Class
         { name = _G.NAME,			DoCellUpdate = LootAllocate.SetCellName,		colName = "name",		defaultsort = 1,	width = 120,}, -- 2 Candidate Name
-        { name = _G.RANK,			DoCellUpdate = LootAllocate.SetCellRank,		colName = "rank",		sortnext = 5,		width = 95, comparesort = GuildRankSort,}, -- 3 Guild rank
-        { name = L["response"],	    DoCellUpdate = LootAllocate.SetCellResponse,	colName = "response",   sortnext = 13,		width = 240,comparesort = ResponseSort,}, -- 4 Response
-        { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = LootAllocate.SetCellIlvl,	    colName = "ilvl",		sortnext = 7,		width = 45, }, -- 5 Total ilvl
-        { name = L["diff"],		    DoCellUpdate = LootAllocate.SetCellDiff,		colName = "diff",							width = 40, }, -- 6 ilvl difference
-        { name = L["g1"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear1",	    sortnext = 5,		width = 20, align = "CENTER", }, -- 7 Current gear 1
-        { name = L["g2"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear2",	    sortnext = 5,		width = 20, align = "CENTER", }, -- 8 Current gear 2
-        { name = L["notes"],		DoCellUpdate = LootAllocate.SetCellNote,		colName = "note",							width = 50, align = "CENTER", }, -- 9 Note icon
-        { name = _G.ROLL,			DoCellUpdate = LootAllocate.SetCellRoll, 		colName = "roll",		sortnext = 10,		width = 50, align = "CENTER", }, -- 10 Roll
+        { name = _G.RANK,			DoCellUpdate = LootAllocate.SetCellRank,		colName = "rank",		sortnext = 4,		width = 95, comparesort = GuildRankSort,}, -- 3 Guild rank
+        { name = L["response"],	    DoCellUpdate = LootAllocate.SetCellResponse,	colName = "response",   sortnext = 7,		width = 240,comparesort = ResponseSort,}, -- 4 Response
+        { name = L["ep_abbrev"],	DoCellUpdate = LootAllocate.SetCellEp,		    colName = "ep",		    sortnext = 7,		width = 45, comparesort = EpSort,}, -- 5 EP
+        { name = L["gp_abbrev"],	DoCellUpdate = LootAllocate.SetCellGp,		    colName = "gp",		    sortnext = 7,		width = 45, comparesort = GpSort,}, -- 6 GP
+        { name = L["pr_abbrev"],	DoCellUpdate = LootAllocate.SetCellPr,		    colName = "pr",		    sortnext = 13,		width = 45, comparesort = PrSort,}, -- 7 PR
+        { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = LootAllocate.SetCellIlvl,	    colName = "ilvl",		sortnext = 9,		width = 45, }, -- 8 Total ilvl
+        { name = L["diff"],		    DoCellUpdate = LootAllocate.SetCellDiff,		colName = "diff",							width = 40, }, -- 9 ilvl difference
+        { name = L["g1"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear1",                          width = 20, align = "CENTER", }, -- 10 Current gear 1
+        { name = L["g2"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear2",	                        width = 20, align = "CENTER", }, -- 11 Current gear 2
+        { name = L["notes"],		DoCellUpdate = LootAllocate.SetCellNote,		colName = "note",							width = 50, align = "CENTER", }, -- 12 Note icon
+        { name = _G.ROLL,			DoCellUpdate = LootAllocate.SetCellRoll, 		colName = "roll",		sortnext = 8,		width = 50, align = "CENTER", }, -- 13 Roll
     }
     self.scrollCols = { unpack(DefaultScrollTableData) }
     self.db = AddOn.db:RegisterNamespace(self:GetName(), LootAllocate.defaults)
@@ -339,6 +342,27 @@ function LootAllocate:UpdateMoreInfo(row, data)
 
 end
 
+function GuildRankSort(table, rowa, rowb, sortbycol)
+
+end
+
+function ResponseSort(table, rowa, rowb, sortbycol)
+
+end
+
+function EpSort(table, rowa, rowb, sortbycol)
+
+end
+
+function GpSort(table, rowa, rowb, sortbycol)
+
+end
+
+function PrSort(table, rowa, rowb, sortbycol)
+
+end
+
+
 -- @param session the session id
 -- @param name the candidate name
 -- param reason the reason for award
@@ -556,37 +580,50 @@ end
 
 
 LootAllocate.RightClickEntries = {
-    { -- Level 1
-        { -- 1 Title, player name
+    -- level 1
+    {
+        -- 1 Title, player name
+        {
             text = function(name) return AddOn.Ambiguate(name) end,
             isTitle = true,
             notCheckable = true,
             disabled = true,
         },
-        { -- 2 Spacer
+        -- 2 Spacer
+        {
             text = "",
             notCheckable = true,
             disabled = true,
         },
-        { -- 3 Award
+        -- 3 Award
+        {
             text = L["award"],
             notCheckable = true,
             func = function(name)
                 Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name))
             end,
         },
-        { -- 4 Award for
+        -- 4 Award for
+        {
             text = L["award_for"],
             value = "AWARD_FOR",
             notCheckable = true,
             hasArrow = true,
         },
-        { -- 5 Spacer
+        -- 5 Spacer
+        {
             text = "",
             notCheckable = true,
             disabled = true,
         },
-    }
+    },
+    -- level 2
+    {
+        -- 2 AWARD_FOR
+        {
+            special = "AWARD_FOR",
+        }
+    },
 }
 
 local info = MSA_DropDownMenu_CreateInfo()
@@ -810,10 +847,34 @@ function LootAllocate.SetCellRank(rowFrame, frame, data, cols, row, realrow, col
     local entry = LootAllocate.GetLootTableEntry(session)
     local response = entry:GetCandidateResponse(name)
 
-    Logging:Trace("SetCellRank(%s) : %s", name, lootTable[session].candidates[name].rank)
+    Logging:Trace("SetCellRank(%s) : %s", name, response.rank)
     frame.text:SetText(lootTable[session].candidates[name].rank)
     frame.text:SetTextColor(AddOn:GetResponseColor(entry.typeCode or  entry.equipLoc, response.response))
     data[realrow].cols[column].value = response.rank or ""
+end
+
+function LootAllocate.SetCellEp(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
+    local name = data[realrow].name
+    local ep = 0
+
+    frame.text:SetText(ep)
+    data[realrow].cols[column].value = ep
+end
+
+function LootAllocate.SetCellGp(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
+    local name = data[realrow].name
+    local gp = 0
+
+    frame.text:SetText(gp)
+    data[realrow].cols[column].value = gp
+end
+
+function LootAllocate.SetCellPr(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
+    local name = data[realrow].name
+    local pr = 0.0
+
+    frame.text:SetText(pr)
+    data[realrow].cols[column].value = pr
 end
 
 function LootAllocate.SetCellResponse(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)

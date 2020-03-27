@@ -639,6 +639,14 @@ end
 -----
 
 UIParent = {}
+Minimap = {
+}
+
+function Minimap:HookScript(event, fn)
+
+end
+
+
 
 _G.tInvert = function(tbl)
 	local inverted = {};

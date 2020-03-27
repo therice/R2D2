@@ -11,8 +11,8 @@ local Logging       = AddOn.components.Logging
 -- These are the defaults that go into the DB
 GpTooltip.defaults = {
     profile = {
-        enabled = false,
-        threshold = 4,  -- epic
+        enabled = true,
+        threshold = 4, -- epic
     }
 }
 

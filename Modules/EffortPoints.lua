@@ -12,6 +12,7 @@ local COpts     = AddOn.components.UI.ConfigOptions
 EP.defaults = {
     profile = {
         enabled = true,
+        ep_min = 1,
         raid = {
             -- should EP be auto-awarded for kills
             auto_award_victory = false,

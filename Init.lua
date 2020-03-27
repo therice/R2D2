@@ -63,6 +63,8 @@ do
     R2D2:AddLib('ItemUtil', 'LibItemUtil-1.0')
     R2D2:AddLib('Encounter', 'LibEncounter-1.0')
     R2D2:AddLib('Dialog', 'LibDialog-1.0')
+    R2D2:AddLib('DataBroker', 'LibDataBroker-1.1')
+    R2D2:AddLib('DbIcon', 'LibDBIcon-1.0')
 end
 
 AddOn.components            = {}

@@ -3,6 +3,11 @@ local _, AddOn = ...
 AddOn.defaults = {
     profile = {
         logThreshold = AddOn.Libs.Logging.Level.Debug,
+        minimap = {
+          shown = true,
+          locked = false,
+          minimapPos = 218,
+        },
     }
 }
 

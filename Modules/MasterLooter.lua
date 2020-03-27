@@ -13,9 +13,9 @@ ML.defaults = {
         buttons = {
             default = {
                 numButtons = 4,
-                { text = L["ms_need"],          whisperKey = L["whisperkey_ms"], },
-                { text = L["os_greed"],         whisperKey = L["whisperkey_greed"], },
-                { text = L["minor_upgrade"],    whisperKey = L["whisperkey_minor"], },
+                { text = L["ms_need"],          whisperKey = L["whisperkey_ms_need"], },
+                { text = L["os_greed"],         whisperKey = L["whisperkey_os_greed"], },
+                { text = L["minor_upgrade"],    whisperKey = L["whisperkey_minor_upgrade"], },
                 { text = L["pvp"],              whisperKey = L["whisperkey_pvp"], },
             },
         },

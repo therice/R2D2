@@ -228,8 +228,6 @@ function lib:GetScale(equipLoc, subClass)
         if scale_config then
             return scale_config[1][1], scale_config[1][2]
         end
-
-        return
     end
 
     return
