@@ -24,7 +24,8 @@ GP.defaults = {
             gp_multiplier       = 1,
 
         },
-        scaling = {
+        -- todo : remove silly suffixes and comment value
+        slot_scaling = {
             head_scale_1            = 1,
             head_comment_1          = _G.INVTYPE_HEAD,
             neck_scale_1            = 0.5,
@@ -71,14 +72,45 @@ GP.defaults = {
             relic_scale_1           = 0.667,
             relic_comment_1         = _G.INVTYPE_RELIC,
         },
+        -- scale is the percentage of GP to give to character for that type of award
+        -- user_visible determines if the award type is presented as option to user for loot response
+        -- color determines how the response is displayed in game if available to user
         award_scaling = {
-            ms_need             = 1,
-            os_greed            = 0.5,
-            minor_upgrade       = 0.75,
-            pvp                 = 0.25,
-            disenchant          = 0,
-            bank                = 0,
-            free                = 0,
+            ms_need  = {
+                scale = 1,
+                user_visible = true,
+                color = {0,1,0,1},
+            },
+            os_greed = {
+                scale = 0.5,
+                user_visible = true,
+                color = {1,0.5,0,1},
+            },
+            minor_upgrade = {
+                scale = 0.75,
+                user_visible = true,
+                color = {0,0.7,0.7,1},
+            },
+            pvp = {
+                scale = 0.25,
+                user_visible = true,
+                color = {1,0.5,0,1},
+            },
+            disenchant = {
+                scale = 0,
+                user_visible = false,
+                color = nil,
+            },
+            bank = {
+                scale = 0,
+                user_visible = false,
+                color = nil,
+            },
+            free = {
+                scale = 0,
+                user_visible = false,
+                color = nil,
+            }
         }
     }
 }
@@ -125,10 +157,10 @@ do
     local aargs = GP.options.args.awards.args
 
     for award, _ in pairs(awardScalingDefaults) do
-        aargs['award_scaling.' .. award] = COpts.Range(L[award], 1, 0, 1, 0.01, {isPercent = true, desc=format(L["award_scaling_for_reason"], L[award])})
+        aargs['award_scaling.' .. award .. '.scale'] = COpts.Range(L[award], 1, 0, 1, 0.01, {isPercent = true, desc=format(L["award_scaling_for_reason"], L[award])})
     end
 
-    local scalingDefaults = GP.defaults.profile.scaling
+    local scalingDefaults = GP.defaults.profile.slot_scaling
     -- table for storing processed defaults which needed added as arguments
     local slotArgs = Tables.New()
 
@@ -169,7 +201,7 @@ do
             desc = L["item_slot_with_name"]:format(displayname),
             -- the mapping of keys to include the 'scaling.' prefix is to map into the db properly
             -- not everything needs prefixed, but these won't be stored (e.g. help)
-            args =  Tables.MapKeys(Tables.CopyUnselect(slotArgs[slot], 'displayname'),  function(key) return 'scaling.'..key end)
+            args =  Tables.MapKeys(Tables.CopyUnselect(slotArgs[slot], 'displayname'),  function(key) return 'slot_scaling.'..key end)
         }
         order = order + 1
     end
@@ -186,7 +218,7 @@ end
 
 function GP:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
-    LibGP:SetScalingConfig(self.db.profile.scaling)
+    LibGP:SetScalingConfig(self.db.profile.slot_scaling)
     LibGP:SetFormulaInputs(
             self.db.profile.formula.gp_base,
             self.db.profile.formula.gp_coefficient_base,

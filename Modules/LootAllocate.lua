@@ -20,8 +20,33 @@ local session, sessionButtons, lootTable, active, moreInfo = 1, {}, {}, false, f
 local updatePending, updateIntervalRemaining, updateFrame = false, 0, CreateFrame("FRAME")
 
 LootAllocate.defaults = {
+    profile = {
+        awardReasons = {
 
+        }
+    }
 }
+
+-- Copy defaults from GearPoints into our defaults for buttons/responses
+-- This actually should be done via the AddOn's DB once it's initialized, but we currently
+-- don't allow users to change these values (either here or from GearPoints) so we can
+-- do it before initialization. If we allow for these to be configured by user, then will
+-- need to copy from DB
+do
+    local AwardReasons = LootAllocate.defaults.profile.awardReasons
+    local GP = AddOn:GetModule("GearPoints")
+    local NonUserVisibleAwards =
+        Util(GP.defaults.profile.award_scaling)
+            :CopyFilter(function (v) return not v.user_visible end, true, nil, true)
+            :Keys()()
+
+    AwardReasons.numAwardReasons = Util.Tables.Count(NonUserVisibleAwards)
+    local sortLevel = 401
+    for index, award in ipairs(NonUserVisibleAwards) do
+        Util.Tables.Insert(AwardReasons, index, { color = { 1, 1, 1, 1}, sort=sortLevel, text = L[award]})
+        sortLevel = sortLevel + 1
+    end
+end
 
 function LootAllocate:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -651,8 +676,8 @@ function LootAllocate.RightClickMenu(menu, level)
                 end
             end
         elseif value == "AWARD_FOR" and entry.special == value then
-            for k,v in ipairs(db.awardReasons) do
-                if k > db.numAwardReasons then break end
+            for k,v in ipairs(LootAllocate.db.profile.awardReasons) do
+                if k > LootAllocate.db.profile.awardReasons.numAwardReasons then break end
                 info.text = v.text
                 info.notCheckable = true
                 info.func = function()

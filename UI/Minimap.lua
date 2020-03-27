@@ -22,7 +22,6 @@ local function CreateDataBoker()
            {
                type = "launcher",
                text = "R2D2",
-               --icon = "Interface\\AddOns\\WeakAuras\\Media\\Textures\\icon.blp",
                icon = "Interface\\AddOns\\R2D2\\Media\\Textures\\icon.blp",
                OnTooltipShow = function(tooltip)
                    tooltip:AddDoubleLine("|cfffe7b2cR2D2|r", format("|cffFFFFFF%s|r", AddOn.version))

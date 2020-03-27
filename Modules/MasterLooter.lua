@@ -11,12 +11,16 @@ local CANDIDATE_SEND_COOLDOWN = 10
 ML.defaults = {
     profile = {
         buttons = {
+            -- dynamically constructed in the do/end loop below
+            -- example data left behind for illustration
             default = {
+                --[[
                 numButtons = 4,
                 { text = L["ms_need"],          whisperKey = L["whisperkey_ms_need"], },
                 { text = L["os_greed"],         whisperKey = L["whisperkey_os_greed"], },
                 { text = L["minor_upgrade"],    whisperKey = L["whisperkey_minor_upgrade"], },
                 { text = L["pvp"],              whisperKey = L["whisperkey_pvp"], },
+                --]]
             },
         },
         responses = {
@@ -32,14 +36,40 @@ ML.defaults = {
                 DISABLED		=   { color = {0.3,0.35,0.5,1},	sort = 802,	text = L["disabled"], },
                 NOTINRAID		=   { color = {0.7,0.6,0,1}, 	sort = 803, text = L["not_in_instance"]},
                 DEFAULT	        =   { color = {1,0,0,1},		sort = 899,	text = L["response_unavailable"] },
-                --[[1]]             { color = {0,1,0,1},        sort = 1,   text = L["ms_need"], },
-                --[[2]]             { color = {1,0.5,0,1},	    sort = 2,	text = L["os_greed"], },
-                --[[3]]             { color = {0,0.7,0.7,1},    sort = 3,	text = L["minor_upgrade"], },
-                --[[4]]             { color = {1,0.5,0,1},	    sort = 4,	text = L["pvp"], },
+                -- dynamically constructed in the do/end loop below
+                -- example data left behind for illustration
+                --[[
+                                    { color = {0,1,0,1},        sort = 1,   text = L["ms_need"], },         [1]
+                                    { color = {1,0.5,0,1},	    sort = 2,	text = L["os_greed"], },        [2]
+                                    { color = {0,0.7,0.7,1},    sort = 3,	text = L["minor_upgrade"], },   [3]
+                                    { color = {1,0.5,0,1},	    sort = 4,	text = L["pvp"], },             [4]
+                --]]
             }
         }
     }
 }
+
+-- Copy defaults from GearPoints into our defaults for buttons/responses
+-- This actually should be done via the AddOn's DB once it's initialized, but we currently
+-- don't allow users to change these values (either here or from GearPoints) so we can
+-- do it before initialization. If we allow for these to be configured by user, then will
+-- need to copy from DB
+do
+    local DefaultButtons = ML.defaults.profile.buttons.default
+    local DefaultResponses = ML.defaults.profile.responses.default
+    local GP = AddOn:GetModule("GearPoints")
+    local UserVisibleAwards =
+        Util(GP.defaults.profile.award_scaling)
+                :CopyFilter(function (v) return v.user_visible end, true, nil, true)()
+
+    DefaultButtons.numButtons = Util.Tables.Count(UserVisibleAwards)
+    local index = 1
+    for award, value in pairs(UserVisibleAwards) do
+        Util.Tables.Push(DefaultButtons, {text = L[award], whisperKey = L['whisperkey_' .. award]})
+        Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award]})
+        index = index + 1
+    end
+end
 
 function ML:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
