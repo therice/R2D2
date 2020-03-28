@@ -16,7 +16,7 @@ local MenuFrame, FilterMenu
 -- session is a number mapping to item
 -- sessionButtons is mapping of session to IconBordered instances
 -- lootTable is a mapping of session to AllocateEntry instances
-local session, sessionButtons, lootTable, active, moreInfo = 1, {}, {}, false, false
+local session, sessionButtons, lootTable, moreInfoData, active, moreInfo = 1, {}, {}, {}, false, false
 local updatePending, updateIntervalRemaining, updateFrame = false, 0, CreateFrame("FRAME")
 
 LootAllocate.defaults = {
@@ -35,15 +35,17 @@ LootAllocate.defaults = {
 do
     local AwardReasons = LootAllocate.defaults.profile.awardReasons
     local GP = AddOn:GetModule("GearPoints")
+    local AwardScaling = GP.defaults.profile.award_scaling
     local NonUserVisibleAwards =
-        Util(GP.defaults.profile.award_scaling)
+        Util(AwardScaling)
             :CopyFilter(function (v) return not v.user_visible end, true, nil, true)
             :Keys()()
 
     AwardReasons.numAwardReasons = Util.Tables.Count(NonUserVisibleAwards)
     local sortLevel = 401
     for index, award in ipairs(NonUserVisibleAwards) do
-        Util.Tables.Insert(AwardReasons, index, { color = { 1, 1, 1, 1}, sort=sortLevel, text = L[award]})
+        Logging:Debug("%s", Util.Objects.ToString(AwardScaling[award]))
+        Util.Tables.Insert(AwardReasons, index, { color = AwardScaling[award].color, sort=sortLevel, text = L[award]})
         sortLevel = sortLevel + 1
     end
 end
@@ -145,7 +147,7 @@ end
 
 function LootAllocate:EndSession(hide)
     if active then
-        Logging:Debug("EndSesion(%s)", tostring(hide))
+        Logging:Debug("EndSession(%s)", tostring(hide))
         active = false
         self:Update(true)
         if hide then self:Hide() end
@@ -189,7 +191,6 @@ end
 function LootAllocate:SwitchSession(sess)
     Logging:Trace("SwitchSession(%s)", tostring(sess))
     local C = AddOn.Constants
-
     session = sess
     local entry = LootAllocate.GetLootTableEntry(sess)
     self.frame.itemIcon:SetNormalTexture(entry.texture)
@@ -225,6 +226,18 @@ function LootAllocate:SwitchSession(sess)
     AddOn:SendMessage(C.Messages.SessionChangedPost, sess)
 end
 
+function LootAllocate:GetCurrentSession()
+    return session
+end
+
+--- Find an un-awarded session.
+-- @return number|nil Number of the first session with an un-awarded item, or nil if everything is awarded.
+function LootAllocate:FetchUnawardedSession()
+    for k,v in ipairs(lootTable) do
+        if not v.awarded then return k end
+    end
+    return nil
+end
 
 function LootAllocate:SetCandidateData(session, candidate, data, val)
     local function Set(session, candidate, data, val)
@@ -270,7 +283,11 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
         local success, command, data = AddOn:Deserialize(serializedMsg)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 3))
         if success then
-            if command == C.Commands.LootAck then
+            if command == C.Commands.ChangeResponse then
+                local ses, name, response = unpack(data)
+                self:SetCandidateData(ses, name, "response", response)
+                self:Update()
+            elseif command == C.Commands.LootAck then
                 local name, ilvl, sessionData = unpack(data)
                 for key, d in pairs(sessionData) do
                     for sess, value in pairs(d) do
@@ -290,7 +307,31 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
 
                 self:Update()
             elseif command == C.Commands.Awarded and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+                self:ScheduleTimer(function() moreInfoData = AddOn:GetLootDbStatistics() end, 1)
+                local s1, winner = unpack(data)
+                local e1 = self:GetLootTableEntry(s1)
+                if not e1 then return end
 
+                local oldWinner = e1.awarded
+                for s2, e2 in ipairs(lootTable) do
+                    if AddOn:ItemIsItem(e2.link, e1.link) then
+                        -- re-awarded
+                        if oldWinner and not AddOn:UnitIsUnit(oldWinner, winner) then
+                            self:SetCandidateData(s2, oldWinner, "response", self:GetCandidateData(s2, oldWinner, "real_response"))
+                        end
+                        self:SetCandidateData(s2, winner, "real_response", self:GetCandidateData(s2, winner, "response"))
+                        self:SetCandidateData(s2, winner, "response", "AWARDED")
+                    end
+                end
+
+                e1.awarded = winner
+
+                local nextSession = self:FetchUnawardedSession()
+                if AddOn.isMasterLooter and nextSession then
+                    self:SwitchSession(nextSession)
+                else
+                    self:SwitchSession(session)
+                end
             elseif command == C.Commands.OfflineTimer and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
                 for i = 1, #lootTable do
                     for candidate in pairs(lootTable[i].candidates) do
@@ -308,11 +349,23 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
                 self:Update()
             elseif command == C.Commands.Rolls then
-
+                if AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+                    local session, table = unpack(data)
+                    for name, roll in pairs(table) do
+                        self:SetCandidateData(session, name, "roll", roll)
+                    end
+                    self:Update()
+                else
+                    Logging:Warn("Non-MasterLooter %s sent rolls", sender)
+                end
             elseif command == C.Commands.Roll then
-
+                local name, roll, sessions = unpack(data)
+                for _, ses in ipairs(sessions) do
+                    self:SetCandidateData(ses, name, "roll", roll)
+                end
+                self:Update()
             elseif command == C.Commands.ReconnectData and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
-
+                -- todo : i don't believe we need handle this here because nothing will have mutated in loot table
             elseif command == C.Commands.LootTableAdd and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
                 local oldLen = #lootTable
                 for index, entry in pairs(unpack(data)) do
@@ -394,6 +447,11 @@ end
 function LootAllocate:GetAwardPopupData(session, name, reason)
     return LootAllocate.GetLootTableEntry(session):GetAwardData(session, name, reason)
 end
+
+function LootAllocate:GetReRollData(session, isRoll, noAutopass)
+    return LootAllocate.GetLootTableEntry(session):GetReRollData(session, isRoll, noAutopass)
+end
+
 
 function LootAllocate:GetFrame()
     if self.frame then return self.frame end
@@ -603,96 +661,386 @@ function LootAllocate:GetFrame()
     return f
 end
 
+-- Perform a response solicitation
 
-LootAllocate.RightClickEntries = {
-    -- level 1
-    {
-        -- 1 Title, player name
-        {
-            text = function(name) return AddOn.Ambiguate(name) end,
-            isTitle = true,
-            notCheckable = true,
-            disabled = true,
-        },
-        -- 2 Spacer
-        {
-            text = "",
-            notCheckable = true,
-            disabled = true,
-        },
-        -- 3 Award
-        {
-            text = L["award"],
-            notCheckable = true,
-            func = function(name)
-                Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name))
-            end,
-        },
-        -- 4 Award for
-        {
-            text = L["award_for"],
-            value = "AWARD_FOR",
-            notCheckable = true,
-            hasArrow = true,
-        },
-        -- 5 Spacer
-        {
-            text = "",
-            notCheckable = true,
-            disabled = true,
-        },
-    },
-    -- level 2
-    {
-        -- 2 AWARD_FOR
-        {
-            special = "AWARD_FOR",
-        }
-    },
-}
+--@param namePred   true or string or func. Determine what candidate should be re-announced. true to re-announce to all candidates.
+--                  string for specific candidate.
+--@param sesPred    true or number or func. Determine what session should be re-announced. true to re-announce to all candidates.
+--		            number k to re-announce to session k and other sessions with the same item as session k.
+--@param isRoll     true or false. Determine whether we are requesting rolls. true will request rolls and clear the current rolls.
+--@param noAutoPass true or false or nil. Determine whether we force no auto-pass.
+--@param announceInChat true or false or nil. Determine if the re-announce sessions should be announced in chat.
+function LootAllocate:SolicitResponse(namePred, sesPred, isRoll, noAutoPass, announceInChat)
+    Logging:Trace("SolicitResponse(%s, %s) : isRoll=%s, noAutoPass=%s, announceInChat=%s",
+            Util.Objects.ToString(namePred), Util.Objects.ToString(sesPred),
+            tostring(isRoll), tostring(noAutoPass), tostring(announceInChat)
+    )
 
-local info = MSA_DropDownMenu_CreateInfo()
-function LootAllocate.RightClickMenu(menu, level)
-    Logging:Trace("RightClickMenu()")
-    if not AddOn.isMasterLooter then return end
+    local C = AddOn.Constants
+    local reRollTable = {}
+    -- session id and LootAllocate instance
+    for session, entry in ipairs(lootTable) do
+        local rolls = {}
+        if sesPred == true or
+            (type(sesPred) == 'number' and AddOn:ItemIsItem(lootTable[session].link, lootTable[sesPred].link)) or
+            (type(sesPred) == 'function' and sesPred(session)) then
+            Util.Tables.Push(reRollTable, LootAllocate:GetReRollData(session, isRoll, noAutoPass))
 
-    local candidateName = menu.name
-    local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
-    for _, entry in ipairs(LootAllocate.RightClickEntries[level]) do
-        info = MSA_DropDownMenu_CreateInfo()
-        if not entry.special then
-            if not entry.onValue or entry.onValue == value or (type(entry.onValue)=="function" and entry.onValue(candidateName)) then
-                if (entry.hidden and type(entry.hidden) == "function" and not entry.hidden(candidateName)) or not entry.hidden then
-                    for name, val in pairs(entry) do
-                        if name == "func" then
-                            info[name] = function() return val(candidateName) end
-                        elseif type(val) == "function" then
-                            info[name] = val(candidateName)
-                        else
-                            info[name] = val
-                        end
+            for name, _ in pairs(entry.candidates) do
+                if namePred == true or
+                    (type(namePred)=="string" and name == namePred) or
+                    (type(namePred)=="function" and namePred(name)) then
+                    if not isRoll then
+                        AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, name, "WAIT")
                     end
-                    MSA_DropDownMenu_AddButton(info, level)
+                    rolls[name] = ""
                 end
             end
-        elseif value == "AWARD_FOR" and entry.special == value then
-            for k,v in ipairs(LootAllocate.db.profile.awardReasons) do
-                if k > LootAllocate.db.profile.awardReasons.numAwardReasons then break end
-                info.text = v.text
-                info.notCheckable = true
-                info.func = function()
-                    Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, candidateName, v))
-                end
-                MSA_DropDownMenu_AddButton(info, level)
+
+            if isRoll then
+                AddOn:SendCommand(C.group, C.Commands.Rolls, session, rolls)
             end
-        elseif value == "CHANGE_RESPONSE" and entry.special == value then
+        end
+    end
+
+    if #reRollTable > 0 then
+        AddOn:MasterLooterModule():AnnounceItems(reRollTable)
+
+        if namePred == true then
+            AddOn:SendCommand(C.group, C.Commands.ReRoll, reRollTable)
+        else
+            for name, _ in pairs(LootAllocate.GetLootTableEntry(session).candidates) do
+                if (type(namePred)=="string" and name == namePred) or
+                    (type(namePred)=="function" and namePred(name)) then
+                    AddOn:SendCommand(name, C.Commands.ReRoll, reRollTable)
+                end
+            end
         end
     end
 end
 
+do
+    function LootAllocate.SolicitResponseCategoryButton(category)
+        Logging:Trace("SolicitResponseCategoryButton(%s)", tostring(category))
 
-function LootAllocate.FilterMenu(menu, level)
-    Logging:Trace("FilterMenu()")
+        local b = {
+            onValue = function() return MSA_DROPDOWNMENU_MENU_VALUE == "REANNOUNCE" or MSA_DROPDOWNMENU_MENU_VALUE == "REQUESTROLL" end,
+            value = function() return MSA_DROPDOWNMENU_MENU_VALUE .. "_" .. category end,
+            text = function(candidateName) return LootAllocate.SolicitResponseRollText(candidateName, category) end,
+            notCheckable = true,
+            hasArrow = true,
+        }
+        Logging:Debug("SolicitResponseCategoryButton(%s) : %s", tostring(category), Util.Objects.ToString(b))
+        return b
+    end
+
+    function LootAllocate.SolicitResponseRollText(candidateName, category)
+        Logging:Trace("SolicitResponseRollText(%s, %s)", tostring(candidateName), tostring(category))
+
+        if type(MSA_DROPDOWNMENU_MENU_VALUE) ~= "string" then return end
+
+        local text = ""
+        if category == "CANDIDATE" or MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") then
+            text = AddOn:GetUnitClassColoredName(candidateName)
+        elseif category == "GROUP" or MSA_DROPDOWNMENU_MENU_VALUE:find("_GROUP$") then
+            text = FRIENDS_FRIENDS_CHOICE_EVERYONE
+        elseif category == "ROLL" or MSA_DROPDOWNMENU_MENU_VALUE:find("_ROLL$") then
+            text = ROLL .. ": ".. (LootAllocate.GetLootTableEntryResponse(session, candidateName).roll or "")
+        elseif category == "RESPONSE" or MSA_DROPDOWNMENU_MENU_VALUE:find("_RESPONSE$") then
+            local e = LootAllocate.GetLootTableEntry(session)
+            local c = e:GetCandidateResponse(candidateName)
+            text = L["response"] .. ": " .. "|cff" ..
+                    (AddOn:RGBToHex(unpack(AddOn:GetResponse(e.typeCode or e.equipLoc, c.response).color)) or "ffffff") ..
+                    (AddOn:GetResponse(e.typeCode or e.equipLoc, c.response).text or "") .. "|r"
+        else
+            Logging:Warn("Unexpected category or dropdown menu values - %s, %s", tostring(category), tostring(MSA_DROPDOWNMENU_MENU_VALUE))
+        end
+
+        Logging:Debug("SolicitResponseRollText(%s, %s) : %s", tostring(candidateName), tostring(category), text)
+
+        return text
+    end
+
+    function LootAllocate.SolicitResponseRollButton(candidateName, isThisItem)
+        Logging:Trace("SolicitResponseRollButton(%s, %s)", tostring(candidateName), tostring(isThisItem))
+
+
+        if type(MSA_DROPDOWNMENU_MENU_VALUE) ~= "string" then return end
+        local namePred, sesPred
+        if isThisItem then
+            sesPred = function(s)
+                local e1 = LootAllocate.GetLootTableEntry(s)
+                local e2 = LootAllocate.GetLootTableEntry(session)
+                return s == session or (not e1.awarded and AddOn:ItemIsItem(e1.link, e2.link))
+            end
+        else
+            sesPred = function(s) return not LootAllocate.GetLootTableEntry(s).awarded end
+        end
+
+        local isRoll = MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") and true or false
+        local announce = false
+
+        if MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") then
+            namePred = candidateName
+        elseif MSA_DROPDOWNMENU_MENU_VALUE:find("_GROUP$") then
+            announce = true
+            namePred = true
+        elseif MSA_DROPDOWNMENU_MENU_VALUE:find("_ROLL$") then
+            namePred = function(name)
+                local r1 = LootAllocate.GetLootTableEntryResponse(session, name)
+                local r2 = LootAllocate.GetLootTableEntryResponse(session, candidateName)
+                return r1.roll == r2.roll
+            end
+        elseif MSA_DROPDOWNMENU_MENU_VALUE:find("_RESPONSE$") then
+            namePred = function(name)
+                local r1 = LootAllocate.GetLootTableEntryResponse(session, name)
+                local r2 = LootAllocate.GetLootTableEntryResponse(session, candidateName)
+                return r1.response == r2.response
+            end
+        else
+            Logging:Warn("Unexpected dropdown menu value - %s ", tostring(MSA_DROPDOWNMENU_MENU_VALUE))
+        end
+
+        local noAutopass = isThisItem and MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") and true or false
+        if isThisItem then
+            LootAllocate:SolicitResponse(namePred, sesPred, isRoll, noAutopass, announce)
+            LootAllocate.SolicitResponseRollPrint(LootAllocate.SolicitResponseRollText(candidateName), isThisItem, isRoll)
+        else
+            local target = LootAllocate.SolicitResponseRollText(candidateName)
+            Dialog:Spawn(AddOn.Constants.Popups.ConfirmReannounceItems, {
+                target = target,
+                isRoll = isRoll,
+                func = function()
+                    LootAllocate:SolicitResponse(namePred, sesPred, isRoll, noAutopass, announce)
+                    LootAllocate.SolicitResponseRollPrint(target, isThisItem, isRoll)
+                end
+            })
+        end
+    end
+
+    function LootAllocate.SolicitResponseRollPrint(target, isThisItem, isRoll)
+        Logging:Debug("SolicitResponseRollPrint(%s, %s, %s)", tostring(target), tostring(isThisItem), tostring(isRoll))
+
+        local itemText = isThisItem and L["this_item"] or L["all_unawarded_items"]
+        if isRoll then
+            AddOn:Print(format(L["requested_rolls_for_i_from_t"], itemText, target))
+        else
+            AddOn:Print(format(L["reannounced_i_to_t"], itemText, target))
+        end
+    end
+
+    LootAllocate.RightClickEntries = {
+        -- level 1
+        {
+            -- 1 Title, player name
+            {
+                text = function(name) return AddOn.Ambiguate(name) end,
+                isTitle = true,
+                notCheckable = true,
+                disabled = true,
+            },
+            -- 2 Spacer
+            {
+                text = "",
+                notCheckable = true,
+                disabled = true,
+            },
+            -- 3 Award
+            {
+                text = L["award"],
+                notCheckable = true,
+                func = function(name)
+                    Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name))
+                end,
+            },
+            -- 4 Award for
+            {
+                text = L["award_for"],
+                value = "AWARD_FOR",
+                notCheckable = true,
+                hasArrow = true,
+            },
+            -- 5 Spacer
+            {
+                text = "",
+                notCheckable = true,
+                disabled = true,
+            },
+            -- 6 Change response
+            {
+                text = L["change_response"],
+                value = "CHANGE_RESPONSE",
+                hasArrow = true,
+                notCheckable = true,
+            },
+            -- 7 Reannounce
+            {
+                text = L["reannounce"],
+                value = "REANNOUNCE",
+                hasArrow = true,
+                notCheckable = true,
+            },
+            -- 8 Add rolls
+            {
+                text = L["add_rolls"],
+                notCheckable = true,
+                func = function() LootAllocate:DoRandomRolls(session) end,
+            },
+            -- 9 Reannounce and request rolls
+            {
+                text = _G.REQUEST_ROLL,
+                value = "REQUESTROLL",
+                hasArrow = true,
+                notCheckable = true,
+            },
+            -- 10 Remove from consideration
+            {
+                text = L["remove_from_consideration"],
+                notCheckable = true,
+                func = function(name)
+                    AddOn:SendCommand(AddOn.Constants.group, AddOn.Constants.Commands.ChangeResponse, session, name, "REMOVED")
+                end,
+            },
+        },
+        -- level 2
+        {
+            -- 1 AWARD_FOR
+            {
+                special = "AWARD_FOR",
+            },
+            -- 2 AWARD_FOR
+            {
+                special = "CHANGE_RESPONSE",
+            },
+            -- 4,5,6,7 Reannounce/Reroll entries
+            LootAllocate.SolicitResponseCategoryButton("CANDIDATE"),
+            LootAllocate.SolicitResponseCategoryButton("GROUP"),
+            LootAllocate.SolicitResponseCategoryButton("ROLL"),
+            LootAllocate.SolicitResponseCategoryButton("RESPONSE"),
+        },
+        -- level 3
+        {
+            -- 1 header for response solicitation
+            {
+                onValue = function()
+                    return type(MSA_DROPDOWNMENU_MENU_VALUE)=="string" and
+                            (MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") or MSA_DROPDOWNMENU_MENU_VALUE:find("^REANNOUNCE"))
+                end,
+                text = function(candidateName) return LootAllocate.SolicitResponseRollText(candidateName) end,
+                notCheckable = true,
+                isTitle = true,
+                func = function(candidateName)
+                    return LootAllocate.SolicitResponseRollButton(candidateName, true)
+                end,
+            },
+            -- 2 this item
+            {
+                onValue = function()
+                    return type(MSA_DROPDOWNMENU_MENU_VALUE)=="string" and
+                            (MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") or MSA_DROPDOWNMENU_MENU_VALUE:find("^REANNOUNCE"))
+                end,
+                text = function()
+                    if type(_G.MSA_DROPDOWNMENU_MENU_VALUE)=="string" and MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") then
+                        return L["this_item"] .. " (" .. REQUEST_ROLL .. ")"
+                    else
+                        return L["this_item"]
+                    end
+                end,
+                notCheckable = true,
+                func = function(candidateName)
+                    return LootAllocate.SolicitResponseRollButton(candidateName, true)
+                end,
+            },
+            -- 3 all unawarded items
+            {
+                onValue = function()
+                    return type(_G.MSA_DROPDOWNMENU_MENU_VALUE)=="string" and
+                            (MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") or MSA_DROPDOWNMENU_MENU_VALUE:find("^REANNOUNCE")) and
+                            (MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") or MSA_DROPDOWNMENU_MENU_VALUE:find("_GROUP$"))
+                end,
+                text = function()
+                    if type(_G.MSA_DROPDOWNMENU_MENU_VALUE)=="string" and MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") then
+                        return L["all_unawarded_items"] .. " (" .. REQUEST_ROLL .. ")"
+                    else
+                        return L["all_unawarded_items"]
+                    end
+                end,
+                notCheckable = true,
+                func = function(candidateName)
+                    return LootAllocate.SolicitResponseRollButton(candidateName, false)
+                end,
+            },
+        }
+    }
+
+    local info = MSA_DropDownMenu_CreateInfo()
+    function LootAllocate.RightClickMenu(menu, level)
+        Logging:Trace("RightClickMenu()")
+        if not AddOn.isMasterLooter then return end
+
+        local C = AddOn.Constants
+        local candidateName = menu.name
+        local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
+        for _, entry in ipairs(LootAllocate.RightClickEntries[level]) do
+            info = MSA_DropDownMenu_CreateInfo()
+            if not entry.special then
+                if not entry.onValue or entry.onValue == value or (type(entry.onValue)=="function" and entry.onValue(candidateName)) then
+                    if (entry.hidden and type(entry.hidden) == "function" and not entry.hidden(candidateName)) or not entry.hidden then
+                        for name, val in pairs(entry) do
+                            if name == "func" then
+                                info[name] = function() return val(candidateName) end
+                            elseif type(val) == "function" then
+                                info[name] = val(candidateName)
+                            else
+                                info[name] = val
+                            end
+                        end
+                        MSA_DropDownMenu_AddButton(info, level)
+                    end
+                end
+            elseif value == "AWARD_FOR" and entry.special == value then
+                for k,v in ipairs(LootAllocate.db.profile.awardReasons) do
+                    if k > LootAllocate.db.profile.awardReasons.numAwardReasons then break end
+                    info.text = v.text
+                    info.notCheckable = true
+                    info.colorCode = "|cff"..AddOn:RGBToHex(unpack(v.color))
+                    info.func = function()
+                        Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, candidateName, v))
+                    end
+                    MSA_DropDownMenu_AddButton(info, level)
+                end
+            elseif value == "CHANGE_RESPONSE" and entry.special == value then
+                local e, v = LootAllocate.GetLootTableEntry(session), nil
+                for i = 1, AddOn:GetNumButtons(e.typeCode or e.equipLoc) do
+                    v = AddOn:GetResponse(e.typeCode or e.equipLoc, i)
+                    info.text = v.text
+                    info.colorCode = "|cff"..AddOn:RGBToHex(unpack(v.color))
+                    info.notCheckable = true
+                    info.func = function()
+                        AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, candidateName, i)
+                    end
+                    MSA_DropDownMenu_AddButton(info, level)
+                end
+
+                -- Add pass button as well
+                local passResponse = AddOn:MasterLooterModule().db.profile.responses.default.PASS
+                info.text = passResponse.text
+                info.colorCode = "|cff" .. AddOn:RGBToHex(unpack(passResponse.color))
+                info.notCheckable = true
+                info.func = function()
+                    AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, candidateName, "PASS")
+                end
+                MSA_DropDownMenu_AddButton(info, level)
+
+                info = MSA_DropDownMenu_CreateInfo()
+            end
+        end
+    end
+
+
+    function LootAllocate.FilterMenu(menu, level)
+        Logging:Trace("FilterMenu()")
+    end
 end
 
 function LootAllocate.FilterFunc(table, row)

@@ -43,3 +43,28 @@ Dialog:Register(AddOn.Constants.Popups.ConfirmAbort, {
     hide_on_escape = true,
     show_while_dead = true,
 })
+
+Dialog:Register(AddOn.Constants.Popups.ConfirmReannounceItems, {
+    text = "something_went_wrong",
+    on_show = function(self, data)
+        if data.isRoll then
+            self.text:SetText(format(L["confirm_rolls"], data.text))
+        else
+            self.text:SetText(format(L["confirm_unawarded"], data.text))
+        end
+    end,
+    buttons = {
+        {
+            text = _G.YES,
+            on_click = function(self, data)
+                data.func()
+            end,
+        },
+        {
+            text = _G.NO,
+        },
+    },
+    hide_on_escape = true,
+    show_while_dead = true,
+})
+

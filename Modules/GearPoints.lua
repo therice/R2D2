@@ -79,37 +79,37 @@ GP.defaults = {
             ms_need  = {
                 scale = 1,
                 user_visible = true,
-                color = {0,1,0,1},
+                color = {0,1,0.59,1},
             },
             os_greed = {
                 scale = 0.5,
                 user_visible = true,
-                color = {1,0.5,0,1},
+                color = {1,0.96,0.41,1},
             },
             minor_upgrade = {
                 scale = 0.75,
                 user_visible = true,
-                color = {0,0.7,0.7,1},
+                color = {0.96,0.55,0.73,1},
             },
             pvp = {
                 scale = 0.25,
                 user_visible = true,
-                color = {1,0.5,0,1},
+                color = {0.77,0.12,0.23,1},
             },
             disenchant = {
                 scale = 0,
                 user_visible = false,
-                color = nil,
+                color = {0.25, 0.78, 0.92, 1},
             },
             bank = {
                 scale = 0,
                 user_visible = false,
-                color = nil,
+                color = {0.53, 0.53, 0.93, 1},
             },
             free = {
                 scale = 0,
                 user_visible = false,
-                color = nil,
+                color = {0, 0.44, 0.87, 1},
             }
         }
     }

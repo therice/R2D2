@@ -102,6 +102,9 @@ function Loot:AddSingleItem(item)
     end
 end
 
+--[[
+{{equipLoc = INVTYPE_WAIST, ilvl = 76, link = [Dragonstalker's Belt], isRoll = true, classes = 4, noAutopass = true, typeCode = default, session = 1, texture = 132517}}
+--]]
 function Loot:ReRoll(table)
     Logging:Trace("ReRoll(%s)", #table)
     self:Start(table, true)

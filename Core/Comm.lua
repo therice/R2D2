@@ -253,6 +253,16 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 else
                     Logging:Warn("Non-MasterLooter %s sent DB", sender)
                 end
+            elseif command == C.Commands.ReRoll then
+                AddOn:Print(format(L["player_requested_reroll"], self.Ambiguate(sender)))
+                local table = unpack(data)
+                Logging:Debug("ReRoll : %s", Util.Objects.ToString(table, 4))
+                Util.Tables.Map(table, function (entry) return Models.ItemEntry:new():reconstitute(entry) end)
+                self:PrepareLootTable(table)
+                self:DoAutoPass(table)
+                self:SendLootAck(table)
+                AddOn:CallModule("Loot")
+                AddOn:GetModule("Loot"):ReRoll(self.lootTable)
             elseif command == C.Commands.PlayerInfoRequest then
                 self:SendCommand(sender, C.Commands.PlayerInfo, self:GetPlayerInfo())
             elseif command == C.Commands.LootSessionEnd and self.enabled then

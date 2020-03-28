@@ -23,6 +23,7 @@ AddOn.Constants = {
         Awarded                 =   "Awarded",
         Candidates              =   "Candidates",
         CandidatesRequest       =   "CandidatesRequest",
+        ChangeResponse          =   "ChangeResponse",
         HandleLootStart         =   "HandleLootStart",
         HandleLootStop          =   "HandleLootStop",
         LootAck                 =   "LootAck",
@@ -38,6 +39,7 @@ AddOn.Constants = {
         Reconnect               =   "Reconnect",
         ReconnectData           =   "ReconnectData",
         Response                =   "Response",
+        ReRoll                  =   "ReRoll",
         Roll                    =   "Roll",
         Rolls                   =   "Rolls",
         StartHandleLoot         =   "StartHandleLoot",
@@ -73,7 +75,8 @@ AddOn.Constants = {
 
     Popups = {
         ConfirmAbort            =   name .. "_ConfigAbort",
-        ConfirmAward            =   name .. "_ConfirmAward"
+        ConfirmAward            =   name .. "_ConfirmAward",
+        ConfirmReannounceItems  =   name .. "_ConfirmReannounceItems",
     },
 
     Responses = {

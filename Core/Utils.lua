@@ -133,6 +133,10 @@ function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, colum
     end
 end
 
+function AddOn:RGBToHex(r,g,b)
+    return string.format("%02x%02x%02x",255*r, 255*g, 255*b)
+end
+
 function AddOn:GetClassColor(class)
     local color = RAID_CLASS_COLORS[class]
     if not color then
@@ -141,6 +145,24 @@ function AddOn:GetClassColor(class)
     else
         color.a = 1.0
         return color
+    end
+end
+
+function AddOn:GetUnitClassColoredName(name)
+    local candidate = self.candidates[name]
+
+    if candidate and candidate.class then
+        local c = self:GetClassColor(candidate.class)
+        return "|cff" .. self:RGBToHex(c.r,c.g,c.b) .. self.Ambiguate(name) .. "|r"
+    else
+        local englishClass = select(2, UnitClass(Ambiguate(name, "short")))
+        name = self:UnitName(name)
+        if not englishClass or not name then
+            return self.Ambiguate(name)
+        else
+            local color = RAID_CLASS_COLORS[englishClass].colorStr
+            return "|c" .. color .. self.Ambiguate(name) .. "|r"
+        end
     end
 end
 

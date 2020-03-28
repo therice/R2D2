@@ -314,7 +314,6 @@ end
 
 function AllocateEntry:GetAwardData(session, candidate, reason)
     local cr = self.candidates[candidate]
-
     return {
         session     = session,
         winner		= candidate,
@@ -329,6 +328,21 @@ function AllocateEntry:GetAwardData(session, candidate, reason)
         equipLoc	= self.equipLoc,
         texture 	= self.texture,
         typeCode 	= self.typeCode,
+    }
+end
+
+function AllocateEntry:GetReRollData(session, isRoll, noAutopass)
+    return {
+        session     = session,
+        link        = self.link,
+        ilvl        = self.ilvl,
+        texture     = self.texture,
+        equipLoc    = self.equipLoc,
+        classes     = self.classes,
+        isRoll      = isRoll,
+        noAutopass  = noAutopass,
+        owner       = self.owner,
+        typeCode    = self.typeCode,
     }
 end
 

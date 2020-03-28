@@ -261,6 +261,11 @@ function AddOn:ResetReconnectRequest()
     self.reconnectPending = false
 end
 
+local lootDbStats
+function AddOn:GetLootDbStatistics()
+
+end
+
 function AddOn:OnEvent(event, ...)
     Logging:Debug("OnEvent(%s)", event)
     local C = AddOn.Constants.Commands

@@ -366,7 +366,7 @@ end
 --@param callback This function will be called as callback(awarded, session, winner, status, ...)
 --@returns true if award is success. false if award is failed. nil if we don't know the result yet.
 function ML:Award(session, winner, response, reason, callback, ...)
-
+    Logging:Debug("Award(%s) : %s, %s, %s", tostring(session), tostring(winner), tostring(response), Util.Objects.ToString(reason))
 end
 
 ML.AnnounceItemStrings = {
@@ -475,9 +475,12 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
             elseif command == C.Commands.CandidatesRequest then
                 self:SendCandidates()
             elseif command == C.Commands.Reconnect and AddOn:UnitIsUnit(sender, AddOn.playerName) then
+                -- resend the master looter DB
                 AddOn:SendCommand(sender, C.Commands.MasterLooterDb, AddOn.mlDb)
+                -- resend the candidates
                 AddOn:ScheduleTimer("SendCommand", 2, sender, C.Commands.Candidates, self.candidates)
                 if self.running then
+                    -- resend the loot table
                     AddOn:ScheduleTimer("SendCommand", 4, sender,  C.Commands.LootTable, self:GetLootTableForTransmit())
                 end
             elseif command == C.Commands.LootTable and AddOn:UnitIsUnit(sender, AddOn.playerName) then
@@ -522,6 +525,7 @@ function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data,
 end
 
 function ML.AwardPopupOnClickYes(frame, data, callback, ...)
+    Logging:Debug("AwardPopupOnClickYes() : %s / %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
     ML:Award(
         data.session,
         data.winner,
