@@ -256,13 +256,18 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
             elseif command == C.Commands.ReRoll then
                 AddOn:Print(format(L["player_requested_reroll"], self.Ambiguate(sender)))
                 local table = unpack(data)
+                --[[
+                {
+                    {equipLoc = INVTYPE_WEAPONMAINHAND, ilvl = 65, link = [Sorcerous Dagger], isRoll = true, classes = 4294967295, noAutopass = true, typeCode = default, session = 4, texture = 135643}
+                }
+                --]]
                 Logging:Debug("ReRoll : %s", Util.Objects.ToString(table, 4))
                 Util.Tables.Map(table, function (entry) return Models.ItemEntry:new():reconstitute(entry) end)
                 self:PrepareLootTable(table)
                 self:DoAutoPass(table)
                 self:SendLootAck(table)
                 AddOn:CallModule("Loot")
-                AddOn:GetModule("Loot"):ReRoll(self.lootTable)
+                AddOn:GetModule("Loot"):ReRoll(table)
             elseif command == C.Commands.PlayerInfoRequest then
                 self:SendCommand(sender, C.Commands.PlayerInfo, self:GetPlayerInfo())
             elseif command == C.Commands.LootSessionEnd and self.enabled then

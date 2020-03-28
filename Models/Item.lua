@@ -175,7 +175,7 @@ end
 -- @param owner     The owner of the item (if any)
 -- @param sent      Has entry been transmitted to others
 -- @param typeCode  The associated type code used to determine which set of buttons to use for this entry
-function ItemEntry:initialize(item, slotIndex, awarded, owner, sent, typeCode)
+function ItemEntry:initialize(item, slotIndex, awarded, owner, sent, typeCode, isRoll)
     if not item then return end
 
     if type(item) ~= 'table' then
@@ -206,7 +206,7 @@ function ItemEntry:initialize(item, slotIndex, awarded, owner, sent, typeCode)
     self.owner = owner
     self.isSent = sent
     self.typeCode = typeCode
-    self.isRoll = false
+    self.isRoll = isRoll
 end
 
 function ItemEntry:UpdateForTransmit()
@@ -265,7 +265,8 @@ local function CreateItemEntry(self, data, callback)
                 data.awarded,
                 data.owner,
                 data.isSent,
-                data.typeCode
+                data.typeCode,
+                data.isRoll
         )
 
         if callback then callback() end

@@ -216,9 +216,9 @@ end
 function AddOn:PrepareLootTable(lootTable)
     Util.Tables.Call(lootTable,
             function(entry, session)
-                -- Logging:Trace("PrepareLootTable() : %s - %s", tostring(session), Util.Objects.ToString(entry))
-                -- Logging:Trace("PrepareLootTable() : Entry getmetatable => %s", Util.Objects.ToString(getmetatable(entry)))
+                -- Logging:Trace("PrepareLootTable(PRE) : %s - %s", tostring(session), Util.Objects.ToString(entry))
                 entry:Validate(session)
+                -- Logging:Trace("PrepareLootTable(POST) : %s - %s", tostring(session), Util.Objects.ToString(entry))
             end,
             true -- index required (it's the session id)
     )
@@ -240,17 +240,20 @@ end
 function AddOn:DoAutoPass(table, skip)
     for sess, entry in ipairs(table) do
         local session = entry.session or sess
-        Logging:Trace("DoAutoPass(%s) : %s", session, Util.Objects.ToString(entry))
+        -- Logging:Trace("DoAutoPass(%s) : %s", session, Util.Objects.ToString(entry))
         if session > (skip or 0) then
             -- todo : add configuration setting for auto pass to parameterize this
-            if not entry.boe then
-                if not ItemUtil:ClassCanUse(self.playerClass, entry.classes, entry.equipLoc, entry.typeId, entry.subTypeId) then
-                    Logging:Trace("Auto-passing on %s", entry.link)
-                    self:Print(format(L["auto_passed_on_item"], entry.link))
-                    entry.autoPass = true
+            -- still obey no auto-pass if sent in through entry
+            if not entry.noAutopass then
+                if not entry.boe then
+                    if not ItemUtil:ClassCanUse(self.playerClass, entry.classes, entry.equipLoc, entry.typeId, entry.subTypeId) then
+                        Logging:Trace("Auto-passing on %s", entry.link)
+                        self:Print(format(L["auto_passed_on_item"], entry.link))
+                        entry.autoPass = true
+                    end
+                else
+                    Logging:Trace("Skipped auto-pass on %s as it's BOE", entry.link)
                 end
-            else
-                Logging:Trace("Skipped auto-pass on %s as it's BOE", entry.link)
             end
         end
     end

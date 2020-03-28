@@ -102,13 +102,13 @@ function LootAllocate:OnDisable()
 end
 
 function LootAllocate:Hide()
-    Logging:Trace("Hide()")
+    -- Logging:Trace("Hide()")
     self.frame.moreInfo:Hide()
     self.frame:Hide()
 end
 
 function LootAllocate:Show()
-    Logging:Trace("Show()")
+    -- Logging:Trace("Show()")
     if self.frame and lootTable[session] then
         if self:HasUnawardedItems() then active = true end
         self.frame:Show()
@@ -129,9 +129,9 @@ end
 -- when LootTable command is received (provided applicable conditions are met)
 function LootAllocate:ReceiveLootTable(lt)
     active = true
-    Logging:Trace("ReceiveLootTable(BEFORE) : %s", Util.Objects.ToString(lt, 4))
+    -- Logging:Trace("ReceiveLootTable(BEFORE) : %s", Util.Objects.ToString(lt, 4))
     lootTable = Util(lt):Copy():Map(function(entry) return entry:ToAllocateEntry() end)()
-    Logging:Trace("ReceiveLootTable(AFTER) : %s", Util.Objects.ToString(lootTable, 4))
+    -- Logging:Trace("ReceiveLootTable(AFTER) : %s", Util.Objects.ToString(lootTable, 4))
     self:Setup(lootTable)
     if not AddOn.enabled then return end
     self:Show()
@@ -157,7 +157,7 @@ end
 -- entry must be of type Item.AllocateEntry
 function LootAllocate:SetupSession(session, entry)
     entry.added = true
-    Logging:Trace("SetupSession(%s) : %s", tostring(session), Util.Objects.ToString(entry))
+    -- Logging:Trace("SetupSession(%s) : %s", tostring(session), Util.Objects.ToString(entry))
     for name, v in pairs(AddOn.candidates) do
         entry:AddCandidateResponse(name, v.class, v.rank)
     end
@@ -189,7 +189,7 @@ end
 
 
 function LootAllocate:SwitchSession(sess)
-    Logging:Trace("SwitchSession(%s)", tostring(sess))
+    -- Logging:Trace("SwitchSession(%s)", tostring(sess))
     local C = AddOn.Constants
     session = sess
     local entry = LootAllocate.GetLootTableEntry(sess)
@@ -241,7 +241,7 @@ end
 
 function LootAllocate:SetCandidateData(session, candidate, data, val)
     local function Set(session, candidate, data, val)
-        Logging:Trace("SetCandidateData(%s, %s) : data=%s val=%s", session, candidate, Util.Objects.ToString(data), Util.Objects.ToString(val))
+        -- Logging:Trace("SetCandidateData(%s, %s) : data=%s val=%s", session, candidate, Util.Objects.ToString(data), Util.Objects.ToString(val))
         LootAllocate.GetLootTableEntryResponse(session, candidate):Set(data, val)
     end
     local ok, _ = pcall(Set, session, candidate, data, val)
@@ -252,7 +252,7 @@ end
 
 function LootAllocate:GetCandidateData(session, candidate, data)
     local function Get(session, candidate, data)
-        Logging:Trace("GetCandidateData(%s, %s) : data=%s", session, candidate, Util.Objects.ToString(data))
+        -- Logging:Trace("GetCandidateData(%s, %s) : data=%s", session, candidate, Util.Objects.ToString(data))
         return LootAllocate.GetLootTableEntryResponse(session, candidate):Get(data)
     end
     local ok, arg = pcall(Get, session, candidate, data)
@@ -265,7 +265,7 @@ end
 
 
 function LootAllocate:CandidateCheck()
-    Logging:Trace("CandidateCheck()")
+    -- Logging:Trace("CandidateCheck()")
     -- our name isn't present, assume not received
     if not AddOn.candidates[AddOn.playerName] and AddOn.masterLooter then
         local C = AddOn.Constants
@@ -404,7 +404,7 @@ end
 
 
 function LootAllocate:UpdateMoreInfo(row, data)
-    Logging:Trace("UpdateMoreInfo(%s) : %s", tostring(row), Util.Objects.ToString(data, 2))
+    -- Logging:Trace("UpdateMoreInfo(%s) : %s", tostring(row), Util.Objects.ToString(data, 2))
     local name
     if data and row then
         name = data[row].name
@@ -671,10 +671,12 @@ end
 --@param noAutoPass true or false or nil. Determine whether we force no auto-pass.
 --@param announceInChat true or false or nil. Determine if the re-announce sessions should be announced in chat.
 function LootAllocate:SolicitResponse(namePred, sesPred, isRoll, noAutoPass, announceInChat)
+    --[[
     Logging:Trace("SolicitResponse(%s, %s) : isRoll=%s, noAutoPass=%s, announceInChat=%s",
             Util.Objects.ToString(namePred), Util.Objects.ToString(sesPred),
             tostring(isRoll), tostring(noAutoPass), tostring(announceInChat)
     )
+    --]]
 
     local C = AddOn.Constants
     local reRollTable = {}
@@ -721,8 +723,7 @@ end
 
 do
     function LootAllocate.SolicitResponseCategoryButton(category)
-        Logging:Trace("SolicitResponseCategoryButton(%s)", tostring(category))
-
+        -- Logging:Trace("SolicitResponseCategoryButton(%s)", tostring(category))
         local b = {
             onValue = function() return MSA_DROPDOWNMENU_MENU_VALUE == "REANNOUNCE" or MSA_DROPDOWNMENU_MENU_VALUE == "REQUESTROLL" end,
             value = function() return MSA_DROPDOWNMENU_MENU_VALUE .. "_" .. category end,
@@ -730,12 +731,12 @@ do
             notCheckable = true,
             hasArrow = true,
         }
-        Logging:Debug("SolicitResponseCategoryButton(%s) : %s", tostring(category), Util.Objects.ToString(b))
+        -- Logging:Debug("SolicitResponseCategoryButton(%s) : %s", tostring(category), Util.Objects.ToString(b))
         return b
     end
 
     function LootAllocate.SolicitResponseRollText(candidateName, category)
-        Logging:Trace("SolicitResponseRollText(%s, %s)", tostring(candidateName), tostring(category))
+        -- Logging:Trace("SolicitResponseRollText(%s, %s)", tostring(candidateName), tostring(category))
 
         if type(MSA_DROPDOWNMENU_MENU_VALUE) ~= "string" then return end
 
@@ -756,14 +757,13 @@ do
             Logging:Warn("Unexpected category or dropdown menu values - %s, %s", tostring(category), tostring(MSA_DROPDOWNMENU_MENU_VALUE))
         end
 
-        Logging:Debug("SolicitResponseRollText(%s, %s) : %s", tostring(candidateName), tostring(category), text)
+        -- Logging:Debug("SolicitResponseRollText(%s, %s) : %s", tostring(candidateName), tostring(category), text)
 
         return text
     end
 
     function LootAllocate.SolicitResponseRollButton(candidateName, isThisItem)
-        Logging:Trace("SolicitResponseRollButton(%s, %s)", tostring(candidateName), tostring(isThisItem))
-
+        -- Logging:Trace("SolicitResponseRollButton(%s, %s)", tostring(candidateName), tostring(isThisItem))
 
         if type(MSA_DROPDOWNMENU_MENU_VALUE) ~= "string" then return end
         local namePred, sesPred
@@ -951,7 +951,7 @@ do
                     return LootAllocate.SolicitResponseRollButton(candidateName, true)
                 end,
             },
-            -- 3 all unawarded items
+            -- 3 all un-awarded items
             {
                 onValue = function()
                     return type(_G.MSA_DROPDOWNMENU_MENU_VALUE)=="string" and
@@ -975,7 +975,7 @@ do
 
     local info = MSA_DropDownMenu_CreateInfo()
     function LootAllocate.RightClickMenu(menu, level)
-        Logging:Trace("RightClickMenu()")
+        -- Logging:Trace("RightClickMenu()")
         if not AddOn.isMasterLooter then return end
 
         local C = AddOn.Constants
@@ -1039,17 +1039,17 @@ do
 
 
     function LootAllocate.FilterMenu(menu, level)
-        Logging:Trace("FilterMenu()")
+        -- Logging:Trace("FilterMenu()")
     end
 end
 
 function LootAllocate.FilterFunc(table, row)
-    Logging:Trace("FilterFunc(%s) : %s", tostring(row), table and type(table) or 'nil')
+    -- Logging:Trace("FilterFunc(%s) : %s", tostring(row), table and type(table) or 'nil')
     return true
 end
 
 function LootAllocate:Update(forceUpdate)
-    Logging:Trace("Update(%s)", tostring(forceUpdate))
+    -- Logging:Trace("Update(%s)", tostring(forceUpdate))
     updatePending = false
     if not forceUpdate and updateIntervalRemaining > 0 then
         updatePending = true
@@ -1220,7 +1220,7 @@ function LootAllocate.SetCellRank(rowFrame, frame, data, cols, row, realrow, col
     local entry = LootAllocate.GetLootTableEntry(session)
     local response = entry:GetCandidateResponse(name)
 
-    Logging:Trace("SetCellRank(%s) : %s", name, response.rank)
+    -- Logging:Trace("SetCellRank(%s) : %s", name, response.rank)
     frame.text:SetText(lootTable[session].candidates[name].rank)
     frame.text:SetTextColor(AddOn:GetResponseColor(entry.typeCode or  entry.equipLoc, response.response))
     data[realrow].cols[column].value = response.rank or ""
@@ -1268,7 +1268,7 @@ function LootAllocate.SetCellIlvl(rowFrame, frame, data, cols, row, realrow, col
     local iLvlDecimal = true
     local name = data[realrow].name
     local cresponse = LootAllocate.GetLootTableEntryResponse(session, name)
-    Logging:Trace("SetCellIlvl(%s) : %s (%s)", name,cresponse.ilvl, type(cresponse.ilvl))
+    -- Logging:Trace("SetCellIlvl(%s) : %s (%s)", name,cresponse.ilvl, type(cresponse.ilvl))
     frame.text:SetText(iLvlDecimal and Util.Numbers.Round2(cresponse.ilvl, 2) or Util.Numbers.Round2(cresponse.ilvl))
     data[realrow].cols[column].value = cresponse.ilvl or ""
 end
@@ -1277,7 +1277,7 @@ function LootAllocate.SetCellDiff(rowFrame, frame, data, cols, row, realrow, col
     local name = data[realrow].name
     local cresponse = LootAllocate.GetLootTableEntryResponse(session, name)
 
-    Logging:Trace("SetCellDiff(%s) : %s", name, cresponse.diff)
+    -- Logging:Trace("SetCellDiff(%s) : %s", name, cresponse.diff)
     frame.text:SetText(lootTable[session].candidates[name].diff)
     frame.text:SetTextColor(unpack(LootAllocate:GetDiffColor(cresponse.diff)))
     data[realrow].cols[column].value = cresponse.diff or ""

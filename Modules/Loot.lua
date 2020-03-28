@@ -38,12 +38,17 @@ end
 
 -- @param item a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
-    Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
+    --[[
+        DEBUG [03/28/20 12:55:20] (Loot.lua:41): AddItem(0, 1,
+            {equipLoc = INVTYPE_WAIST, typeId = 4, isRoll = true, boe = false, texture = 132512, type = Armor, link = [Bloodfang Belt], typeCode = default, subType = Leather, classes = 8, quality = 4, ilvl = 76, noAutopass = true, subTypeId = 2, session = 1, id = 16910}
+        )
+    --]]
+    -- Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
     self.items[offset + k] = item:ToLootEntry()
 end
 
 function Loot:CheckDuplicates(size, offset)
-    Logging:Trace("CheckDuplicates(%s, %s)", size, offset)
+    -- Logging:Trace("CheckDuplicates(%s, %s)", size, offset)
 
     for k = offset + 1, offset + size do
         if not self.items[k].rolled then
@@ -66,7 +71,14 @@ end
 -- table will be entries of ItemEntry
 function Loot:Start(table, reRoll)
     reRoll = reRoll or false
-    Logging:Trace("Start(%s, %s)", Util.Tables.Count(table), tostring(reRoll))
+    --[[
+
+        DEBUG [03/28/20 12:50:58] (Loot.lua:70):: Start(1, 0, 0, true) :
+        {
+            {equipLoc = INVTYPE_WEAPONMAINHAND, typeId = 2, isRoll = true, boe = false, texture = 135643, type = Weapon, link = [Sorcerous Dagger], typeCode = default, subType = Daggers, classes = 4294967295, quality = 4, ilvl = 65, noAutopass = true, subTypeId = 15, session = 2, id = 18878}
+        }
+    --]]
+    -- Logging:Trace("Start(%s, %s, %s, %s) : %s", Util.Tables.Count(table), tostring(#self.items), Util.Tables.Count(self.items), tostring(reRoll), Util.Objects.ToString(table))
 
     local offset = 0
     -- if re-roll, insert the items at end
@@ -93,7 +105,7 @@ end
 
 function Loot:AddSingleItem(item)
     if not self:IsEnabled() then self:Enable() end
-    Logging:Trace("AddSingleItem(%s, %s)", item.link, #self.items)
+    -- Logging:Trace("AddSingleItem(%s, %s)", item.link, #self.items)
     if item.autoPass then
         self.items[#self.items + 1] = Models.LootEntry.Rolled()
     else
@@ -102,17 +114,17 @@ function Loot:AddSingleItem(item)
     end
 end
 
---[[
-{{equipLoc = INVTYPE_WAIST, ilvl = 76, link = [Dragonstalker's Belt], isRoll = true, classes = 4, noAutopass = true, typeCode = default, session = 1, texture = 132517}}
---]]
 function Loot:ReRoll(table)
-    Logging:Trace("ReRoll(%s)", #table)
+    --[[
+        {{equipLoc = INVTYPE_WAIST, ilvl = 76, link = [Dragonstalker's Belt], isRoll = true, classes = 4, noAutopass = true, typeCode = default, session = 1, texture = 132517}}
+    --]]
+    -- Logging:Trace("ReRoll(%s)", #table)
     self:Start(table, true)
 end
 
 function Loot:GetFrame()
     if self.frame then return self.frame end
-    Logging:Trace("GetFrame() : creating loot frame")
+    -- Logging:Trace("GetFrame() : creating loot frame")
     self.frame = UI:CreateFrame("R2D2_LootFrame", "Loot", L["r2d2_loot_frame"], 250, 375)
     self.frame.title:SetPoint("BOTTOM", self.frame, "TOP", 0 ,-5)
     self.frame.itemTooltip = UI:CreateGameTooltip("Loot", self.frame.content)
@@ -126,7 +138,7 @@ end
 
 function Loot:Update()
     local numEntries = 0
-    for _, item in pairs(self.items) do
+    for _, item in ipairs(self.items) do
         if numEntries >= MAX_ENTRIES then break end
         if not item.rolled then
             numEntries = numEntries + 1
@@ -154,14 +166,14 @@ end
 function Loot:OnRoll(entry, button)
     local C = AddOn.Constants
     local item = entry.item
-    Logging:Trace("OnRoll(%s, %s)", tostring(item.link), tostring(button))
+    -- Logging:Trace("OnRoll(%s)", tostring(button), Util.Objects.ToString(item))
 
     if not item.isRoll then
         -- Only send minimum necessary data, because the information of currently equipped gear has been sent
         -- when we receive the loot table
         local response = AddOn:GetResponse(item.typeCode or item.equipLoc, button)
 
-        Logging:Trace("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
+        -- Logging:Trace("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
         for _, session in ipairs(item.sessions) do
             AddOn:SendResponse(C.group, session, button, item.note)
         end
@@ -201,7 +213,7 @@ function Loot:OnRollTimeout(el)
 end
 
 function Loot:CHAT_MSG_SYSTEM(event, msg)
-    Logging:Debug("CHAT_MSG_SYSTEM(%s) : %s", tostring(event), tostring(msg))
+    Logging:Trace("CHAT_MSG_SYSTEM(%s) : %s", tostring(event), tostring(msg))
 
     local C = AddOn.Constants
     local name, roll, low, high = msg:match(RANDOM_ROLL_PATTERN)
@@ -211,9 +223,9 @@ function Loot:CHAT_MSG_SYSTEM(event, msg)
         local el = awaitingRolls[1]
         tremove(awaitingRolls, 1)
         self:CancelTimer(el.timer)
-        local entry, item = el.entry, el.item
-        AddOn:SendCommand(C.group, C.Commands.Roll, AddOn.playerName, roll, item.sessions)
-        AddOn:SendAnnouncement(format(L["roll_result"], AddOn.Ambiguate(AddOn.playerName, roll, item.link)), C.group)
+        local entry = el.entry
+        AddOn:SendCommand(C.group, C.Commands.Roll, AddOn.playerName, roll, entry.item.sessions)
+        AddOn:SendAnnouncement(format(L["roll_result"], AddOn.Ambiguate(AddOn.playerName), roll, entry.item.link), C.group)
         entry.rollResult:SetText(roll)
         entry.rollResult:Show()
         self:ScheduleTimer("OnRollTimeout", ROLL_SHOW_RESULT_TIME, el)
@@ -444,7 +456,7 @@ do
     }
 
     function Loot.EntryManager:Trash(entry)
-        Logging:Trace("Trash(%s, %s)", entry.position or 0, entry.item.link)
+        -- Logging:Trace("Trash(%s, %s)", entry.position or 0, entry.item.link)
         entry:Hide()
         if not Util.Tables.ContainsKey(self.trashPool, entry.type) then Util.Tables.Set(self.trashPool, entry.type, {}) end
         Util.Tables.Set(self.trashPool, entry.type, entry, true)
@@ -480,8 +492,14 @@ do
     end
 
     function Loot.EntryManager:GetEntry(item)
-        if not item then return Logging:Warn("GetEntry(%s) : No such item!", tostring(item)) end
+        --[[
+            GetEntry() : {
+                equipLoc = INVTYPE_FINGER, ilvl = 73, isRoll = false, rolled = false, subTypeId = 0, timeLeft = 60, quality = 4, type = Armor, link = [Ring of Binding], id = 18813, subType = Miscellaneous, classes = 4294967295, sessions = {1}, typeId = 4, typeCode = default, boe = false, texture = 133355}
+        --]]
+        -- Logging:Trace("GetEntry() : %s", Util.Objects.ToString(item))
+        if not item then return Logging:Warn("GetEntry(%s) : No such item", Util.Objects.ToString(item)) end
         if self.entries[item] then return self.entries[item] end
+
         local entry
         if item.isRoll then
             entry = self:Get("roll")
@@ -519,6 +537,7 @@ do
         local Entry = setmetatable({}, mt)
         Entry.type = "roll"
         Entry:Create(Loot.frame.content)
+
         function Entry.UpdateButtons(entry)
             local b = entry.buttons
             b[1] = b[1] or CreateFrame("Button", nil, entry.frame)
@@ -537,7 +556,7 @@ do
             pass:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
             pass:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight")
             pass:SetPushedTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Down")
-            pass:SetScript("OnClick", function() LootFrame:OnRoll(entry, "PASS") end)
+            pass:SetScript("OnClick", function() Loot:OnRoll(entry, "PASS") end)
             pass:SetSize(32, 32)
             pass:SetPoint("LEFT", roll, "RIGHT", 5, 3)
             pass:Show()
