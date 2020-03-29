@@ -91,8 +91,23 @@ function AddOn:GetPlayerInfo()
 
     -- GetAverageItemLevel() isn't implemented via provided API
     local ilvl = GetAverageItemLevel()
-    return self.playerName, self.playerClass, self.guildRank, enchant, lvl, ilvl, nil
+    return self.playerName, self.playerClass, self.guildRank, enchant, lvl, ilvl
 end
+
+function AddOn:GetGuildRanks()
+    if not IsInGuild() then return {} end
+    
+    GuildRoster()
+    
+    local t = {}
+    for i = 1, GuildControlGetNumRanks() do
+        local name = GuildControlGetRankName(i)
+        t[name] = i
+    end
+    
+    return t;
+end
+
 
 -- https://wow.gamepedia.com/API_Ambiguate
 -- Returns a version of a character-realm string suitable for use in a given context.

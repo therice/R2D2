@@ -78,6 +78,16 @@ function Self.Div(a, b)
     return a/b
 end
 
+function Self.Dispatch(...)
+    local funcs = {...}
+    return function (...)
+        for _, f in ipairs(funcs) do
+            local r = { f(...) }
+            if #r > 0 then return unpack(r) end
+        end
+    end
+end
+
 -- MODIFY
 
 -- Throttle a function, so it is executed at most every n seconds

@@ -16,7 +16,7 @@ local MenuFrame, FilterMenu
 -- session is a number mapping to item
 -- sessionButtons is mapping of session to IconBordered instances
 -- lootTable is a mapping of session to AllocateEntry instances
-local session, sessionButtons, lootTable, moreInfoData, active, moreInfo = 1, {}, {}, {}, false, false
+local session, sessionButtons, lootTable, moreInfoData, guildRanks, active, moreInfo = 1, {}, {}, {}, {}, false, false
 local updatePending, updateIntervalRemaining, updateFrame = false, 0, CreateFrame("FRAME")
 
 LootAllocate.defaults = {
@@ -44,7 +44,7 @@ do
     AwardReasons.numAwardReasons = Util.Tables.Count(NonUserVisibleAwards)
     local sortLevel = 401
     for index, award in ipairs(NonUserVisibleAwards) do
-        Logging:Debug("%s", Util.Objects.ToString(AwardScaling[award]))
+        -- Logging:Trace("%s", Util.Objects.ToString(AwardScaling[award]))
         Util.Tables.Insert(AwardReasons, index, { color = AwardScaling[award].color, sort=sortLevel, text = L[award]})
         sortLevel = sortLevel + 1
     end
@@ -58,15 +58,15 @@ function LootAllocate:OnInitialize()
         { name = _G.NAME,			DoCellUpdate = LootAllocate.SetCellName,		colName = "name",		defaultsort = 1,	width = 120,}, -- 2 Candidate Name
         { name = _G.RANK,			DoCellUpdate = LootAllocate.SetCellRank,		colName = "rank",		sortnext = 4,		width = 95, comparesort = GuildRankSort,}, -- 3 Guild rank
         { name = L["response"],	    DoCellUpdate = LootAllocate.SetCellResponse,	colName = "response",   sortnext = 7,		width = 240,comparesort = ResponseSort,}, -- 4 Response
-        { name = L["ep_abbrev"],	DoCellUpdate = LootAllocate.SetCellEp,		    colName = "ep",		    sortnext = 7,		width = 45, comparesort = EpSort,}, -- 5 EP
-        { name = L["gp_abbrev"],	DoCellUpdate = LootAllocate.SetCellGp,		    colName = "gp",		    sortnext = 7,		width = 45, comparesort = GpSort,}, -- 6 GP
+        { name = L["ep_abbrev"],	DoCellUpdate = LootAllocate.SetCellEp,		    colName = "ep",		    sortnext = 6,		width = 45, comparesort = EpSort,}, -- 5 EP
+        { name = L["gp_abbrev"],	DoCellUpdate = LootAllocate.SetCellGp,		    colName = "gp",		    sortnext = 9,		width = 45, comparesort = GpSort,}, -- 6 GP
         { name = L["pr_abbrev"],	DoCellUpdate = LootAllocate.SetCellPr,		    colName = "pr",		    sortnext = 13,		width = 45, comparesort = PrSort,}, -- 7 PR
         { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = LootAllocate.SetCellIlvl,	    colName = "ilvl",		sortnext = 9,		width = 45, }, -- 8 Total ilvl
         { name = L["diff"],		    DoCellUpdate = LootAllocate.SetCellDiff,		colName = "diff",							width = 40, }, -- 9 ilvl difference
         { name = L["g1"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear1",                          width = 20, align = "CENTER", }, -- 10 Current gear 1
         { name = L["g2"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear2",	                        width = 20, align = "CENTER", }, -- 11 Current gear 2
         { name = L["notes"],		DoCellUpdate = LootAllocate.SetCellNote,		colName = "note",							width = 50, align = "CENTER", }, -- 12 Note icon
-        { name = _G.ROLL,			DoCellUpdate = LootAllocate.SetCellRoll, 		colName = "roll",		sortnext = 8,		width = 50, align = "CENTER", }, -- 13 Roll
+        { name = _G.ROLL,			DoCellUpdate = LootAllocate.SetCellRoll, 		colName = "roll",		sortnext = 5,		width = 50, align = "CENTER", }, -- 13 Roll
     }
     self.scrollCols = { unpack(DefaultScrollTableData) }
     self.db = AddOn.db:RegisterNamespace(self:GetName(), LootAllocate.defaults)
@@ -83,6 +83,7 @@ function LootAllocate:OnEnable()
     self:RegisterBucketEvent({"UNIT_PHASE", "ZONE_CHANGED_NEW_AREA"}, 1, "Update")
     self.frame = self:GetFrame()
     self:ScheduleTimer("CandidateCheck", 20)
+    guildRanks = AddOn:GetGuildRanks()
     updateFrame:Show()
     updatePending = false
     updateIntervalRemaining = 0
@@ -420,24 +421,78 @@ function LootAllocate:UpdateMoreInfo(row, data)
 
 end
 
-function GuildRankSort(table, rowa, rowb, sortbycol)
+local function Sort(table, rowa, rowb, sortbycol, valueFn)
+    Logging:Trace("Sort(%s)", sortbycol)
+    local lte = LootAllocate.GetLootTableEntry(session)
+    local column = table.cols[sortbycol]
+    local row1, row2 = table:GetRow(rowa), table:GetRow(rowb)
+    local v1, v2 = valueFn(lte, row1), valueFn(lte, row2)
+    
+    if v1 == v2 then
+        if column.sortnext then
+            local nextcol = table.cols[column.sortnext]
+            if nextcol and not(nextcol.sort) then
+                if nextcol.comparesort then
+                    return nextcol.comparesort(table, row1, row2, column.sortnext)
+                else
+                    return table:CompareSort(row1, row2, column.sortnext)
+                end
+            end
+        end
+        
+        return false
+    else
+        local direction = column.sort or column.defaultsort or 1
+        if direction == 1 then
+            return v1 < v2
+        else
+            return v1 > v2
+        end
+    end
 
 end
 
 function ResponseSort(table, rowa, rowb, sortbycol)
+    return Sort(table, rowa, rowb, sortbycol,
+        function(lte, row)
+           return AddOn:GetResponse(
+                   lte.typeCode or lte.equipLoc,
+                   lte:GetCandidateResponse(row.name).response
+           ).text
+        end
+    )
+end
 
+function GuildRankSort(table, rowa, rowb, sortbycol)
+    return Sort(table, rowa, rowb, sortbycol,
+                function(lte, row)
+                    return guildRanks[lte:GetCandidateResponse(row.name).rank] or 100
+                end
+    )
 end
 
 function EpSort(table, rowa, rowb, sortbycol)
-
+    return Sort(table, rowa, rowb, sortbycol,
+                function(lte, row)
+                    return 1000
+                end
+    )
 end
 
 function GpSort(table, rowa, rowb, sortbycol)
-
+    return Sort(table, rowa, rowb, sortbycol,
+                function(lte, row)
+                    return 100
+                end
+    )
 end
 
 function PrSort(table, rowa, rowb, sortbycol)
-
+    return Sort(table, rowa, rowb, sortbycol,
+                function(lte, row)
+                    return 1.0
+                end
+    )
 end
 
 
@@ -684,14 +739,14 @@ function LootAllocate:SolicitResponse(namePred, sesPred, isRoll, noAutoPass, ann
     for session, entry in ipairs(lootTable) do
         local rolls = {}
         if sesPred == true or
-            (type(sesPred) == 'number' and AddOn:ItemIsItem(lootTable[session].link, lootTable[sesPred].link)) or
-            (type(sesPred) == 'function' and sesPred(session)) then
+            (Util.Objects.IsNumber(sesPred) and AddOn:ItemIsItem(lootTable[session].link, lootTable[sesPred].link)) or
+            (Util.Objects.IsFunction(sesPred) and sesPred(session)) then
             Util.Tables.Push(reRollTable, LootAllocate:GetReRollData(session, isRoll, noAutoPass))
 
             for name, _ in pairs(entry.candidates) do
                 if namePred == true or
-                    (type(namePred)=="string" and name == namePred) or
-                    (type(namePred)=="function" and namePred(name)) then
+                    (Util.Objects.IsString(namePred) and name == namePred) or
+                    (Util.Objects.IsFunction(namePred) and namePred(name)) then
                     if not isRoll then
                         AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, name, "WAIT")
                     end
@@ -712,8 +767,8 @@ function LootAllocate:SolicitResponse(namePred, sesPred, isRoll, noAutoPass, ann
             AddOn:SendCommand(C.group, C.Commands.ReRoll, reRollTable)
         else
             for name, _ in pairs(LootAllocate.GetLootTableEntry(session).candidates) do
-                if (type(namePred)=="string" and name == namePred) or
-                    (type(namePred)=="function" and namePred(name)) then
+                if (Util.Objects.IsString(namePred) and name == namePred) or
+                    (Util.Objects.IsFunction(namePred) and namePred(name)) then
                     AddOn:SendCommand(name, C.Commands.ReRoll, reRollTable)
                 end
             end
@@ -734,12 +789,12 @@ do
         -- Logging:Debug("SolicitResponseCategoryButton(%s) : %s", tostring(category), Util.Objects.ToString(b))
         return b
     end
-
+    
     function LootAllocate.SolicitResponseRollText(candidateName, category)
         -- Logging:Trace("SolicitResponseRollText(%s, %s)", tostring(candidateName), tostring(category))
-
-        if type(MSA_DROPDOWNMENU_MENU_VALUE) ~= "string" then return end
-
+        
+        if not Util.Objects.IsString(MSA_DROPDOWNMENU_MENU_VALUE) then return end
+        
         local text = ""
         if category == "CANDIDATE" or MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") then
             text = AddOn:GetUnitClassColoredName(candidateName)
@@ -756,16 +811,17 @@ do
         else
             Logging:Warn("Unexpected category or dropdown menu values - %s, %s", tostring(category), tostring(MSA_DROPDOWNMENU_MENU_VALUE))
         end
-
+        
         -- Logging:Debug("SolicitResponseRollText(%s, %s) : %s", tostring(candidateName), tostring(category), text)
-
+        
         return text
     end
-
+    
     function LootAllocate.SolicitResponseRollButton(candidateName, isThisItem)
         -- Logging:Trace("SolicitResponseRollButton(%s, %s)", tostring(candidateName), tostring(isThisItem))
-
-        if type(MSA_DROPDOWNMENU_MENU_VALUE) ~= "string" then return end
+        
+        if not Util.Objects.IsString(MSA_DROPDOWNMENU_MENU_VALUE) then return end
+        
         local namePred, sesPred
         if isThisItem then
             sesPred = function(s)
@@ -776,10 +832,10 @@ do
         else
             sesPred = function(s) return not LootAllocate.GetLootTableEntry(s).awarded end
         end
-
+        
         local isRoll = MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") and true or false
         local announce = false
-
+        
         if MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") then
             namePred = candidateName
         elseif MSA_DROPDOWNMENU_MENU_VALUE:find("_GROUP$") then
@@ -800,7 +856,7 @@ do
         else
             Logging:Warn("Unexpected dropdown menu value - %s ", tostring(MSA_DROPDOWNMENU_MENU_VALUE))
         end
-
+        
         local noAutopass = isThisItem and MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") and true or false
         if isThisItem then
             LootAllocate:SolicitResponse(namePred, sesPred, isRoll, noAutopass, announce)
@@ -817,10 +873,10 @@ do
             })
         end
     end
-
+    
     function LootAllocate.SolicitResponseRollPrint(target, isThisItem, isRoll)
         Logging:Debug("SolicitResponseRollPrint(%s, %s, %s)", tostring(target), tostring(isThisItem), tostring(isRoll))
-
+        
         local itemText = isThisItem and L["this_item"] or L["all_unawarded_items"]
         if isRoll then
             AddOn:Print(format(L["requested_rolls_for_i_from_t"], itemText, target))
@@ -828,7 +884,7 @@ do
             AddOn:Print(format(L["reannounced_i_to_t"], itemText, target))
         end
     end
-
+    
     LootAllocate.RightClickEntries = {
         -- level 1
         {
@@ -886,7 +942,7 @@ do
                 notCheckable = true,
                 func = function() LootAllocate:DoRandomRolls(session) end,
             },
-            -- 9 Reannounce and request rolls
+            -- 9 Re-announce and request rolls
             {
                 text = _G.REQUEST_ROLL,
                 value = "REQUESTROLL",
@@ -923,7 +979,7 @@ do
             -- 1 header for response solicitation
             {
                 onValue = function()
-                    return type(MSA_DROPDOWNMENU_MENU_VALUE)=="string" and
+                    return Util.Objects.IsString(MSA_DROPDOWNMENU_MENU_VALUE) and
                             (MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") or MSA_DROPDOWNMENU_MENU_VALUE:find("^REANNOUNCE"))
                 end,
                 text = function(candidateName) return LootAllocate.SolicitResponseRollText(candidateName) end,
@@ -936,11 +992,11 @@ do
             -- 2 this item
             {
                 onValue = function()
-                    return type(MSA_DROPDOWNMENU_MENU_VALUE)=="string" and
+                    return Util.Objects.IsString(MSA_DROPDOWNMENU_MENU_VALUE) and
                             (MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") or MSA_DROPDOWNMENU_MENU_VALUE:find("^REANNOUNCE"))
                 end,
                 text = function()
-                    if type(_G.MSA_DROPDOWNMENU_MENU_VALUE)=="string" and MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") then
+                    if Util.Objects.IsString(MSA_DROPDOWNMENU_MENU_VALUE) and MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") then
                         return L["this_item"] .. " (" .. REQUEST_ROLL .. ")"
                     else
                         return L["this_item"]
@@ -954,12 +1010,12 @@ do
             -- 3 all un-awarded items
             {
                 onValue = function()
-                    return type(_G.MSA_DROPDOWNMENU_MENU_VALUE)=="string" and
+                    return Util.Objects.IsString(MSA_DROPDOWNMENU_MENU_VALUE) and
                             (MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") or MSA_DROPDOWNMENU_MENU_VALUE:find("^REANNOUNCE")) and
                             (MSA_DROPDOWNMENU_MENU_VALUE:find("_CANDIDATE$") or MSA_DROPDOWNMENU_MENU_VALUE:find("_GROUP$"))
                 end,
                 text = function()
-                    if type(_G.MSA_DROPDOWNMENU_MENU_VALUE)=="string" and MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") then
+                    if Util.Objects.IsString(MSA_DROPDOWNMENU_MENU_VALUE) and MSA_DROPDOWNMENU_MENU_VALUE:find("^REQUESTROLL") then
                         return L["all_unawarded_items"] .. " (" .. REQUEST_ROLL .. ")"
                     else
                         return L["all_unawarded_items"]
@@ -972,24 +1028,24 @@ do
             },
         }
     }
-
+    
     local info = MSA_DropDownMenu_CreateInfo()
     function LootAllocate.RightClickMenu(menu, level)
         -- Logging:Trace("RightClickMenu()")
         if not AddOn.isMasterLooter then return end
-
+        
         local C = AddOn.Constants
         local candidateName = menu.name
         local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
         for _, entry in ipairs(LootAllocate.RightClickEntries[level]) do
             info = MSA_DropDownMenu_CreateInfo()
             if not entry.special then
-                if not entry.onValue or entry.onValue == value or (type(entry.onValue)=="function" and entry.onValue(candidateName)) then
-                    if (entry.hidden and type(entry.hidden) == "function" and not entry.hidden(candidateName)) or not entry.hidden then
+                if not entry.onValue or entry.onValue == value or (Util.Objects.IsFunction(entry.onValue) and entry.onValue(candidateName)) then
+                    if (entry.hidden and Util.Objects.IsFunction(entry.hidden) and not entry.hidden(candidateName)) or not entry.hidden then
                         for name, val in pairs(entry) do
                             if name == "func" then
                                 info[name] = function() return val(candidateName) end
-                            elseif type(val) == "function" then
+                            elseif Util.Objects.IsFunction(val) then
                                 info[name] = val(candidateName)
                             else
                                 info[name] = val
@@ -1021,7 +1077,7 @@ do
                     end
                     MSA_DropDownMenu_AddButton(info, level)
                 end
-
+                
                 -- Add pass button as well
                 local passResponse = AddOn:MasterLooterModule().db.profile.responses.default.PASS
                 info.text = passResponse.text
@@ -1031,21 +1087,204 @@ do
                     AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, candidateName, "PASS")
                 end
                 MSA_DropDownMenu_AddButton(info, level)
-
+                
                 info = MSA_DropDownMenu_CreateInfo()
             end
         end
     end
-
-
+    
+    
     function LootAllocate.FilterMenu(menu, level)
         -- Logging:Trace("FilterMenu()")
+        local Module = AddOn.db.profile.modules[LootAllocate:GetName()]
+    
+        if level == 1 then
+            if not Module.filters then
+                Module.filters = {}
+            end
+        
+            local ModuleFilters = Module.filters
+        
+            local data = {
+                ["STATUS"]      = true,
+                ["PASS"]        = true,
+                ["AUTOPASS"]    = true,
+                default         = {}
+            }
+        
+            for i = 1, AddOn:GetNumButtons() do
+                data[i] = i
+            end
+        
+            local info = MSA_DropDownMenu_CreateInfo()
+            info.text = _G.GENERAL
+            info.isTitle = true
+            info.notCheckable = true
+            info.disabled = true
+            MSA_DropDownMenu_AddButton(info, level)
+        
+            info = MSA_DropDownMenu_CreateInfo()
+            info.text = L["Always show owner"]
+            info.func = function()
+                ModuleFilters.alwaysShowOwner = not ModuleFilters.alwaysShowOwner
+                LootAllocate:Update(true)
+            end
+            info.checked = ModuleFilters.alwaysShowOwner
+            MSA_DropDownMenu_AddButton(info, level)
+        
+            info = MSA_DropDownMenu_CreateInfo()
+            info.text = L["Candidates that can't use the item"]
+            info.func = function()
+                ModuleFilters.showPlayersCantUseTheItem = not ModuleFilters.showPlayersCantUseTheItem
+                LootAllocate:Update(true)
+            end
+            info.checked = ModuleFilters.showPlayersCantUseTheItem
+            MSA_DropDownMenu_AddButton(info, level)
+        
+            info = MSA_DropDownMenu_CreateInfo()
+            info.text = L["Responses"]
+            info.isTitle = true
+            info.notCheckable = true
+            info.disabled = true
+            MSA_DropDownMenu_AddButton(info, level)
+        
+            info = MSA_DropDownMenu_CreateInfo()
+            for k in ipairs(data) do
+                info.text = AddOn:GetResponse("", k).text
+                info.colorCode = "|cff" .. AddOn:RGBToHex(AddOn:GetResponseColor(nil,k))
+                info.func = function()
+                    ModuleFilters[k] = not ModuleFilters[k]
+                    LootAllocate:Update(true)
+                end
+                info.checked = ModuleFilters[k]
+                MSA_DropDownMenu_AddButton(info, level)
+            end
+        
+            for k in pairs(data) do
+                if Util.Objects.IsString(k) then
+                    if k == "STATUS" then
+                        info.text = L["Status texts"]
+                        info.colorCode = "|cffde34e2"
+                    else
+                        info.text = AddOn:GetResponse("",k).text
+                        info.colorCode = "|cff"..AddOn:RGBToHex(AddOn:GetResponseColor(nil,k))
+                    end
+                    info.func = function()
+                        ModuleFilters[k] = not ModuleFilters[k]
+                        LootAllocate:Update(true)
+                    end
+                    info.checked = ModuleFilters[k]
+                    MSA_DropDownMenu_AddButton(info, level)
+                end
+            end
+    
+            info = MSA_DropDownMenu_CreateInfo()
+            info.text = RANK
+            info.isTitle = true
+            info.notCheckable = true
+            info.disabled = true
+            MSA_DropDownMenu_AddButton(info, level)
+    
+            info = MSA_DropDownMenu_CreateInfo()
+            info.text = RANK .. "..."
+            info.notCheckable = true
+            info.hasArrow = true
+            info.value = "FILTER_RANK"
+            MSA_DropDownMenu_AddButton(info, level)
+        elseif level == 2 then
+            local ModuleFilters = Module.filters
+            
+            if MSA_DROPDOWNMENU_MENU_VALUE == "FILTER_RANK" then
+                info = MSA_DropDownMenu_CreateInfo()
+                if IsInGuild() then
+                    for k = 1, GuildControlGetNumRanks() do
+                        info.text = GuildControlGetRankName(k)
+                        info.func = function()
+                            ModuleFilters.ranks[k] = not ModuleFilters.ranks[k]
+                            LootAllocate:Update(true)
+                        end
+                        info.checked = ModuleFilters.ranks[k]
+                        MSA_DropDownMenu_AddButton(info, level)
+                    end
+                end
+        
+                info.text = L["Not in your guild"]
+                info.func = function()
+                    ModuleFilters.ranks.notInYourGuild = not ModuleFilters.ranks.notInYourGuild
+                    LootAllocate:Update(true)
+                end
+                info.checked = ModuleFilters.ranks.notInYourGuild
+                MSA_DropDownMenu_AddButton(info, level)
+            end
+        end
     end
 end
 
 function LootAllocate.FilterFunc(table, row)
-    -- Logging:Trace("FilterFunc(%s) : %s", tostring(row), table and type(table) or 'nil')
-    return true
+    --Logging:Debug("FilterFunc(%s, %s) : %s ", row.name, tostring(session), Util.Objects.ToString(LootAllocate.GetLootTableEntry(session)))
+
+    local Module = AddOn.db.profile.modules[LootAllocate:GetName()]
+    if not Module.filters then return true end
+
+    local ModuleFilters = Module.filters
+    local name = row.name
+    local entry = LootAllocate.GetLootTableEntry(session)
+    local rank = entry:GetCandidateResponse(name).rank
+
+    if ModuleFilters.alwaysShowOwner then
+        if AddOn:UnitIsUnit(name, entry.owner) then
+            return true
+        end
+    end
+
+    if rank and guildRanks[rank] then
+        if not ModuleFilters.ranks[guildRanks[rank]] then
+            return false
+        end
+    elseif not ModuleFilters.ranks.notInYourGuild then
+        return false
+    end
+
+    local response = entry:GetCandidateResponse(name).response
+    if not ModuleFilters.showPlayersCantUseTheItem then
+        return not AddOn:AutoPassCheck(entry:GetCandidateResponse(name).class, entry.equipLoc, entry.typeId, entry.subTypeId, entry.classes)
+    end
+    
+    if response == "AUTOPASS" or response == "PASS" or Util.Objects.IsNumber(response) then
+        return ModuleFilters[response]
+    else
+        return ModuleFilters["STATUS"]
+    end
+end
+
+-- Get rolls ranged from 1 to 100 for all candidates, and guarantee everyone's roll is different
+function LootAllocate:GenerateNoRepeatRollTable(ses)
+    local rolls = {}
+    for i = 1, 100 do
+        rolls[i] = i
+    end
+
+    local t = {}
+    for name, _ in pairs(LootAllocate.GetLootTableEntry(ses).candidates) do
+        if #rolls > 0 then
+            local i = math.random(#rolls)
+            t[name] = rolls[i]
+            tremove(rolls, i)
+        else -- We have more than 100 candidates !?!?
+            t[name] = 0
+        end
+    end
+    return t
+end
+
+function LootAllocate:DoRandomRolls(ses)
+    local C = AddOn.Constants
+    local table = self:GenerateNoRepeatRollTable(ses)
+    for k, v in ipairs(lootTable) do
+        if AddOn:ItemIsItem(LootAllocate.GetLootTableEntry(ses).link, v.link) then
+            AddOn:SendCommand(C.group, C.Commands.Rolls, k, table)
+        end
+    end
 end
 
 function LootAllocate:Update(forceUpdate)

@@ -136,44 +136,54 @@ end
 -- @see MasterLooter.db.responses
 -- @return A table from db.responses containing the response info
 function AddOn:GetResponse(type, name)
-    Logging:Trace('GetResponse(%s, %s)', type, name)
-    Logging:Trace('GetResponse() - mlDb = %s', Util.Objects.ToString(self.mlDb, 5))
+    Logging:Trace('GetResponse(%s, %s)', tostring(type or 'nil'), tostring(name or 'nil'))
+    --Logging:Trace('GetResponse() - mlDb = %s', Util.Objects.ToString(self.mlDb, 5))
 
     type = type and type or "default"
+    
     -- this is the MasterLooter profile db, for use in fallback cases
     -- it's not guaranteed to be consistent with the master looter in situations where
     -- master looter's db has not been received
     local ML = self:MasterLooterModule()
 
-    -- todo : button slots?
-
-    if  Util.Objects.Equals(type, "default") or not self:GetMasterLooterDbValue('responses', type) then
-        if self:GetMasterLooterDbValue('responses.default') then
-            return self:GetMasterLooterDbValue('responses.default')[name]
-        elseif ML:GetDbValue('responses.default') then
-            return ML:GetDbValue('responses.default')[name]
+    local function MasterLooterDbValue(path, attr)
+        local mlDbValue = self:GetMasterLooterDbValue(path)
+        return Util.Tables.ContainsKey(mlDbValue, attr) and mlDbValue[attr] or nil
+    end
+    
+    local function DbValue(path, attr)
+        local dbValue = ML:GetDbValue(path)
+        return Util.Tables.ContainsKey(dbValue, attr) and dbValue[attr] or nil
+    end
+    
+    local ResponseValue = Util.Functions.Dispatch(MasterLooterDbValue, DbValue)
+    
+    -- todo : sort out checks for name
+    if Util.Objects.Equals(type, "default") or not self:GetMasterLooterDbValue('responses', type) then
+        local response = ResponseValue('responses.default', name)
+        if response then
+            return response
         else
-            Logging:Warn("No default responses entry for response %s", tostring(name))
+            Logging:Warn("No default responses entry for response '%s'", tostring(name))
             return ML:GetDefaultDbValue('profile.responses.default.DEFAULT')
         end
     -- must be supplied by master looter's db
     else
         if next(self.mlDb) then
-            local response = self:GetMasterLooterDbValue('responses', type)
-            if response and response[name] then
-                return response[name]
+            local mlDbResponse = self:GetMasterLooterDbValue('responses', type)
+            if mlDbResponse and not Util.Objects.IsEmpty(mlDbResponse[name]) then
+                return mlDbResponse[name]
             else
-                if self:GetMasterLooterDbValue('responses.default') then
-                    return self:GetMasterLooterDbValue('responses.default')[name]
-                elseif ML:GetDbValue('responses.default') then
-                    return ML:GetDbValue('responses.default')[name]
+                local response = ResponseValue('responses.default', name)
+                if response then
+                    return response
                 else
-                    self:Warn("Unknown response - type %s / name %s", tostring(type), tostring(name))
-                    return ML:GetDbValue('responses.default.DEFAULT')
+                    Logging:Warn("Unknown response - type '%s' / name '%s'", tostring(type), tostring(name))
+                    return ML:GetDefaultDbValue('profile.responses.default.DEFAULT')
                 end
             end
         else
-            Logging:Warn("No MasterLooterDb - type %s / name %s", tostring(type), tostring(name))
+            Logging:Warn("No MasterLooterDb - type '%s' / name '%s'", tostring(type), tostring(name))
         end
     end
 
@@ -237,6 +247,12 @@ function AddOn:Timer(type, ...)
     end
 end
 
+-- @return boolean indicating if should auto-pass (cannot use)
+function AddOn:AutoPassCheck(class, equipLoc, typeId, subTypeId, classes)
+    -- Logging:Debug("AutoPassCheck(%s) : %s, %s, %s, %s", class, equipLoc, tostring(typeId), tostring(subTypeId), tostring(classes))
+    return not ItemUtil:ClassCanUse(class, classes, equipLoc, typeId, subTypeId)
+end
+
 function AddOn:DoAutoPass(table, skip)
     for sess, entry in ipairs(table) do
         local session = entry.session or sess
@@ -246,7 +262,7 @@ function AddOn:DoAutoPass(table, skip)
             -- still obey no auto-pass if sent in through entry
             if not entry.noAutopass then
                 if not entry.boe then
-                    if not ItemUtil:ClassCanUse(self.playerClass, entry.classes, entry.equipLoc, entry.typeId, entry.subTypeId) then
+                    if self:AutoPassCheck(self.playerClass, entry.equipLoc, entry.typeId, entry.subTypeId, entry.classes) then
                         Logging:Trace("Auto-passing on %s", entry.link)
                         self:Print(format(L["auto_passed_on_item"], entry.link))
                         entry.autoPass = true

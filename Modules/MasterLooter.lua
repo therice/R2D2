@@ -74,6 +74,41 @@ end
 function ML:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), ML.defaults)
+    -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(ML.defaults, 6))
+    --[[
+        {profile =
+            {responses =
+                {default =
+                    {
+                        NOTINRAID = {color = {0.7, 0.6, 0, 1}, text = Candidate is not in the instance, sort = 803},
+                        TIMEOUT = {color = {1, 0, 0, 1}, text = Candidate didn't respond in time, sort = 504},
+                        1 = {color = {0, 1, 0.59, 1}, text = Main-Spec (Need), sort = 1},
+                        NOTHING = {color = {0.5, 0.5, 0.5, 1}, text = Offline or R2D2 not installed, sort = 505},
+                        WAIT = {color = {1, 1, 0, 1}, text = Candidate is selecting response, please wait, sort = 503},
+                        ANNOUNCED = {color = {1, 0, 1, 1}, text = Loot announced, waiting for answer, sort = 502},
+                        4 = {color = {0.77, 0.12, 0.23, 1}, text = PVP, sort = 4},
+                        DISABLED = {color = {0.3, 0.35, 0.5, 1}, text = Candidate has disabled R2D2, sort = 802},
+                        PASS = {color = {0.7, 0.7, 0.7, 1}, text = Pass, sort = 800},
+                        2 = {color = {1, 0.96, 0.41, 1}, text = Off-Spec (Greed), sort = 2},
+                        DEFAULT = {color = {1, 0, 0, 1}, text = Response isn't available. Please upgrade R2D2., sort = 899},
+                        3 = {color = {0.96, 0.55, 0.73, 1}, text = Minor Upgrade, sort = 3},
+                        NOTANNOUNCED = {color = {1, 0, 1, 1}, text = Not announced, sort = 501},
+                        AUTOPASS = {color = {0.7, 0.7, 0.7, 1}, text = Autopass, sort = 801},
+                        AWARDED = {color = {1, 1, 1, 1}, text = Awarded, sort = 0.1
+                    }
+                },
+                buttons =
+                    {default =
+                        {
+                            {whisperKey = mainspec, ms, need, 1, text = Main-Spec (Need)},
+                            {whisperKey = offspec, os, greed, 2, text = Off-Spec (Greed)},
+                            {whisperKey = minorupgrade, minor, 3, text = Minor Upgrade},
+                            {whisperKey = pvp, 4, text = PVP}, numButtons = 4}
+                        }
+                    }
+                }
+                
+    --]]
 end
 
 function ML:OnEnable()
@@ -123,7 +158,7 @@ function ML:BuildDb()
     -- iterate through the responses and capture any changes
     local changedResponses = {}
     for type, responses in pairs(db.responses) do
-        for i in ipairs(responses) do
+        for i,_ in ipairs(responses) do
             -- don't capture more than number of buttons
             if i > self:GetDbValue('buttons', type, 'numButtons') then break end
 
@@ -166,11 +201,23 @@ function ML:BuildDb()
     changedButtons.default.numButtons = db.buttons.default.numButtons
 
     local Db = {
-        numButtons  =   db.buttons.default.numButtons,
         buttons     =   changedButtons,
         responses   =   changedResponses,
     }
 
+    --[[
+        mlDb = {
+            responses = {
+                default = {
+                }
+            },
+            buttons = {
+                default = {
+                    numButtons = 4
+                }
+            }
+        }
+    --]]
     AddOn:SendMessage(AddOn.Constants.Messages.MasterLooterBuildDb, Db)
 
     return Db

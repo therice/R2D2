@@ -11,6 +11,47 @@ local Self = Util.Objects
 --                      General                      --
 -------------------------------------------------------
 
+function Self.IsEmpty(obj)
+    if Self.IsNil(obj) then return true end
+    if Self.IsString(obj) then Util.Strings.IsEmpty(obj) end
+    if Self.IsTable(obj) then return Util.Tables.IsEmpty(obj) end
+    return false
+end
+
+function Self.IsSet(val)
+    return not Self.IsEmpty(val)
+end
+
+
+function Self.IsString(obj)
+    return type(obj) == 'string'
+end
+
+function Self.IsTable(obj)
+    return type(obj) == 'table'
+end
+
+function Self.IsCallable(obj)
+    return (Self.IsFunction(obj) or ((Self.IsTable(obj) and getmetatable(obj) and getmetatable(obj).__call ~= nil) or false))
+end
+
+function Self.IsFunction(obj)
+    return type(obj) == 'function'
+end
+
+function Self.IsNil(obj)
+    return obj==nil
+end
+
+function Self.IsNumber(obj)
+    return type(obj) == 'number'
+end
+
+function Self.IsBoolean(obj)
+    return type(obj) == 'boolean'
+end
+
+
 -- Check if two values are equal
 function Self.Equals(a, b)
     return a == b
@@ -57,22 +98,6 @@ end
 ---@return T
 function Self.Check(cond, a, b)
     if cond then return a else return b end
-end
-
--- Check if the value is truthy (true, ~=0, ~="", ~=[])
----@param val any
-function Self.IsSet(val)
-    local t = type(val)
-    return val
-            and val ~= 0
-            and not (t == "string" and val:trim() == "")
-            and not (t == "table" and not next(t))
-            and true or false
-end
-
--- Check if the value is falsy (false, 0, "", [])
-function Self.IsEmpty(val)
-    return not Self.IsSet(val)
 end
 
 -- Iterate tables or parameter lists

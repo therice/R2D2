@@ -1,5 +1,7 @@
 local _, AddOn = ...
 
+-- The ['*'] key defines a default table for any key that was not explicitly defined in the defaults.
+-- The second magic key is ['**']. It works similar to the ['*'] key, except that it'll also be inherited by all the keys in the same table.
 AddOn.defaults = {
     profile = {
         logThreshold = AddOn.Libs.Logging.Level.Debug,
@@ -7,6 +9,36 @@ AddOn.defaults = {
           shown = true,
           locked = false,
           minimapPos = 218,
+        },
+        -- user interface element positioning and scale
+        ui = {
+            ['**'] = {
+                y           = 0,
+                x		    = 0,
+                point	    = "CENTER",
+                scale	    = 1.1,
+            },
+            Loot = {
+                y           = -200,
+            },
+            default = {
+
+            },
+        },
+        -- module specific data storage
+        modules = {
+            ['*'] = {
+                -- by deault, fiters are included
+                filters = {
+                    ['*'] = true,
+                    ranks = {
+                        ['*'] = true
+                    },
+                    class = {
+                        ['*'] = false
+                    }
+                },
+            },
         },
     }
 }

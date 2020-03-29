@@ -171,13 +171,15 @@ end
 -- @return The frame object.
 function UI:CreateFrame(name, module, title, width, height)
     local f = CreateFrame("Frame", name, UIParent)
+    local storage = AddOn.db.profile.ui[module]
+
     f:Hide()
     f:SetFrameStrata("DIALOG")
     f:SetWidth(450)
     f:SetHeight(height or 325)
+    f:SetScale(storage.scale or 1.1)
     Window:Embed(f)
-    f:RegisterConfig({}) -- todo : do we want to store this information or just discard it?
-    f:SetScale(1.1)
+    f:RegisterConfig(storage)
     f:RestorePosition()
     f:MakeDraggable()
     f:SetScript("OnMouseWheel", function(f,delta) if IsControlKeyDown() then Window.OnMouseWheel(f,delta) end end)
