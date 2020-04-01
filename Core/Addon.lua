@@ -97,8 +97,8 @@ function R2D2:OnEnable()
     self.playerName = self:UnitName(self.Constants.player)
 
     -- register events
-    for key, event in pairs(C.Events) do
-        self:RegisterEvent(event, C.EventHandlers[key])
+    for event, method in pairs(self.Events) do
+        self:RegisterEvent(event, method)
     end
 
     if IsInGuild() then

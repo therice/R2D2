@@ -67,23 +67,6 @@ AddOn.Constants = {
         RaidInstanceWelcome     =   "RAID_INSTANCE_WELCOME",
     },
 
-    EventHandlers = {
-        EncounterEnd            =   "OnEvent",
-        EncounterStart          =   "OnEvent",
-        GuildRosterUpdate       =   "OnEvent",
-        GroupLeft               =   "OnEvent",
-        LootClosed              =   "LootClosed",
-        LootOpened              =   "LootOpened",
-        LootReady               =   "OnEvent",
-        LootSlotCleared         =   "OnEvent",
-        PartyLootMethodChanged  =   "OnEvent",
-        PartyLeaderChanged      =   "OnEvent",
-        PlayerEnteringWorld     =   "OnEvent",
-        PlayerRegenEnabled      =   "LeaveCombat",
-        PlayerRegenDisabled     =   "EnterCombat",
-        RaidInstanceWelcome     =   "OnEvent",
-    },
-    
     Messages = {
         AwardFailed             =   name .. "_AwardFailed",
         AwardSuccess            =   name .. "_AwardSuccess",
