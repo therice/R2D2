@@ -16,6 +16,8 @@ if not lib.callbacks then
     lib.callbacks = Cbh:New(lib)
 end
 
+local callbacks = lib.callbacks
+
 AceHook:Embed(lib)
 lib:UnhookAll()
 
@@ -67,6 +69,7 @@ local Messages = {
 }
 
 lib.Events = {
+    Initialized         =   "Initialized",
     StateChanged        =   "StateChanged",
     GuildInfoChanged    =   "GuildInfoChanged",
     GuildNoteChanged    =   "GuildNoteChanged",
@@ -74,8 +77,8 @@ lib.Events = {
     GuildMemberDeleted  =   "GuildMemberDeleted",
 }
 
-local state, initialized, index, cache, guildInfo, guildFrameVisible, realmName =
-    States.StaleAwaitingUpdate, false, nil, {}, nil, false, select(2, UnitFullName("player"))
+local state, initialized, index, cache, guildInfo =
+    States.StaleAwaitingUpdate, false, nil, {}, nil
 
 
 local GuildMember = Class('GuildMember')
@@ -106,7 +109,7 @@ function SetState(value)
         if value == States.PendingChanges then
             SendAddonMessage(MAJOR_VERSION, Messages.ChangesPending, "GUILD")
         end
-        lib.callbacks:Fire(lib.Events.StateChanged, state)
+        callbacks:Fire(lib.Events.StateChanged, state)
     end
 end
 
@@ -210,7 +213,7 @@ local function OnUpdate()
         local newGuildInfo = GetGuildInfoText() or ""
         if newGuildInfo ~= guildInfo then
             guildInfo = newGuildInfo
-            lib.callbacks:Fire(lib.Events.GuildInfoChanged)
+            callbacks:Fire(lib.Events.GuildInfoChanged)
         end
     end
     
@@ -240,10 +243,10 @@ local function OnUpdate()
             if entry.note ~= note then
                 entry.note = note
                 if initialized then
-                    lib.callbacks:Fire(lib.Events.GuildNoteChanged, name, note)
+                    callbacks:Fire(lib.Events.GuildNoteChanged, name, note)
                 end
                 if entry:HasPendingNote() then
-                    lib.callbacks:Fire(lib.Events.GuildNoteConflict, name, note, entry.note, entry.pendingNote)
+                    callbacks:Fire(lib.Events.GuildNoteConflict, name, note, entry.note, entry.pendingNote)
                 end
             end
     
@@ -262,16 +265,16 @@ local function OnUpdate()
                 entry.seen = nil
             else
                 cache[name] = nil
-                lib.callbacks:Fire(lib.Events.GuildMemberDeleted, name)
+                callbacks:Fire(lib.Events.GuildMemberDeleted, name)
             end
         end
     
         if not initialized then
             for name, entry in pairs(cache) do
-                lib.callbacks:Fire(lib.Events.GuildNoteChanged, name, entry.note)
+                callbacks:Fire(lib.Events.GuildNoteChanged, name, entry.note)
             end
             initialized = true
-            lib.callbacks:Fire(lib.Events.StateChanged)
+            callbacks:Fire(lib.Events.Initialized)
         end
     
         if state == States.Stale then

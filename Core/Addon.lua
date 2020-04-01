@@ -1,12 +1,13 @@
 local name, AddOn = ...
 local R2D2 = AddOn
 
-local L         = AddOn.components.Locale
-local Logging   = AddOn.components.Logging
-local Util      = AddOn.Libs.Util
-local Strings   = Util.Strings
-local Tables    = Util.Tables
-local Class     = AddOn.Libs.Class
+local L            = AddOn.components.Locale
+local Logging      = AddOn.components.Logging
+local Util         = AddOn.Libs.Util
+local Strings      = Util.Strings
+local Tables       = Util.Tables
+local Class        = AddOn.Libs.Class
+local GuildStorage = AddOn.Libs.GuildStorage
 
 local Mode = Class('Mode')
 
@@ -30,7 +31,6 @@ function Mode:Disabled(flag)
     return bit.band(self.bitfield, flag) == 0
 end
 
-
 if _G.R2D2_Testing then
     AddOn.Mode = Mode
 end
@@ -42,6 +42,7 @@ function R2D2:OnInitialize()
         {cmd = "config", desc = L["chat_commands_config"]},
         {cmd = "test", desc = L["chat_commands_test"]},
         {cmd = "version", desc = L["chat_commands_version"]},
+        -- development intentionally not documented
     }
     -- the player class
     self.playerClass = select(2, UnitClass("player"))
@@ -52,7 +53,7 @@ function R2D2:OnInitialize()
 
         }
     }
-    -- our guild
+    -- our guild (start off as unguilded, will get callback when ready to populate)
     self.guildRank = L["unguilded"]
     -- bitfield which keeps track of our operating mode
     self.mode = Mode:new()
@@ -68,13 +69,15 @@ function R2D2:OnInitialize()
     -- entries are type ItemEntry
     self.lootTable = {}
     self.lootStatus = {}
+    -- is the Master Looter's loot window open or closed
+    self.lootOpen = false
+    -- data for items currently in the loot slot(s)
+    self.lootSlotInfo = {}
     self.enabled = true
     -- does R2D2 handle loot?
     self.handleLoot = false
     self.reconnectPending = false
     self.instanceName = ""
-    -- is the Master Looter's loot window open or closed
-    self.lootOpen = false
     -- core add-on settings
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
@@ -84,7 +87,9 @@ end
 
 function R2D2:OnEnable()
     Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), self.version)
-    local C = R2D2.Constants
+    
+    -- todo : remove this before publishing
+    self.mode:Enable(R2D2.Constants.Modes.Develop)
     
     for name, module in self:IterateModules() do
         if not module.db or module.db.profile.enabled or not module.defaults then
@@ -100,17 +105,32 @@ function R2D2:OnEnable()
     for event, method in pairs(self.Events) do
         self:RegisterEvent(event, method)
     end
-
+    
     if IsInGuild() then
-        self.guildRank = select(2, GetGuildInfo("player"))
+        -- Register with guild storage for state change callback
+        GuildStorage.RegisterCallback(
+                self,
+                GuildStorage.Events.StateChanged,
+                function(event, state)
+                    Logging:Debug("GuildStorage.Callback(%s, %s)", tostring(event), tostring(state))
+                    if state == GuildStorage.States.Current then
+                        local me = GuildStorage:GetMember(AddOn.playerName)
+                        if me then
+                            AddOn.guildRank = me.rank
+                            GuildStorage.UnregisterCallback(self, GuildStorage.Events.StateChanged)
+                        else
+                            AddOn.guildRank = L["not_found"]
+                        end
+                    end
+                end
+        )
+        
     end
-
-    -- todo : not sure we need this with LibGuildStorate
-    GuildRoster()
     
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
 end
+
 
 function R2D2:OnDisable()
     self:UnregisterAllEvents()
@@ -126,6 +146,11 @@ end
 
 function R2D2:CallModule(module)
     self:EnableModule(module)
+end
+
+function R2D2:SessionError(...)
+    self:Print(L["session_error"])
+    Logging:Error(...)
 end
 
 function R2D2:Help()
@@ -192,7 +217,7 @@ function R2D2:ChatCommand(msg)
         else
             self.mode:Enable(flag)
         end
-        self:Print("Development Mode = " .. self:DevModeEnabled())
+        self:Print("Development Mode = " .. tostring(self:DevModeEnabled()))
     else
         self:Help()
     end

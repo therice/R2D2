@@ -169,12 +169,12 @@ end
 --
 
 -- @param item      ItemID|itemString|itemLink|Item
--- @param slotIndex Index of the item within the loot table
+-- @param lootSlot  Index of the item within the loot table
 -- @param awarded   Has associated item been awarded?
 -- @param owner     The owner of the item (if any)
 -- @param sent      Has entry been transmitted to others
 -- @param typeCode  The associated type code used to determine which set of buttons to use for this entry
-function ItemEntry:initialize(item, slotIndex, awarded, owner, sent, typeCode, isRoll)
+function ItemEntry:initialize(item, bagged, lootSlot, awarded, owner, sent, typeCode, isRoll)
     if not item then return end
 
     if type(item) ~= 'table' then
@@ -200,7 +200,8 @@ function ItemEntry:initialize(item, slotIndex, awarded, owner, sent, typeCode, i
     )
 
     -- now add the entry attributes
-    self.lootSlot = slotIndex
+    self.bagged = bagged
+    self.lootSlot = lootSlot
     self.awarded = awarded
     self.owner = owner
     self.isSent = sent
@@ -260,6 +261,7 @@ local function CreateItemEntry(self, data, callback)
                 -- this is going to pull along extra attributes, but the super constructor will
                 -- ignore them and take remainder from parameters
                 data:toTable(),
+                data.bagged,
                 data.lootSlot,
                 data.awarded,
                 data.owner,

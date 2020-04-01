@@ -39,8 +39,25 @@ end
 -- @param item a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
     --[[
-        DEBUG [03/28/20 12:55:20] (Loot.lua:41): AddItem(0, 1,
-            {equipLoc = INVTYPE_WAIST, typeId = 4, isRoll = true, boe = false, texture = 132512, type = Armor, link = [Bloodfang Belt], typeCode = default, subType = Leather, classes = 8, quality = 4, ilvl = 76, noAutopass = true, subTypeId = 2, session = 1, id = 16910}
+        AddItem(0, 1,
+            {
+                equipLoc = INVTYPE_WAIST,
+                typeId = 4,
+                isRoll = true,
+                boe = false,
+                texture = 132512,
+                type = Armor,
+                link = [Bloodfang Belt],
+                typeCode = default,
+                subType = Leather,
+                classes = 8,
+                quality = 4, i
+                lvl = 76,
+                noAutopass = true,
+                subTypeId = 2,
+                session = 1,
+                id = 16910
+            }
         )
     --]]
     -- Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
@@ -68,18 +85,9 @@ function Loot:CheckDuplicates(size, offset)
     end
 end
 
--- table will be entries of ItemEntry
+-- table will be entries of Model.ItemEntry
 function Loot:Start(table, reRoll)
     reRoll = reRoll or false
-    --[[
-
-        DEBUG [03/28/20 12:50:58] (Loot.lua:70):: Start(1, 0, 0, true) :
-        {
-            {equipLoc = INVTYPE_WEAPONMAINHAND, typeId = 2, isRoll = true, boe = false, texture = 135643, type = Weapon, link = [Sorcerous Dagger], typeCode = default, subType = Daggers, classes = 4294967295, quality = 4, ilvl = 65, noAutopass = true, subTypeId = 15, session = 2, id = 18878}
-        }
-    --]]
-    -- Logging:Trace("Start(%s, %s, %s, %s) : %s", Util.Tables.Count(table), tostring(#self.items), Util.Tables.Count(self.items), tostring(reRoll), Util.Objects.ToString(table))
-
     local offset = 0
     -- if re-roll, insert the items at end
     if reRoll then
@@ -116,7 +124,19 @@ end
 
 function Loot:ReRoll(table)
     --[[
-        {{equipLoc = INVTYPE_WAIST, ilvl = 76, link = [Dragonstalker's Belt], isRoll = true, classes = 4, noAutopass = true, typeCode = default, session = 1, texture = 132517}}
+        {
+            {
+                equipLoc = INVTYPE_WAIST,
+                ilvl = 76,
+                link = [Dragonstalker's Belt],
+                isRoll = true,
+                classes = 4,
+                noAutopass = true,
+                typeCode = default,
+                session = 1,
+                texture = 132517
+            }
+        }
     --]]
     -- Logging:Trace("ReRoll(%s)", #table)
     self:Start(table, true)

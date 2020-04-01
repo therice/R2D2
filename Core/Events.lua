@@ -5,7 +5,6 @@ AddOn.Events = {
     [E.PartyLootMethodChanged]  = "OnEvent",
     [E.PartyLeaderChanged]      = "OnEvent",
     [E.GroupLeft]               = "OnEvent",
-    [E.GuildRosterUpdate]       = "OnEvent",
     [E.RaidInstanceWelcome]     = "OnEvent",
     [E.PlayerEnteringWorld]     = "OnEvent",
     [E.PlayerRegenDisabled]     = "EnterCombat",

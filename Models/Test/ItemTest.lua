@@ -24,7 +24,7 @@ end
 
 local function CreateItemEntry(id)
     local item = CreateItem(id)
-    return  Models.ItemEntry:new(item, 1, false, nil, false, "default")
+    return  Models.ItemEntry:new(item, nil, 1, false, nil, false, "default")
 end
 
 
@@ -68,7 +68,7 @@ describe("Item Model", function()
 
         end)
         it("is created from item link", function()
-            local itemEntry = Models.ItemEntry:new('|cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r', 1, false, nil, false, "default")
+            local itemEntry = Models.ItemEntry:new('|cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r', nil, 1, false, nil, false, "default")
             assert.equals(itemEntry.id, 18832)
             assert.equals(itemEntry.typeCode, "default")
         end)
@@ -79,13 +79,13 @@ describe("Item Model", function()
             assert.equals(itemEntry1.typeCode, itemEntry2.typeCode)
         end)
         it("is reconstituted", function()
-            local itemEntry1 = Models.ItemEntry:new('|cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r', 1, false, nil, false, "default")
+            local itemEntry1 = Models.ItemEntry:new('|cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r', nil, 1, false, nil, false, "default")
             local itemEntry2 = Models.ItemEntry:new():reconstitute(itemEntry1:toTable())
             assert.equals(itemEntry1.id, itemEntry2.id)
             assert.equals(itemEntry1.typeCode, itemEntry2.typeCode)
         end)
         it("is validated", function()
-            local itemEntry = Models.ItemEntry:new('|cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r', 1, false, nil, false, "default")
+            local itemEntry = Models.ItemEntry:new('|cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r', nil, 1, false, nil, false, "default")
             assert(itemEntry:IsValid())
             assert(not itemEntry.session)
             itemEntry.id = 0

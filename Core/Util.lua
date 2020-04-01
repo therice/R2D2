@@ -106,7 +106,6 @@ function AddOn:GetGuildRanks()
     return t;
 end
 
-
 -- https://wow.gamepedia.com/API_Ambiguate
 -- Returns a version of a character-realm string suitable for use in a given context.
 function AddOn.Ambiguate(name)

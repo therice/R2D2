@@ -1,0 +1,1 @@
+`[ ] Add support for "bagged" items - ones which were looted, but not yet awarded. May only be necessary for BOE items.`

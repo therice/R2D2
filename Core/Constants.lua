@@ -21,6 +21,7 @@ AddOn.Constants = {
 
     Commands = {
         Awarded                 =   "Awarded",
+        Bagged                  =   "Bagged",
         Candidates              =   "Candidates",
         CandidatesRequest       =   "CandidatesRequest",
         ChangeResponse          =   "ChangeResponse",

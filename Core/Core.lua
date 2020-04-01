@@ -1,10 +1,10 @@
 local _, AddOn = ...
 
-local Logging   = AddOn.components.Logging
-local Util      = AddOn.Libs.Util
-local ItemUtil  = AddOn.Libs.ItemUtil
-local L         = AddOn.components.Locale
-local Dialog    = AddOn.Libs.Dialog
+local Logging      = AddOn.components.Logging
+local Util         = AddOn.Libs.Util
+local ItemUtil     = AddOn.Libs.ItemUtil
+local L            = AddOn.components.Locale
+local Dialog       = AddOn.Libs.Dialog
 
 -- keep track of whether we need to re-request data due to a reload
 local relogged = true
@@ -162,6 +162,9 @@ function AddOn:OnMasterLooterDbReceived(mlDb)
     setmetatable(self.mlDb.buttons.default, { __index = ML:GetDefaultDbValue('profile.buttons.default')})
 end
 
+function AddOn:GetLootSlotInfo(slot)
+    return self.lootSlotInfo[slot]
+end
 
 -- Fetches a response of a given type, based on the group leader's settings if possible
 -- @param type The type of response. Defaults to "default".
@@ -336,12 +339,19 @@ function AddOn:MoreInfoSettings(module)
     return moduleSettings and moduleSettings.moreInfo or false, self:LootHistoryModule():GetStatistics()
 end
 
+
 function AddOn:OnEvent(event, ...)
     Logging:Debug("OnEvent(%s)", event)
     local C = AddOn.Constants.Commands
     local E = AddOn.Constants.Events
     if Util.Objects.In(event, E.PartyLootMethodChanged, E.PartyLeaderChanged, E.GroupLeft) then
         self:NewMasterLooterCheck()
+    -- we may want to eliminate this entirely and rely upon hook into LibGuildStorage
+    elseif event == E.GuildRosterUpdate then
+        self.guildRank = self:GetPlayersGuildRank()
+        if not self.pendingGuildEvent then
+            self:UnregisterEvent(E.GuildRosterUpdate)
+        end
     elseif event == E.RaidInstanceWelcome then
         self:ScheduleTimer("OnRaidEnter", 2)
     elseif event == E.PlayerEnteringWorld then

@@ -30,7 +30,7 @@ function LootHistory:AddEntry(winner, link, responseId, boss, reason, session, c
     -- instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
     local instanceName, _, _, _, _, _, _, instanceId, groupSize = GetInstanceInfo()
     Logging:Debug("AddEntry() : %s, %s, %s, %s, %s, %s, %s",
-                  winner, link, responseId, boss, reason, session, Util.Objects.ToString(candidateData))
+                  winner, link, responseId, tostring(boss), tostring(reason), session, Util.Objects.ToString(candidateData))
     
 end
 

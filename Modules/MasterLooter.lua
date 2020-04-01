@@ -30,7 +30,8 @@ ML.defaults = {
                 ANNOUNCED		=   { color = {1,0,1,1},		sort = 502,	text = L["announced_awaiting_answer"], },
                 WAIT			=   { color = {1,1,0,1},		sort = 503,	text = L["candidate_selecting_response"], },
                 TIMEOUT			=   { color = {1,0,0,1},		sort = 504,	text = L["candidate_no_response_in_time"], },
-                NOTHING			=   { color = {0.5,0.5,0.5,1},	sort = 505,	text = L["offline_or_not_installed"], },
+                REMOVED			=   { color = {0.8,0.5,0,1},	sort = 505,	text = L["candidate_removed"], },
+                NOTHING			=   { color = {0.5,0.5,0.5,1},	sort = 506,	text = L["offline_or_not_installed"], },
                 PASS		    =   { color = {0.7, 0.7,0.7,1},	sort = 800,	text = _G.PASS, },
                 AUTOPASS		=   { color = {0.7,0.7,0.7,1},	sort = 801,	text = L["auto_pass"], },
                 DISABLED		=   { color = {0.3,0.35,0.5,1},	sort = 802,	text = L["disabled"], },
@@ -355,14 +356,15 @@ end
 
 -- adds an item to the loot table
 -- @param Any: ItemID|itemString|itemLink
--- @param slotIndex index of the loot slot
+-- @param bagged the item as represented in storage, nil if not bagged
+-- @param lootSlot Index of the item within the loot table
 -- @param owner the owner of the item (if any). Defaults to 'BossName'
 -- @param index the index at which to add the entry, only needed on callbacks where item info was not available prev.
-function ML:AddItem(item, slotIndex, owner, index)
+function ML:AddItem(item, bagged, lootSlot, owner, index)
     Logging:Trace("AddItem(%s)", item)
     -- todo : determine type code (as needed)
     index = index or nil
-    local entry = Models.ItemEntry:new(item, slotIndex, false, owner, false, "default")
+    local entry = Models.ItemEntry:new(item, bagged, lootSlot, false, owner, false, "default")
 
     -- Need to insert entry regardless of fully populated (IsValid) as the
     -- session frame needs each of them to start and will update as entries are
@@ -377,7 +379,7 @@ function ML:AddItem(item, slotIndex, owner, index)
     end
 
     if not entry:IsValid() then
-        self:ScheduleTimer("Timer", 0, "AddItem", item, slotIndex, owner, index)
+        self:ScheduleTimer("Timer", 0, "AddItem", item, bagged, lootSlot, owner, index)
         Logging:Trace("AddItem() : Started timer %s for %s (%s)", "AddItem", item, tostring(index))
     else
         AddOn:SendMessage(AddOn.Constants.Messages.MasterLooterAddItem, item, entry)
@@ -411,8 +413,79 @@ function ML:GetLootTableForTransmit()
     return ltTransmit
 end
 
+-- Do we have free space in our bags to hold this item?
+function ML:HaveFreeSpaceForItem(item)
+    local itemFamily = GetItemFamily(item)
+    local equipSlot = select(4, GetItemInfoInstant(item))
+    if equipSlot == "INVTYPE_BAG" then itemFamily = 0 end
+    
+    for bag = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
+        local freeSlots, bagFamily = GetContainerNumFreeSlots(bag)
+        if freeSlots and freeSlots > 0 and (bagFamily == 0 or bit.band(itemFamily, bagFamily) > 0) then
+            return true
+        end
+    end
+    
+    return false
+end
+
+function ML:CanGiveLoot(slot, item, winner)
+    local lootSlotInfo = AddOn:GetLootSlotInfo(slot)
+    
+    if not AddOn.lootOpen then
+        return false, "loot_not_open"
+    elseif not lootSlotInfo or (not AddOn:ItemIsItem(lootSlotInfo.link, item)) then
+        return false, "loot_gone"
+    elseif lootSlotInfo.locked then
+        return false, "locked"
+    elseif AddOn:UnitIsUnit(winner, "player") and not self:HaveFreeSpaceForItem(item.link) then
+        return false, "ml_inventory_full"
+    elseif AddOn:UnitIsUnit(winner, "player") then
+        if lootSlotInfo.quality < GetLootThreshold() then
+            return false, "quality_below_threshold"
+        end
+        
+        local shortName = Ambiguate(winner, "short"):lower()
+        if not UnitIsInParty(shortName) and not UnitIsInRaid(shortName) then
+            return false, "not_in_group"
+        end
+    
+        if not UnitIsConnected(shortName) then
+            return false, "offline"
+        end
+        
+        local found = false
+        for i = 1, MAX_RAID_MEMBERS do
+            if AddOn:UnitIsUnit(GetMasterLootCandidate(slot, i), winner) then
+                found = true
+                break
+            end
+        end
+    
+        if not IsInInstance() then
+            return false, "ml_not_in_instance"
+        end
+    
+        if select(4, UnitPosition(Ambiguate(winner, "short"))) ~= select(4, UnitPosition("player")) then
+            return false, "out_of_instance"
+        end
+        
+        
+        if not found then
+            local bindType = select(14, GetItemInfo(item))
+            if bindType ~= LE_ITEM_BIND_ON_ACQUIRE then
+                return false, "not_bop"
+            else
+                return false, "not_ml_candidate"
+            end
+        end
+    end
+    
+    return true
+end
+
 local function AwardFailed(session, winner, status, callback, ...)
-    Logging:Debug("AwardFailed : %d,  %s, %s)", session, winner, status)
+    Logging:Debug("AwardFailed : %d, %s, %s, %s", session, winner, status. Util.Objects.ToString(callback))
     AddOn:SendMessage(AddOn.Constants.Messages.AwardFailed, session, winner, status)
     if callback then
         callback(false, session, winner, status, ...)
@@ -421,7 +494,7 @@ local function AwardFailed(session, winner, status, callback, ...)
 end
 
 local function AwardSuccess(session, winner, status, callback, ...)
-    Logging:Debug("AwardSuccess : %d,  %s, %s)", session, winner, status)
+    Logging:Debug("AwardSuccess : %d, %s, %s, %s", session, winner, status, Util.Objects.ToString(callback))
     AddOn:SendMessage(AddOn.Constants.Messages.AwardSuccess, session, winner, status)
     if callback then
         callback(true, session, winner, status, ...)
@@ -430,7 +503,7 @@ local function AwardSuccess(session, winner, status, callback, ...)
 end
 
 local function RegisterAndAnnounceAward(session, winner, response, reason)
-    local C, self = Addon.Constants, ML
+    local C, self = AddOn.Constants, ML
     local itemEntry = self:GetItem(session)
     local previousWinner = itemEntry.awarded
     itemEntry.awarded = winner
@@ -449,10 +522,34 @@ local function RegisterAndAnnounceAward(session, winner, response, reason)
     return true
 end
 
+local function RegisterAndAnnounceBagged(session)
+    local C, self = AddOn.Constants, ML
+    local itemEntry = self:GetItem(session)
+    
+    -- todo : put item into storage
+    -- item looted by ML, annouce it
+    -- also, announce if the item is to be awarded later
+    if item.lootSlot and self.running then
+        self:AnnounceAward(L["loot_master"], itemEntry.link, L["store_in_bag_award_later"], nil, session)
+    else
+        AddOn:Print(format(L["item_added_to_award_later_list"], link))
+    end
+    
+    -- bagged, no longer on loot table
+    itemEntry.lootSlot = nil
+    itemEntry.bagged = {} -- todo : replace with actual item
+    
+    if self.running then
+        AddOn:SendCommand(C.group, C.Commands.Bagged, session, AddOn.playerName)
+    end
+    
+    return false
+end
+
 --@param session the session to award.
 --@param winner	Nil/false if items should be stored in inventory and awarded later.
 --@param response the candidates response, used for announcement.
---@param reason	entry in awardReasons
+--@param reason	entry in awardReasons (only populated if awarded for a reason other than response - e.g. Free)
 --@param callback This function will be called as callback(awarded, session, winner, status, ...)
 --@returns true if award is success. false if award is failed. nil if we don't know the result yet.
 function ML:Award(session, winner, response, reason, callback, ...)
@@ -470,20 +567,109 @@ function ML:Award(session, winner, response, reason, callback, ...)
     
     local itemEntry = self:GetItem(session)
     
-    -- if the item has been previously awarded but call specified as not winner, log that and return
+    -- UnLootedItemInBag : an item that's currently in loot table is also bagged
+    if itemEntry.lootSlot and itemEntry.bagged then
+        AwardFailed(session, winner, "UnLootedItemInBag", callback, ...)
+        AddOn:SessionError("Session %d has an un-looted item in the bag?!", session)
+        return false
+    end
+    
+    -- BaggedItemCannotBeAwarded : an item was previously bagged, but cannot be awarded
+    if itemEntry.bagged and not winner then
+        AwardFailed(session, nil, "BaggedItemCannotBeAwarded", callback, ...)
+        Logging:Error("Award() : " .. L["item_bagged_cannot_be_awarded"])
+        AddOn:Print(L["item_bagged_cannot_be_awarded"])
+        return false
+    end
+    
+    -- BaggingAwardedItem : an item has been previously awarded, but trying to award later
     if itemEntry.awarded and not winner then
         AwardFailed(session, nil, "BaggingAwardedItem", callback, ...)
+        Logging:Error("Award() " .. L["item_awarded_no_reaward"])
+        AddOn:Print(L["item_awarded_no_reaward"])
         return false
     end
     
     -- already awarded, change to whom it was awarded
     if itemEntry.awarded then
         RegisterAndAnnounceAward(session, winner, response, reason)
-        AwardSuccess(session, winner, "normal", callback, ...)
+        if not itemEntry.lootSlot and not itemEntry.bagged then
+            AwardSuccess(session, winner, AddOn:TestModeEnabled() and "test_mode" or "manually_added", callback, ...)
+        elseif itemEntry.bagged then
+            AwardSuccess(session, winner, "indirect", callback, ...)
+        else
+            AwardSuccess(session, winner, "normal", callback, ...)
+        end
         return true
     end
     
+    -- item has not yet been awarded
+    if not itemEntry.lootSlot and not itemEntry.bagged then
+        if winner then
+            AwardSuccess(session, winner, AddOn:TestModeEnabled() and "test_mode" or "manually_added", callback, ...)
+            RegisterAndAnnounceAward(session, winner, response, reason)
+            return true
+        else
+            if AddOn:TestModeEnabled() then
+                AwardFailed(session, nil, "test_mode", callback, ...)
+                AddOn:Print(L["award_later_unsupported_when_testing"])
+                return false
+            else
+                RegisterAndAnnounceBagged(session)
+                AwardFailed(session, nil, "manually_bagged", callback, ...)
+                return false
+            end
+        end
+    end
     
+    -- awarding item from bag
+    if itemEntry.bagged then
+        RegisterAndAnnounceAward(session, winner, response, reason)
+        AwardSuccess(session, winner, "indirect", callback, ...)
+        return true
+    end
+    
+    -- loot is open, make sure item didn't change
+    if AddOn.lootOpen and not AddOn:ItemIsItem(itemEntry.link, GetLootSlotLink(itemEntry.lootSlot)) then
+        Logging:Debug("Award(%d) - Loot slot changed before award completed", session)
+        self:UpdateLootSlots()
+    end
+    
+    local canGiveLoot, cause = self:CanGiveLoot(itemEntry.lootSlot, itemEntry.link, winner or AddOn.playerName)
+    if not canGiveLoot then
+    
+    else
+        if winner then
+        
+        else
+        
+        end
+    end
+end
+
+function ML:UpdateLootSlots()
+    if not AddOn.lootOpen then
+        Logging:Warn("UpdateLootSlots() : Attempting to update loot slots without an open loot window")
+        return
+    end
+    
+    local updatedLootSlots = {}
+    for i = 1, GetNumLootItems() do
+        local item = GetLootSlotLink(i)
+        for session = 1, #self.lootTable do
+            local itemEntry = self:GetItem(session)
+            if not itemEntry.awarded and not updatedLootSlots[session] then
+                if AddOn:ItemIsItem(item, itemEntry.link) then
+                    if i ~= itemEntry.lootSlot then
+                        Logging:Debug("UpdateLootSlots(%d) : previously at %d, not at %d", itemEntry.lootSlot, i)
+                    end
+                    itemEntry.lootSlot = i
+                    updatedLootSlots[session] = true
+                    break
+                end
+            end
+        end
+    end
 end
 
 ML.AnnounceItemStrings = {
@@ -560,7 +746,7 @@ ML.AwardStringsDesc = {
 }
 
 local AwardTexts = {
-    { channel = "group", text = "&p was awarded with &i for &r"}
+    { channel = "group", text = "&p was awarded &i for &r"}
 }
 
 function ML:AnnounceAward(name, link, response, roll, session, changeAward, owner)
@@ -694,7 +880,8 @@ function ML.AwardPopupOnShow(frame, data)
 end
 
 function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data, callback, ...)
-    Loggin:Debug("AwardPopupOnClickYesCallback(%s, %d, %s)", awarded, session, winner)
+    Logging:Debug("AwardPopupOnClickYesCallback(%s, %d, %s, %s)", tostring(awarded), session, winner, status)
+    Logging:Debug("AwardPopupOnClickYesCallback(%d) : %s", session, Util.Objects.ToString(data))
     if callback and Util.Objects.IsFunction(callback) then
         callback(awarded, session, winner, status, data, ...)
     end
@@ -713,7 +900,7 @@ function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data,
 end
 
 function ML.AwardPopupOnClickYes(frame, data, callback, ...)
-    Logging:Debug("AwardPopupOnClickYes() : %s / %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
+    Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
     ML:Award(
         data.session,
         data.winner,
