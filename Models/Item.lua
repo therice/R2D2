@@ -1,7 +1,6 @@
 local _, AddOn = ...
 local Util      = AddOn.Libs.Util
 local Class     = AddOn.Libs.Class
-local Logging  = AddOn.Libs.Logging
 local ItemUtil  = AddOn.Libs.ItemUtil
 local GP        = AddOn.Libs.GearPoints
 

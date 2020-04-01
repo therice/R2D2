@@ -17,7 +17,7 @@ function AddOn:SendAnnouncement(msg, channel)
 
     local C = AddOn.Constants
     if channel == C.Channels.None then return end
-    if self.testMode then
+    if self:TestModeEnabled() then
         msg = "(" .. L["test"] .. ") " .. msg
     end
 

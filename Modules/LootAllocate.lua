@@ -16,7 +16,7 @@ local MenuFrame, FilterMenu
 -- session is a number mapping to item
 -- sessionButtons is mapping of session to IconBordered instances
 -- lootTable is a mapping of session to AllocateEntry instances
-local session, sessionButtons, lootTable, moreInfoData, guildRanks, active, moreInfo = 1, {}, {}, {}, {}, false, false
+local session, sessionButtons, lootTable, guildRanks, active = 1, {}, {}, {}, false
 local updatePending, updateIntervalRemaining, updateFrame = false, 0, CreateFrame("FRAME")
 
 LootAllocate.defaults = {
@@ -93,6 +93,7 @@ function LootAllocate:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
     self.frame:SetParent(nil)
     self.frame = nil
+    Util.Tables.Wipe(AddOn.lootStatus)
     Util.Tables.Wipe(lootTable)
     active = false
     session = 1
@@ -103,7 +104,6 @@ function LootAllocate:OnDisable()
 end
 
 function LootAllocate:Hide()
-    -- Logging:Trace("Hide()")
     self.frame.moreInfo:Hide()
     self.frame:Hide()
 end
@@ -264,7 +264,6 @@ function LootAllocate:GetCandidateData(session, candidate, data)
     end
 end
 
-
 function LootAllocate:CandidateCheck()
     -- Logging:Trace("CandidateCheck()")
     -- our name isn't present, assume not received
@@ -308,7 +307,8 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
 
                 self:Update()
             elseif command == C.Commands.Awarded and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
-                self:ScheduleTimer(function() moreInfoData = AddOn:GetLootDbStatistics() end, 1)
+                -- moved moreInfoData out of here int common UI functions Core/UI.lua
+                -- self:ScheduleTimer(function() moreInfoData = AddOn:GetLootDbStatistics() end, 1)
                 local s1, winner = unpack(data)
                 local e1 = self:GetLootTableEntry(s1)
                 if not e1 then return end
@@ -403,23 +403,6 @@ function LootAllocate:BuildScrollingTable()
     self.frame.st:SetData(rows)
 end
 
-
-function LootAllocate:UpdateMoreInfo(row, data)
-    -- Logging:Trace("UpdateMoreInfo(%s) : %s", tostring(row), Util.Objects.ToString(data, 2))
-    local name
-    if data and row then
-        name = data[row].name
-    else
-        local selection = self.frame.st:GetSelection()
-        name = selection and self.frame.st:GetRow(selection).name or nil
-    end
-
-    if not moreInfo or not name then
-        return self.frame.moreInfo:Hide()
-    end
-
-
-end
 
 local function Sort(table, rowa, rowb, sortbycol, valueFn)
     Logging:Trace("Sort(%s)", sortbycol)
@@ -528,7 +511,7 @@ function LootAllocate:GetFrame()
                     MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0);
                 -- update more info
                 elseif button == "LeftButton" and row then
-                    self:UpdateMoreInfo(realrow, data)
+                    AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data)
                     if IsAltKeyDown() then
                         local name = data[realrow].name
                         Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, self:GetAwardPopupData(session, name))
@@ -541,7 +524,7 @@ function LootAllocate:GetFrame()
         -- show moreInfo on mouseover
         st:RegisterEvents({
             ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                if row then self:UpdateMoreInfo(realrow, data) end
+                if row then AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data) end
                 -- Return false to have the default OnEnter handler take care mouseover
                 return false
             end
@@ -549,7 +532,7 @@ function LootAllocate:GetFrame()
         -- return to the actual selected player when we remove the mouse
         st:RegisterEvents({
             ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                self:UpdateMoreInfo()
+                AddOn:UpdateMoreInfo(self:GetName(), f)
                 return false
             end
         })
@@ -630,37 +613,10 @@ function LootAllocate:GetFrame()
         end
     end)
     f.abortBtn = b1
-
-    -- more info button
-    local b2 = CreateFrame("Button", nil, f.content, "UIPanelButtonTemplate")
-    b2:SetSize(25,25)
-    b2:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -20)
-    if moreInfo then
-        b2:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up");
-        b2:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down");
-    else
-        b2:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
-        b2:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
-    end
-    b2:SetScript("OnClick", function(button)
-        moreInfo = not moreInfo
-        if moreInfo then
-            button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up");
-            button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down");
-        else -- hide it
-            button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
-            button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
-        end
-        self:UpdateMoreInfo()
-    end)
-    b2:SetScript("OnEnter", function() UI:CreateTooltip(L["click_more_info"]) end)
-    b2:SetScript("OnLeave", function() UI:HideTooltip() end)
-    f.moreInfoBtn = b2
-    f.moreInfo = CreateFrame( "GameTooltip", "RCVotingFrameMoreInfo", nil, "GameTooltipTemplate" )
-    f.content:SetScript("OnSizeChanged", function()
-        f.moreInfo:SetScale(f:GetScale() * 0.6)
-    end)
-
+    
+    -- more info widgets
+    AddOn:EmbedMoreInfoWidgets(self:GetName(), f)
+    
     -- filter
     local b3 = UI:CreateButton(_G.FILTER, f.content)
     b3:SetPoint("RIGHT", b1, "LEFT", -10, 0)
@@ -669,16 +625,14 @@ function LootAllocate:GetFrame()
     b3:SetScript("OnLeave", function() UI:HideTooltip() end)
     f.filter = b3
 
-    -- todo : number of botes/roll
-
     -- loot status
-    f.lootStatus = UI:New("Text", f.content, " ")
-    f.lootStatus:SetTextColor(1,1,1,1)
-    f.lootStatus:SetHeight(20)
-    f.lootStatus:SetWidth(150)
-    f.lootStatus:SetPoint("RIGHT", rf, "LEFT", -10, 0)
-    f.lootStatus:SetScript("OnLeave", function() UI:HideTooltip() end)
-    f.lootStatus.text:SetJustifyH("RIGHT")
+    --f.lootStatus = UI:New("Text", f.content, " ")
+    --f.lootStatus:SetTextColor(1,1,1,1)
+    --f.lootStatus:SetHeight(20)
+    --f.lootStatus:SetWidth(150)
+    --f.lootStatus:SetPoint("RIGHT", rf, "LEFT", -10, 0)
+    --f.lootStatus:SetScript("OnLeave", function() UI:HideTooltip() end)
+    --f.lootStatus.text:SetJustifyH("RIGHT")
 
     -- todo : owner
 
@@ -1437,7 +1391,6 @@ end
 --
 function LootAllocate.SetCellClass(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-
     AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, LootAllocate.GetLootTableEntryResponse(session, name).class)
     data[realrow].cols[column].value = lootTable[session].candidates[name].class or ""
 end
@@ -1458,7 +1411,6 @@ function LootAllocate.SetCellRank(rowFrame, frame, data, cols, row, realrow, col
     local name = data[realrow].name
     local entry = LootAllocate.GetLootTableEntry(session)
     local response = entry:GetCandidateResponse(name)
-
     -- Logging:Trace("SetCellRank(%s) : %s", name, response.rank)
     frame.text:SetText(lootTable[session].candidates[name].rank)
     frame.text:SetTextColor(AddOn:GetResponseColor(entry.typeCode or  entry.equipLoc, response.response))
@@ -1467,24 +1419,21 @@ end
 
 function LootAllocate.SetCellEp(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local ep = 0
-
+    local ep = AddOn:PointsModule().Get(name)
     frame.text:SetText(ep)
     data[realrow].cols[column].value = ep
 end
 
 function LootAllocate.SetCellGp(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local gp = 0
-
+    local _, gp = AddOn:PointsModule().Get(name)
     frame.text:SetText(gp)
     data[realrow].cols[column].value = gp
 end
 
 function LootAllocate.SetCellPr(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local pr = 0.0
-
+    local _, _, pr = AddOn:PointsModule().Get(name)
     frame.text:SetText(pr)
     data[realrow].cols[column].value = pr
 end

@@ -3,9 +3,12 @@
     <Script file="GearPointsCustom.lua" />
     <Script file="GearPointsTooltip.lua" />
     <Script file="EffortPoints.lua" />
+    <Script file="Points.lua" />
     <Script file="Standby.lua" />
     <Script file="MasterLooter.lua" />
     <Script file="LootAllocate.lua" />
     <Script file="LootSession.lua" />
     <Script file="Loot.lua" />
+    <Script file="History\LootHistory.lua" />
+    <Script file="History\TrafficHistory.lua" />
 </Ui>

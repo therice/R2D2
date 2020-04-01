@@ -388,6 +388,11 @@ function ML:RemoveItem(session)
     Util.Tables.Remove(self.lootTable, session)
 end
 
+-- @return ItemEntry for passed session
+function ML:GetItem(session)
+    return self.lootTable[session]
+end
+
 function ML:GetLootTableForTransmit()
     Logging:Trace("GetLootTableForTransmit(PRE) : %s", Util.Objects.ToString(self.lootTable))
     local ltTransmit = Util(self.lootTable)
@@ -406,6 +411,44 @@ function ML:GetLootTableForTransmit()
     return ltTransmit
 end
 
+local function AwardFailed(session, winner, status, callback, ...)
+    Logging:Debug("AwardFailed : %d,  %s, %s)", session, winner, status)
+    AddOn:SendMessage(AddOn.Constants.Messages.AwardFailed, session, winner, status)
+    if callback then
+        callback(false, session, winner, status, ...)
+    end
+    return false
+end
+
+local function AwardSuccess(session, winner, status, callback, ...)
+    Logging:Debug("AwardSuccess : %d,  %s, %s)", session, winner, status)
+    AddOn:SendMessage(AddOn.Constants.Messages.AwardSuccess, session, winner, status)
+    if callback then
+        callback(true, session, winner, status, ...)
+    end
+    return true
+end
+
+local function RegisterAndAnnounceAward(session, winner, response, reason)
+    local C, self = Addon.Constants, ML
+    local itemEntry = self:GetItem(session)
+    local previousWinner = itemEntry.awarded
+    itemEntry.awarded = winner
+    
+    AddOn:SendCommand(C.group, C.Commands.Awarded, session, winner, itemEntry.owner)
+    
+    self:AnnounceAward(winner, itemEntry.link, reason and reason.text or response,
+                       AddOn:LootAllocateModule():GetCandidateData(session, winner, "roll"),
+                       session, previousWinner)
+    
+    if self:HasAllItemsBeenAwarded() then
+        AddOn:Print(L["all_items_have_been_awarded"])
+        self:ScheduleTimer("EndSession", 1)
+    end
+    
+    return true
+end
+
 --@param session the session to award.
 --@param winner	Nil/false if items should be stored in inventory and awarded later.
 --@param response the candidates response, used for announcement.
@@ -414,6 +457,33 @@ end
 --@returns true if award is success. false if award is failed. nil if we don't know the result yet.
 function ML:Award(session, winner, response, reason, callback, ...)
     Logging:Debug("Award(%s) : %s, %s, %s", tostring(session), tostring(winner), tostring(response), Util.Objects.ToString(reason))
+    local args = {...}
+    
+    if not self.lootTable or #self.lootTable == 0 then
+        if self.oldLootTable and #self.oldLootTable > 0 then
+            self.lootTable = self.oldLootTable
+        else
+            Logging:Error("Award() : Neither Loot Table or Old Loot Table populated")
+            return false
+        end
+    end
+    
+    local itemEntry = self:GetItem(session)
+    
+    -- if the item has been previously awarded but call specified as not winner, log that and return
+    if itemEntry.awarded and not winner then
+        AwardFailed(session, nil, "BaggingAwardedItem", callback, ...)
+        return false
+    end
+    
+    -- already awarded, change to whom it was awarded
+    if itemEntry.awarded then
+        RegisterAndAnnounceAward(session, winner, response, reason)
+        AwardSuccess(session, winner, "normal", callback, ...)
+        return true
+    end
+    
+    
 end
 
 ML.AnnounceItemStrings = {
@@ -428,13 +498,23 @@ ML.AnnounceItemStrings = {
     ["&o"] = function(_,_,v) return v.owner and AddOn.Ambiguate(v.owner) or "" end,
 }
 
+ML.AnnounceItemStringsDesc = {
+    L["announce_&s_desc"],
+    L["announce_&i_desc"],
+    L["announce_&l_desc"],
+    L["announce_&t_desc"],
+    L["announce_&o_desc"],
+}
+
+local AnnounceItemString =  "&s: &i (&t)"
+
 function ML:AnnounceItems(table)
     -- todo : should we suppress announcements via configuration?
     Logging:Trace("AnnounceItems()")
     AddOn:SendAnnouncement(L["announce_item_text"], AddOn.Constants.group)
     Util.Tables.Iter(table,
             function(v, i)
-                local msg = "&s: &i (&t)"
+                local msg = AnnounceItemString
                 for text, fn in pairs(self.AnnounceItemStrings) do
                     msg = gsub(msg, text, escapePatternSymbols(tostring(fn(v.session or i, v.link, v))))
                 end
@@ -444,6 +524,57 @@ function ML:AnnounceItems(table)
                 AddOn:SendAnnouncement(msg, AddOn.Constants.group)
             end
     )
+end
+
+ML.AwardStrings = {
+    ["&s"] = function(_, _, _, _, session) return session or "" end,
+    ["&p"] = function(name) return AddOn.Ambiguate(name) end,
+    ["&i"] = function(...) return select(2, ...) end,
+    ["&r"] = function(...) return select(3, ...) or "" end,
+    ["&n"] = function(...) return select(4, ...) or "" end,
+    ["&l"] = function(_, item)
+        local t = ML:GetItemInfo(item)
+        return t and t:GetLevelText() or "" end,
+    ["&t"] = function(_, item)
+        local t = ML:GetItemInfo(item)
+        return t and t:GetTypeText() or "" end,
+    ["&o"] = function(...)
+        local session = select(5, ...)
+        local owner = select(6, ...) or ML.lootTable[session] and  ML.lootTable[session].owner
+        return owner and AddOn.Ambiguate(owner) or _G.UNKNOWN end,
+    ["&m"] = function(...)
+        return AddOn:LootAllocateModule():GetCandidateData(select(5,...), select(1,...), "note") or "<none>"
+    end,
+}
+
+ML.AwardStringsDesc = {
+    L["announce_&s_desc"],
+    L["announce_&p_desc"],
+    L["announce_&i_desc"],
+    L["announce_&r_desc"],
+    L["announce_&n_desc"],
+    L["announce_&l_desc"],
+    L["announce_&t_desc"],
+    L["announce_&o_desc"],
+    L["announce_&m_desc"],
+}
+
+local AwardTexts = {
+    { channel = "group", text = "&p was awarded with &i for &r"}
+}
+
+function ML:AnnounceAward(name, link, response, roll, session, changeAward, owner)
+    -- todo : should we suppress announcements via configuration?
+    for _, awardText in pairs(AwardTexts) do
+        local message = awardText.text
+        for text, func in pairs(self.AwardStrings) do
+            message = gsub(message, text, escapePatternSymbols(tostring(func(name, link, response, roll, session, owner))))
+        end
+        if changeAward then
+            message = "(" .. L["change_award"] .. ") " .. message
+        end
+        AddOn:SendAnnouncement(message, awardText.channel)
+    end
 end
 
 function ML:StartSession()
@@ -494,10 +625,10 @@ function ML:EndSession()
     AddOn:SendCommand(C.group, C.Commands.LootSessionEnd)
     self.running = false
     self:CancelAllTimers()
-    if AddOn.testMode then
+    if AddOn:TestModeEnabled()  then
         AddOn:ScheduleTimer("NewMasterLooterCheck", 1)
     end
-    AddOn.testMode = false
+    AddOn.mode:Disable(AddOn.Constants.Modes.Test)
 end
 
 function ML:OnEvent(event, ...)
@@ -563,11 +694,21 @@ function ML.AwardPopupOnShow(frame, data)
 end
 
 function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data, callback, ...)
-    if callback and type(callback) == "function" then
+    Loggin:Debug("AwardPopupOnClickYesCallback(%s, %d, %s)", awarded, session, winner)
+    if callback and Util.Objects.IsFunction(callback) then
         callback(awarded, session, winner, status, data, ...)
     end
     if awarded then
-        -- todo : add to history
+        -- todo : remove loot history record if present
+        AddOn:LootHistoryModule():AddEntry(
+                data.winner,
+                data.link,
+                data.responseId,
+                nil,
+                data.reason,
+                session,
+                data
+        )
     end
 end
 
@@ -584,7 +725,7 @@ function ML.AwardPopupOnClickYes(frame, data, callback, ...)
         ...
     )
     -- we need to delay the test mode disabling so comms have a chance to be sent first
-    if AddOn.testMode and ML:HasAllItemsBeenAwarded() then ML:EndSession() end
+    if AddOn:TestModeEnabled() and ML:HasAllItemsBeenAwarded() then ML:EndSession() end
 end
 
 function ML.AwardPopupOnClickNo(frame, data)

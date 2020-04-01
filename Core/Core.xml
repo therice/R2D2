@@ -2,9 +2,10 @@
     <Script file="Constants.lua"/>
     <Script file="Defaults.lua"/>
     <Script file="Events.lua"/>
-    <Script file="Utils.lua"/>
+    <Script file="Util.lua"/>
     <Script file="Comm.lua"/>
     <Script file="Core.lua"/>
+    <Script file="UI.lua"/>
     <Script file="Popups.lua"/>
     <Script file="Addon.lua"/>
 </Ui>

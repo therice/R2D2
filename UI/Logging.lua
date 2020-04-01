@@ -1,14 +1,13 @@
 local _, AddOn = ...
 local G = _G
 local _TEST = G.R2D2_Testing
-local loggingFrame, loggingDetail, preInitLogging
+local preInitLogging
 
 local LoggingUI = AddOn:NewModule("LoggingUI", "AceEvent-3.0")
 local L         = AddOn.components.Locale
 local UI        = AddOn.components.UI
 local COpts     = UI.ConfigOptions
 local Util      = AddOn.Libs.Util
-local Strings   = Util.Strings
 local Tables    = Util.Tables
 local Logging   = AddOn.components.Logging
 
@@ -28,7 +27,7 @@ else
     preInitLogging = { }
     Logging:SetWriter(
             function(msg)
-                table.insert(preInitLogging, 1, msg)
+              Tables.Push(preInitLogging, msg)
             end
     )
 end
@@ -63,67 +62,98 @@ LoggingUI.options = {
     }
 }
 
+local function ScrollingFunction(self, arg)
+    if arg > 0 then
+        if IsShiftKeyDown() then self:ScrollToTop() else self:ScrollUp() end
+    elseif arg < 0 then
+        if IsShiftKeyDown() then self:ScrollToBottom() else self:ScrollDown() end
+    end
+end
+
+
+function LoggingUI:GetFrame()
+    if self.frame then return self.frame end
+
+    local frame = UI:CreateFrame("R2D2_LoggingWindow", "LoggingUI", "Logging")
+    frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+    frame:SetWidth(750)
+    frame:SetHeight(400)
+
+    -- The scrolling message frame with all the debug info.
+    frame.msg = CreateFrame("ScrollingMessageFrame", nil, frame.content)
+    frame.msg:SetMaxLines(10000)
+    frame.msg:SetFading(false)
+    frame.msg:SetFontObject(GameFontHighlightLeft)
+    frame.msg:EnableMouseWheel(true)
+    frame.msg:SetBackdrop(
+            {
+                bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                tile     = true, tileSize = 8, edgeSize = 4,
+                insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+            }
+    )
+    frame.msg:SetWidth(frame:GetWidth() - 25)
+    frame.msg:SetHeight(frame:GetHeight() - 60)
+    frame.msg:SetPoint("CENTER", frame, "CENTER")
+    
+    local close = UI:CreateButton("Close", frame.content)
+    close:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -13, 5)
+    close:SetScript("OnClick", function() frame:Hide() end)
+    frame.close = close
+    
+    local clear = UI:CreateButton("Clear", frame.content)
+    clear:SetPoint("RIGHT", frame.close, "LEFT", -25)
+    clear:SetScript("OnClick", function() frame.msg:Clear() end)
+    frame.clear = clear
+    
+    ---- now set logging to emit to frame
+    Logging:SetWriter(
+            function(msg)
+                if LoggingUI:IsEnabled() and #preInitLogging == 0 then
+                    frame.msg:AddMessage(msg)
+                else
+                    Tables.Push(preInitLogging, msg)
+                end
+            end
+    )
+
+    frame.msg:SetScript("OnMouseWheel", ScrollingFunction)
+
+    return frame
+end
+
+
+
 function LoggingUI:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
-
-    if not loggingFrame or not loggingDetail then
-        loggingFrame =
-            UI("Frame", "R2D2_LoggingWindow")
-                .SetTitle("R2D2 Logging")
-                .SetStatusText("Mouse wheel to scroll. Title bar drags. Bottom-right corner re-sizes.")
-                .SetLayout("Flow")
-                .SetPoint("BOTTOMRIGHT", "UIParent", "BOTTOMRIGHT", 0, 0)()
-
-        UI("Button")
-            .SetText("Clear")
-            .SetHeight(20)
-            .SetWidth(100)
-            .SetCallback("OnClick", function() loggingDetail:SetText("") end)
-            .AddTo(loggingFrame)()
-
-        local detailsContainer =
-            UI("InlineGroup")
-                .SetFullWidth(true)
-                .SetFullHeight(true)
-                .SetLayout("Fill")
-                .AddTo(loggingFrame)()
-
-        loggingDetail =
-            UI("MultiLineEditBox")
-                .SetFullWidth(true)
-                .SetFullHeight(true)
-                .DisableButton(true)
-                .SetLabel(nil)
-                --.SetMaxLetters(128 * 250)
-                .AddTo(detailsContainer)()
-
-
-        -- now set logging to emit to frame
-        Logging:SetWriter(
-                function(msg)
-                    -- todo : limit the amount of lines in logging
-                    local txt = msg .. '\n' .. loggingDetail:GetText()
-                    loggingDetail:SetText(txt)
-                end
-        )
-    end
+    self.frame = self:GetFrame()
+    self.frame:Show()
 end
 
 function LoggingUI:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     -- copy any pre-enabled logging to logging window
-    loggingDetail:SetText(
-            loggingDetail:GetText() ..
-            Strings.Join('\n',  unpack(Tables.Values(preInitLogging)))
+    Tables.Call(preInitLogging,
+                function(line)
+                    self.frame.msg:AddMessage(line, 1.0, 1.0, 1.0, nil, false)
+                end
     )
+    
     -- discard the captured pre-enabled logging
     preInitLogging = {}
 end
 
 function LoggingUI:Toggle()
-    if loggingFrame:IsVisible() then
-        loggingFrame:Hide()
+    if self.frame:IsVisible() then
+        self.frame:Hide()
     else
-        loggingFrame:Show()
+        self.frame:Show()
     end
+    
+    --if loggingFrame:IsVisible() then
+    --    loggingFrame:Hide()
+    --else
+    --    loggingFrame:Show()
+    --end
 end

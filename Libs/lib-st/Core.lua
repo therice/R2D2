@@ -4,6 +4,9 @@ if not lib then
 	return; -- Already loaded and no upgrade necessary.
 end
 
+local Logging = LibStub('LibLogging-1.0')
+local Util = LibStub('LibUtil-1.1')
+
 do
 	lib.SORT_ASC = 1;
 	lib.SORT_DSC = 2;
@@ -311,6 +314,7 @@ do
 			end
 			i = i + 1;
 		end
+		
 		if sortby then
 			table.sort(self.sorttable, function(rowa, rowb)
 				local column = self.cols[sortby];
@@ -339,15 +343,18 @@ do
 	-- @usage used internally.
 	-- @see Core.lua
 	local function CompareSort (self, rowa, rowb, sortbycol)
-		local cella, cellb = self:GetCell(rowa, sortbycol), self:GetCell(rowb, sortbycol);
-		local a1, b1 = cella, cellb;
+		local cella, cellb = self:GetCell(rowa, sortbycol), self:GetCell(rowb, sortbycol)
+		Logging:Debug("CompareSort(%d, %d) : %s", sortbycol, rowa, Util.Objects.ToString(cella, 4))
+		Logging:Debug("CompareSort(%d, %d) : %s", sortbycol, rowb, Util.Objects.ToString(cellb, 4))
+		
+		local a1, b1 = cella, cellb
 		if type(a1) == 'table' then
-			a1 = a1.value;
+			a1 = a1.value
 		end
 		if type(b1) == 'table' then
-			b1 = b1.value;
+			b1 = b1.value
 		end
-		local column = self.cols[sortbycol];
+		local column = self.cols[sortbycol]
 
 		if type(a1) == "function" then
 			if (cella.args) then
@@ -380,7 +387,7 @@ do
 				end
 			end
 		end
-
+		
 		if a1 == b1 then
 			if column.sortnext then
 				local nextcol = self.cols[column.sortnext];

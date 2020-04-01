@@ -35,7 +35,7 @@ local function CreateDataBoker()
                        if IsShiftKeyDown() then
                            AddOn:Config()
                        else
-
+                           AddOn:PointsModule():Toggle()
                        end
                    end
                end,

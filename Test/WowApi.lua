@@ -300,6 +300,11 @@ function C_Timer.NewTicker(duration, callback, iterations)
 
 end
 
+C_ChatInfo = {}
+function C_ChatInfo.RegisterAddonMessagePrefix(prefix)
+
+end
+
 C_CreatureInfo = {}
 C_CreatureInfo.ClassInfo = {
 	[1] = {
@@ -361,6 +366,10 @@ function UnitFullName(unit)
 	else
 		return unit
 	end
+end
+
+function GuildRoster ()
+
 end
 
 function IsInGuild()
@@ -646,7 +655,7 @@ function Minimap:HookScript(event, fn)
 
 end
 
-
+_G.bit = bit32
 
 _G.tInvert = function(tbl)
 	local inverted = {};

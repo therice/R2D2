@@ -2,6 +2,7 @@ local _, AddOn = ...
 local Logging   = AddOn.Libs.Logging
 local Util      = AddOn.Libs.Util
 local ItemUtil  = AddOn.Libs.ItemUtil
+local L         = AddOn.components.Locale
 
 function AddOn:IsInNonInstance()
     local instance_type = select(2, IsInInstance())
@@ -96,15 +97,12 @@ end
 
 function AddOn:GetGuildRanks()
     if not IsInGuild() then return {} end
-    
     GuildRoster()
-    
     local t = {}
     for i = 1, GuildControlGetNumRanks() do
         local name = GuildControlGetRankName(i)
         t[name] = i
     end
-    
     return t;
 end
 
@@ -267,4 +265,16 @@ function AddOn:GetItemLevelDifference(item, g1, g2)
     end
 
     return diff
+end
+
+function AddOn:ConvertIntervalToString(days, months, years)
+    local text = format(L["n_days"], days)
+    
+    if years > 0 then
+        text = format(L["n_days_and_n_months_and_n_years"], text, months, years)
+    elseif months > 0 then
+        text = format(L["n_days_and_n_monthss"], text, months)
+    end
+    
+    return text
 end

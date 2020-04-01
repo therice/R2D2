@@ -6,6 +6,34 @@ local Logging   = AddOn.components.Logging
 local Util      = AddOn.Libs.Util
 local Strings   = Util.Strings
 local Tables    = Util.Tables
+local Class     = AddOn.Libs.Class
+
+local Mode = Class('Mode')
+
+function Mode:initialize()
+    self.bitfield = AddOn.Constants.Modes.Standard
+end
+
+function Mode:Enable(...)
+    self.bitfield = bit.bor(self.bitfield, ...)
+end
+
+function Mode:Disable(...)
+    self.bitfield = bit.bxor(self.bitfield, ...)
+end
+
+function Mode:Enabled(flag)
+    return bit.band(self.bitfield, flag) == flag
+end
+
+function Mode:Disabled(flag)
+    return bit.band(self.bitfield, flag) == 0
+end
+
+
+if _G.R2D2_Testing then
+    AddOn.Mode = Mode
+end
 
 function R2D2:OnInitialize()
     Logging:SetRootThreshold(Logging.Level.Debug)
@@ -26,8 +54,8 @@ function R2D2:OnInitialize()
     }
     -- our guild
     self.guildRank = L["unguilded"]
-    -- are we running in test mode
-    self.testMode = false
+    -- bitfield which keeps track of our operating mode
+    self.mode = Mode:new()
     -- sent by master looter
     self.mlDb = {}
     -- are we the master looter?
@@ -39,11 +67,15 @@ function R2D2:OnInitialize()
     -- should this be a local
     -- entries are type ItemEntry
     self.lootTable = {}
+    self.lootStatus = {}
     self.enabled = true
     -- does R2D2 handle loot?
     self.handleLoot = false
     self.reconnectPending = false
     self.instanceName = ""
+    -- is the Master Looter's loot window open or closed
+    self.lootOpen = false
+    -- core add-on settings
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
     self:RegisterChatCommand(name:lower(), "ChatCommand")
@@ -52,6 +84,8 @@ end
 
 function R2D2:OnEnable()
     Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), self.version)
+    local C = R2D2.Constants
+    
     for name, module in self:IterateModules() do
         if not module.db or module.db.profile.enabled or not module.defaults then
             Logging:Debug("OnEnable(%s) - Enabling module (startup) '%s'", self:GetName(), name)
@@ -63,16 +97,31 @@ function R2D2:OnEnable()
     self.playerName = self:UnitName(self.Constants.player)
 
     -- register events
-    for event, method in pairs(self.Events) do
-        self:RegisterEvent(event, method)
+    for key, event in pairs(C.Events) do
+        self:RegisterEvent(event, C.EventHandlers[key])
     end
 
     if IsInGuild() then
         self.guildRank = select(2, GetGuildInfo("player"))
     end
 
+    -- todo : not sure we need this with LibGuildStorate
+    GuildRoster()
+    
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
+end
+
+function R2D2:OnDisable()
+    self:UnregisterAllEvents()
+end
+
+function R2D2:TestModeEnabled()
+    return self.mode:Enabled(AddOn.Constants.Modes.Test)
+end
+
+function R2D2:DevModeEnabled()
+    return self.mode:Enabled(AddOn.Constants.Modes.Develop)
 end
 
 function R2D2:CallModule(module)
@@ -94,12 +143,12 @@ function R2D2:Test(count)
         Tables.Push(items, testItems[math.random(1, #testItems)])
     end
 
-    self.testMode = true
+    self.mode:Enable(AddOn.Constants.Modes.Test)
     self.isMasterLooter, self.masterLooter = self:GetMasterLooter()
 
     if not self.isMasterLooter then
         self:Print(L["error_test_as_non_leader"])
-        self.testMode = false
+        self.mode:Disable(AddOn.Constants.Modes.Test)
         return
     end
 
@@ -121,6 +170,7 @@ function R2D2:Version()
 
 end
 
+
 function R2D2:ChatCommand(msg)
     local args = Tables.New(self:GetArgs(msg,10))
     args[11] = nil
@@ -135,6 +185,14 @@ function R2D2:ChatCommand(msg)
         self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then
         self:Version()
+    elseif cmd == 'dev' then
+        local flag = R2D2.Constants.Modes.Develop
+        if self.mode:Enabled(flag) then
+            self.mode:Disable(flag)
+        else
+            self.mode:Enable(flag)
+        end
+        self:Print("Development Mode = " .. self:DevModeEnabled())
     else
         self:Help()
     end

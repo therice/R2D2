@@ -212,6 +212,7 @@ function Self.ToString(val, depth)
                             end
                         end
                         j = j + 1
+                        
                         return s .. Self.ToString(v, depth-1)
                     end,
                     "{", true
@@ -223,6 +224,8 @@ function Self.ToString(val, depth)
         return "(fn)"
     elseif t == "string" then
         return val
+    elseif t == "userdata" then
+        return "(userdata)"
     else
         return val
     end

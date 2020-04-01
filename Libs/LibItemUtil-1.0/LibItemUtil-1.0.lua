@@ -366,10 +366,10 @@ function lib:GetItemClassesAllowedFlag(itemLink)
 
                 local result = 0
                 for className in string.gmatch(classesText..delimiter, "(.-)"..delimiter) do
-                    local classID = self.ClassDisplayNameToId[className]
-                    if classID then
-                        Logging:Trace("GetItemClassesAllowedFlag(%s) : ClassName=%s ClassId=%s", itemLink, className, classID)
-                        result = result + bit.lshift(1, classID-1)
+                    local classId = self.ClassDisplayNameToId[className]
+                    if classId then
+                        Logging:Trace("GetItemClassesAllowedFlag(%s) : ClassName=%s ClassId=%s", itemLink, className, classId)
+                        result = result + bit.lshift(1, classId -1)
                     else
                         Logging:Warn("Error while getting classes flag of %s  Class %s does not exist", itemLink, className)
                     end

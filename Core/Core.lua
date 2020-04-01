@@ -4,6 +4,7 @@ local Logging   = AddOn.components.Logging
 local Util      = AddOn.Libs.Util
 local ItemUtil  = AddOn.Libs.ItemUtil
 local L         = AddOn.components.Locale
+local Dialog    = AddOn.Libs.Dialog
 
 -- keep track of whether we need to re-request data due to a reload
 local relogged = true
@@ -16,12 +17,24 @@ function AddOn:MasterLooterModule()
     return self:GetModule("MasterLooter")
 end
 
+function AddOn:PointsModule()
+    return self:GetModule("Points")
+end
+
+function AddOn:LootAllocateModule()
+    return self:GetModule("LootAllocate")
+end
+
+function AddOn:LootHistoryModule()
+    return self:GetModule("LootHistory")
+end
+
 function AddOn:GetMasterLooter()
     Logging:Trace("GetMasterLooter()")
     local MasterLooterDbCheck = AddOn.Constants.Commands.MasterLooterDbCheck
 
     -- always the player when testing alone
-    if GetNumGroupMembers() == 0 and self.testMode then
+    if GetNumGroupMembers() == 0 and (self:TestModeEnabled() or self:DevModeEnabled()) then
         self:ScheduleTimer("Timer", 5, MasterLooterDbCheck)
         return true, self.playerName
     end
@@ -44,12 +57,12 @@ function AddOn:GetMasterLooter()
         self:ScheduleTimer("Timer", 15, MasterLooterDbCheck)
         return IsMasterLooter(), name
     end
-    return false, nil;
+    return false, nil
 end
 
 function AddOn:NewMasterLooterCheck()
     Logging:Debug("NewMasterLooterCheck()")
-
+    
     local oldMl = self.masterLooter
     self.isMasterLooter, self.masterLooter = self:GetMasterLooter()
     if Util.Strings.IsSet(self.masterLooter) and strfind(self.masterLooter, "Unknown") then
@@ -57,29 +70,49 @@ function AddOn:NewMasterLooterCheck()
         self:ScheduleTimer("NewMasterLooterCheck", 2)
         return
     end
-
+    
     -- We were ML, but no longer, so disable master looter module
     if self:UnitIsUnit(oldMl, "player") and not self.isMasterLooter then
         self:MasterLooterModule():Disable()
     end
-
+    
     if self:UnitIsUnit(oldMl, self.masterLooter) then
         Logging:Debug("NewMasterLooterCheck() : No Master Looter change")
         return
     end
-
+    
+    if self.db.profile.usage.never then return end
+    if self.masterLooter == nil then return end
+    
     -- Someone else has become ML
     if not self.isMasterLooter and self.masterLooter then
         return
     end
-
-    -- todo : prompt for using master looter (as needed)
-    if self.isMasterLooter then
+    
+    if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
+    
+    -- we are ml and shouldn't as for usage
+    if self.isMasterLooter and self.db.profile.usage.ml then
         self:StartHandleLoot()
-    elseif self.isMasterLooter and false then -- as if using master looter
-       --  LibDialog:Spawn("R2D2_CONFIRM_USAGE")
+    -- ask if using master looter
+    elseif self.isMasterLooter and self.db.profile.usage.ask_ml then
+        return Dialog:Spawn(AddOn.Constants.Popups.ConfirmUsage)
     end
 end
+
+
+function AddOn:OnRaidEnter()
+    if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
+    if not self.masterLooter and UnitIsGroupLeader("player") then
+        if self.db.profile.usage.leader then
+            self.isMasterLooter, self.masterLooter = true, self.playerName
+            self:StartHandleLoot()
+        elseif self.db.profile.usage.ask_leader then
+            return Dialog:Spawn(AddOn.Constants.Popups.ConfirmUsage)
+        end
+    end
+end
+
 
 function AddOn:StartHandleLoot()
     Logging:Debug("StartHandleLoot()")
@@ -234,6 +267,23 @@ function AddOn:PrepareLootTable(lootTable)
     )
 end
 
+local moreInfo = false
+
+function AddOn:UpdateMoreInfo(row, data)
+    -- Logging:Trace("UpdateMoreInfo(%s) : %s", tostring(row), Util.Objects.ToString(data, 2))
+    local name
+    if data and row then
+        name = data[row].name
+    else
+        local selection = self.frame.st:GetSelection()
+        name = selection and self.frame.st:GetRow(selection).name or nil
+    end
+    
+    if not moreInfo or not name then
+        return self.frame.moreInfo:Hide()
+    end
+end
+
 function AddOn:Timer(type, ...)
     Logging:Trace("Timer(%s)", type)
     local C = AddOn.Constants
@@ -280,16 +330,21 @@ function AddOn:ResetReconnectRequest()
     self.reconnectPending = false
 end
 
-local lootDbStats
-function AddOn:GetLootDbStatistics()
-
+--@return tuple of (boolean, table) with 1st index being whether moreInfo is shown and 2nd being more info data
+function AddOn:MoreInfoSettings(module)
+    local moduleSettings = AddOn.db.profile.modules[module]
+    return moduleSettings and moduleSettings.moreInfo or false, self:LootHistoryModule():GetStatistics()
 end
 
 function AddOn:OnEvent(event, ...)
     Logging:Debug("OnEvent(%s)", event)
     local C = AddOn.Constants.Commands
     local E = AddOn.Constants.Events
-    if event == E.PlayerEnteringWorld then
+    if Util.Objects.In(event, E.PartyLootMethodChanged, E.PartyLeaderChanged, E.GroupLeft) then
+        self:NewMasterLooterCheck()
+    elseif event == E.RaidInstanceWelcome then
+        self:ScheduleTimer("OnRaidEnter", 2)
+    elseif event == E.PlayerEnteringWorld then
         self:NewMasterLooterCheck()
         self:ScheduleTimer(
                 function()
@@ -307,15 +362,27 @@ function AddOn:OnEvent(event, ...)
         end
         self:UpdatePlayersData()
         relogged = false
+    elseif event == E.EncounterStart then
+
+    elseif event == E.EncounterEnd then
+    
+    elseif event == E.GuildRosterUpdate then
+
+    elseif event == E.LootSlotCleared then
+
+    elseif event == E.LootReady then
+    
+    else
+        Logging:Debug("OnEvent(%s) : Unhandled event", event)
     end
 end
 
 function AddOn:LootOpened(...)
-
+    self.lootOpen = true
 end
 
 function AddOn:LootClosed()
-
+    self.lootOpen = false
 end
 
 function AddOn:EnterCombat()
@@ -323,5 +390,4 @@ function AddOn:EnterCombat()
 end
 
 function AddOn:LeaveCombat()
-
 end

@@ -9,13 +9,13 @@ local _TEST = _G.LibLogging_Testing
 
 -- Basic constants for use with library, with a mapping to hierarchy key
 lib.Level = {
-    Disabled = "Disabled",
-    Trace = "Trace",
-    Debug = "Debug",
-    Info = "Info",
-    Warn = "Warn",
-    Error = "Error",
-    Fatal = "Fatal"
+    Disabled    = "Disabled",
+    Trace       = "Trace",
+    Debug       = "Debug",
+    Info        = "Info",
+    Warn        = "Warn",
+    Error       = "Error",
+    Fatal       = "Fatal"
 }
 -- local reference for ease of use
 local Level = lib.Level
@@ -26,6 +26,16 @@ local MaxLevels = #LevelHierarchy
 for i=1,MaxLevels do
     LevelHierarchy[LevelHierarchy[i]] = i
 end
+
+local LevelColors = {
+    "",
+    "|cFF90EE90TRACE:|r",
+    "|cFF20B2AADEBUG:|r",
+    "|cFF808000INFO:|r",
+    "|cFFFFA500WARN:|r",
+    "|cFFFF0000ERROR:|r",
+    "|cFF8B0000FATAL:|r",
+}
 
 -- validates specified level is of correct type and within valid range
 -- returns passed level if valid
@@ -109,9 +119,12 @@ end
 
 local function Log(writer, level, fmt, ...)
     -- don't log if specified level is filtered by our root threshold
-    -- print(GetThreshold(level) .. '/' .. RootThreshold)
-    if GetThreshold(level) < RootThreshold then return end
-    writer(string.format("%s [%s] (%s): "..fmt, string.upper(level), GetDateTime(), GetCaller(), ...))
+    local levelThreshold = GetThreshold(level)
+    if levelThreshold < RootThreshold then return end
+    writer(string.format("%s [%s] (%s): " .. fmt,
+                         LevelColors[levelThreshold],
+                         "|cFFFFFACD" .. GetDateTime() .. "|r",
+                         "|cFFB0E0E6" .. GetCaller() .. "|r", ...))
 end
 
 function lib:Log(level, fmt, ...)
@@ -120,6 +133,10 @@ end
 
 function lib:Trace(fmt, ...)
     Log(Writer, Level.Trace, fmt, ...)
+end
+
+function lib:Info(fmt, ...)
+    Log(Writer, Level.Info, fmt, ...)
 end
 
 function lib:Debug(fmt, ...)
@@ -133,6 +150,11 @@ end
 function lib:Error(fmt, ...)
     Log(Writer, Level.Error, fmt, ...)
 end
+
+function lib:Fatal(fmt, ...)
+    Log(Writer, Level.Fatal, fmt, ...)
+end
+
 
 
 

@@ -124,7 +124,6 @@ function UI:RegisterElement(object, etype)
     private.elements[etype] = object
 end
 
-
 function private:New(type, parent, name, ...)
     if self.elements[type] then
         parent = parent or _G.UIParent
@@ -298,7 +297,6 @@ function UI:CreateTooltip(...)
     end
     GameTooltip:Show()
 end
-
 
 function UI:CreateHypertip(link)
     if Strings.IsEmpty(link) then return end
