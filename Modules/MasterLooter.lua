@@ -838,7 +838,7 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
                 AddOn:SendCommand(C.group, C.Commands.MasterLooterDb, AddOn.mlDb)
             elseif command == C.Commands.CandidatesRequest then
                 self:SendCandidates()
-            elseif command == C.Commands.Reconnect and AddOn:UnitIsUnit(sender, AddOn.playerName) then
+            elseif command == C.Commands.Reconnect and not AddOn:UnitIsUnit(sender, AddOn.playerName) then
                 -- resend the master looter DB
                 AddOn:SendCommand(sender, C.Commands.MasterLooterDb, AddOn.mlDb)
                 -- resend the candidates

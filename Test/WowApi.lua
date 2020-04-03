@@ -471,6 +471,7 @@ DEFAULT_CHAT_FRAME = ChatFrame1
 
 -- debugstack = debug.traceback
 date = os.date
+time = os.time
 
 local wow_api_locale = 'enUS'
 function GetLocale()
@@ -705,9 +706,12 @@ _G.strfind = string.find
 _G.gsub = string.gsub
 _G.date = os.date
 _G.time = os.time
+_G.difftime = os.difftime
 _G.unpack = table.unpack
 _G.tinsert = table.insert
 _G.tremove = table.remove
+_G.floor = math.floor
+_G.mod = function(a,b) return a - math.floor(a/b) * b end
 
 -- https://wowwiki.fandom.com/wiki/API_strsplit
 -- A list of strings. Not a table. If the delimiter is not found in the string, the whole subject string will be returned.

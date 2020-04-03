@@ -24,7 +24,7 @@ local function CreateDataBoker()
                text = "R2D2",
                icon = "Interface\\AddOns\\R2D2\\Media\\Textures\\icon.blp",
                OnTooltipShow = function(tooltip)
-                   tooltip:AddDoubleLine("|cfffe7b2cR2D2|r", format("|cffFFFFFF%s|r", AddOn.version))
+                   tooltip:AddDoubleLine("|cfffe7b2cR2D2|r", format("|cffFFFFFF%s|r", tostring(AddOn.version)))
                    tooltip:AddLine(format(TT_ENTRY, L["left_click"], L["open_standings"]))
                    tooltip:AddLine(format(TT_ENTRY, L["shift_left_click"], L["open_config"]))
                end,

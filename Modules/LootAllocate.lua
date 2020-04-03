@@ -130,15 +130,17 @@ end
 -- when LootTable command is received (provided applicable conditions are met)
 function LootAllocate:ReceiveLootTable(lt)
     active = true
-    -- Logging:Trace("ReceiveLootTable(BEFORE) : %s", Util.Objects.ToString(lt, 4))
+    -- Logging:Debug("ReceiveLootTable(BEFORE) : %s", Util.Objects.ToString(lt, 4))
     lootTable = Util(lt):Copy():Map(function(entry) return entry:ToAllocateEntry() end)()
-    -- Logging:Trace("ReceiveLootTable(AFTER) : %s", Util.Objects.ToString(lootTable, 4))
+    -- Logging:Debug("ReceiveLootTable(AFTER) : %s", Util.Objects.ToString(lootTable, 4))
     self:Setup(lootTable)
     if not AddOn.enabled then return end
     self:Show()
 end
 
 function LootAllocate.GetLootTableEntry(session)
+    --Logging:Debug("GetLootTableEntry(%d) : %d", session, #lootTable)
+    if not Util.Objects.IsNumber(session) then session = tonumber(session) end
     return lootTable[session]
 end
 
@@ -190,7 +192,8 @@ end
 
 
 function LootAllocate:SwitchSession(sess)
-    -- Logging:Trace("SwitchSession(%s)", tostring(sess))
+    -- Logging:Debug("SwitchSession(%d)", sess)
+    
     local C = AddOn.Constants
     session = sess
     local entry = LootAllocate.GetLootTableEntry(sess)
@@ -281,7 +284,10 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
     local C = AddOn.Constants
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 3))
+        local fromMl = AddOn:UnitIsUnit(sender, AddOn.masterLooter)
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, fromMl=%s, data=%s,",
+                      tostring(success), command, tostring(fromMl), Util.Objects.ToString(data, 3))
+        
         if success then
             if command == C.Commands.ChangeResponse then
                 local ses, name, response = unpack(data)
@@ -306,16 +312,19 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
 
                 self:Update()
-            elseif command == C.Commands.Awarded and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+            elseif command == C.Commands.Awarded and fromMl then
                 -- moved moreInfoData out of here int common UI functions Core/UI.lua
                 -- self:ScheduleTimer(function() moreInfoData = AddOn:GetLootDbStatistics() end, 1)
-                local s1, winner = unpack(data)
-                local e1 = self:GetLootTableEntry(s1)
-                if not e1 then return end
+                local awardSession, winner = unpack(data)
+                local entry = self.GetLootTableEntry(awardSession)
+                if not entry then
+                    Logging:Warn("No Loot Table Entry for session %d", awardSession)
+                    return
+                end
 
-                local oldWinner = e1.awarded
+                local oldWinner = entry.awarded
                 for s2, e2 in ipairs(lootTable) do
-                    if AddOn:ItemIsItem(e2.link, e1.link) then
+                    if AddOn:ItemIsItem(e2.link, entry.link) then
                         -- re-awarded
                         if oldWinner and not AddOn:UnitIsUnit(oldWinner, winner) then
                             self:SetCandidateData(s2, oldWinner, "response", self:GetCandidateData(s2, oldWinner, "real_response"))
@@ -325,7 +334,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                     end
                 end
 
-                e1.awarded = winner
+                entry.awarded = winner
 
                 local nextSession = self:FetchUnawardedSession()
                 if AddOn.isMasterLooter and nextSession then
@@ -333,7 +342,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 else
                     self:SwitchSession(session)
                 end
-            elseif command == C.Commands.OfflineTimer and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+            elseif command == C.Commands.OfflineTimer and fromMl then
                 for i = 1, #lootTable do
                     for candidate in pairs(lootTable[i].candidates) do
                         if self:GetCandidateData(i, candidate, "response") == "ANNOUNCED" then
@@ -350,7 +359,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
                 self:Update()
             elseif command == C.Commands.Rolls then
-                if AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+                if fromMl then
                     local session, table = unpack(data)
                     for name, roll in pairs(table) do
                         self:SetCandidateData(session, name, "roll", roll)
@@ -365,9 +374,9 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                     self:SetCandidateData(ses, name, "roll", roll)
                 end
                 self:Update()
-            elseif command == C.Commands.ReconnectData and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
-                -- todo : i don't believe we need handle this here because nothing will have mutated in loot table
-            elseif command == C.Commands.LootTableAdd and AddOn:UnitIsUnit(sender, AddOn.masterLooter) then
+            elseif command == C.Commands.ReconnectData and fromMl then
+            
+            elseif command == C.Commands.LootTableAdd and fromMl then
                 local oldLen = #lootTable
                 for index, entry in pairs(unpack(data)) do
                     Logging:Debug("LootTableAdd(%s, %s) : %s", tostring(oldLen), tostring(index), Util.Objects.ToString(entry, 4))
@@ -1251,7 +1260,7 @@ function LootAllocate:Update(forceUpdate)
 
     if not self.frame then return end
     if not lootTable[session] then
-        Logging:Warn("Update() : No Loot Table entry for session=%s", tostring(session))
+        Logging:Warn("Update() : No Loot Table entry for session %d", session)
         return
     end
 
@@ -1262,11 +1271,10 @@ function LootAllocate:Update(forceUpdate)
     local entry = LootAllocate.GetLootTableEntry(session)
 
     if entry and entry.awarded then
-        local response = entry:GetCandidateResponse(name)
+        local response = entry:GetCandidateResponse(entry.awarded)
         self.frame.awardString:SetText(L["item_awarded_to"])
         self.frame.awardString:Show()
-        local name = entry.awarded
-        self.frame.awardStringPlayer:SetText(AddOn.Ambiguate(name))
+        self.frame.awardStringPlayer:SetText(AddOn.Ambiguate(entry.awarded))
         local c = AddOn:GetClassColor(response.class)
         self.frame.awardStringPlayer:SetTextColor(c.r,c.g,c.b,c.a)
         self.frame.awardStringPlayer:Show()

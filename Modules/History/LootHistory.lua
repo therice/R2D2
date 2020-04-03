@@ -27,7 +27,7 @@ function LootHistory:AddEntry(winner, link, responseId, boss, reason, session, c
     local response = AddOn:GetResponse(typeCode or equipLoc, responseId)
     -- https://wow.gamepedia.com/API_GetInstanceInfo
     -- name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic,
-    -- instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
+    --  instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
     local instanceName, _, _, _, _, _, _, instanceId, groupSize = GetInstanceInfo()
     Logging:Debug("AddEntry() : %s, %s, %s, %s, %s, %s, %s",
                   winner, link, responseId, tostring(boss), tostring(reason), session, Util.Objects.ToString(candidateData))
@@ -92,6 +92,7 @@ function LootHistory:GetStatistics()
                             Util.Tables.Push(stats[name],
                                      {
                                          entry.lootWon,
+                                         -- todo : fix this
                                          format(L["n_ago"], AddOn:ConvertIntervalToString(Util.Dates.GetInterval(entry.date))),
                                          color[id],
                                          i

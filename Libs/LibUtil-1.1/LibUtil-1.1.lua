@@ -12,7 +12,6 @@ local Modules = {
     number = "Numbers",
     ["function"] = "Functions",
     "Objects",
-    "Dates"
 }
 
 local Module = {

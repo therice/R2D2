@@ -8,7 +8,7 @@ local function CreateCandidate()
     return Models.Candidate:new(player, class, "Officer", false, 0, 62)
 end
 
-describe("Item Model", function()
+describe("Candidate Model", function()
     setup(function()
         loadfile(pl.abspath(pl.abspath('.') .. '/../../Test/TestSetup.lua'))(this, {})
         R2D2:OnInitialize()

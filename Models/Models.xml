@@ -3,4 +3,8 @@
     <Script file="Item.lua"/>
     <Script file="Candidate.lua"/>
     <Script file="Point.lua"/>
+    <Script file="Date.lua"/>
+    <Script file="SemanticVersion.lua"/>
+    <Script file="History\Loot.lua" />
+    <Script file="History\Traffic.lua" />
 </Ui>

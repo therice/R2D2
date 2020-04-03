@@ -13,7 +13,7 @@ local Self = Util.Strings
 
 ---@return boolean
 function Self.IsSet(str)
-    return type(str) == "string" and str:trim() ~= ""
+    return str and type(str) == "string" and str:trim() ~= ""
 end
 
 ---@param str string
@@ -105,8 +105,12 @@ end
 -- Check if string is a number
 ---@param str string
 ---@param leadingZero boolean
-function Self.IsNumber(str, leadingZero)
+function Self.IsNumber2(str, leadingZero)
     return tonumber(str) and (leadingZero or not Self.StartsWith(str, "0"))
+end
+
+function Self.IsNumber(str)
+    return type(str) == 'sting' and string.find(s,'^%d+$') == 1
 end
 
 -- Get abbreviation of given length
@@ -153,4 +157,8 @@ end
 ---@return string
 function Self.ToString(val, depth)
     return Util.Objects.ToString(val, depth)
+end
+
+function Self.Escape(s)
+    return (s:gsub('[%-%.%+%[%]%(%)%$%^%%%?%*]','%%%1'))
 end

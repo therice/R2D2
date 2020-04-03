@@ -5,5 +5,4 @@
     <Script file="Numbers.lua"/>
     <Script file="Strings.lua"/>
     <Script file="Tables.lua"/>
-    <Script file="Dates.lua"/>
 </Ui>

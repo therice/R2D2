@@ -38,6 +38,8 @@ end
 function R2D2:OnInitialize()
     Logging:SetRootThreshold(Logging.Level.Debug)
     Logging:Debug("OnInitialize(%s)", self:GetName())
+    -- convert to a semantic version
+    self.version = R2D2.components.Models.SemanticVersion:new(self.version)
     self.chatCmdHelp = {
         {cmd = "config", desc = L["chat_commands_config"]},
         {cmd = "test", desc = L["chat_commands_test"]},
@@ -46,7 +48,7 @@ function R2D2:OnInitialize()
     }
     -- the player class
     self.playerClass = select(2, UnitClass("player"))
-    -- tracks information about player at time of login and encounters beginning
+    -- tracks information about player at time of login and when encounters begin
     self.playersData = {
         -- slot number -> item link
         gear = {
@@ -86,7 +88,7 @@ function R2D2:OnInitialize()
 end
 
 function R2D2:OnEnable()
-    Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), self.version)
+    Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), tostring(self.version))
     
     -- todo : remove this before publishing
     self.mode:Enable(R2D2.Constants.Modes.Develop)
@@ -154,7 +156,7 @@ function R2D2:SessionError(...)
 end
 
 function R2D2:Help()
-    print(format(L["chat version"],self.version))
+    print(format(L["chat version"], tostring(self.version)))
     for _, v in ipairs(self.chatCmdHelp) do
         print("|cff20a200", v.cmd, "|r:", v.desc)
     end
