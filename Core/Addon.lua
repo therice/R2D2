@@ -102,7 +102,9 @@ function R2D2:OnEnable()
 
     self.realmName = select(2, UnitFullName(self.Constants.player))
     self.playerName = self:UnitName(self.Constants.player)
+    self.playerFaction = UnitFactionGroup(self.Constants.player)
 
+    Logging:Debug("OnEnable(%s)", self.playerFaction)
     -- register events
     for event, method in pairs(self.Events) do
         self:RegisterEvent(event, method)
@@ -114,7 +116,7 @@ function R2D2:OnEnable()
                 self,
                 GuildStorage.Events.StateChanged,
                 function(event, state)
-                    Logging:Debug("GuildStorage.Callback(%s, %s)", tostring(event), tostring(state))
+                    Logging:Trace("GuildStorage.Callback(%s, %s)", tostring(event), tostring(state))
                     if state == GuildStorage.States.Current then
                         local me = GuildStorage:GetMember(AddOn.playerName)
                         if me then

@@ -5,14 +5,15 @@ local L             = AddOn.components.Locale
 local UI            = AddOn.components.UI
 local ST            = AddOn.Libs.ScrollingTable
 local Util          = AddOn.Libs.Util
+local ItemUtil      = AddOn.Libs.ItemUtil
 local GuildStorage  = AddOn.Libs.GuildStorage
 local Models        = AddOn.components.Models
 
-local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 25, 0.2
+local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 25, 10
 local DefaultScrollTableData = {}
-local MemberModified, MemberDeleted, DataChanged, Sort, Get
+local Sort, Get
 local FilterMenu
-local points, updatePending, updateIntervalRemaining, updateFrame = {}, false, 0, CreateFrame("FRAME")
+local points = {}
 
 function Points:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -123,22 +124,19 @@ end
 function Points:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     self.frame = self:GetFrame()
-    updateFrame:Show()
-    updatePending = false
-    updateIntervalRemaining = 0
+    self.updateHandler = AddOn:CreateUpdateHandler(function() Points:Update() end, MIN_UPDATE_INTERVAL)
     -- register callbacks with LibGuildStorage for events in which we are interested
-    GuildStorage:RegisterCallback(GuildStorage.Events.GuildNoteChanged, MemberModified)
-    GuildStorage:RegisterCallback(GuildStorage.Events.GuildMemberDeleted, MemberDeleted)
-    GuildStorage:RegisterCallback(GuildStorage.Events.StateChanged, DataChanged)
+    GuildStorage.RegisterCallback(self, GuildStorage.Events.GuildNoteChanged, "MemberModified")
+    GuildStorage.RegisterCallback(self, GuildStorage.Events.GuildMemberDeleted, "MemberDeleted")
+    GuildStorage.RegisterCallback(self, GuildStorage.Events.StateChanged, "DataChanged")
+    GuildStorage.RegisterCallback(self, GuildStorage.Events.Initialized, "DataChanged")
 end
 
 function Points:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
     self.frame:SetParent(nil)
     self.frame = nil
-    updateFrame:Hide()
-    updatePending = false
-    updateIntervalRemaining = 0
+    self.updateHandler:Dispose()
 end
 
 function Points:Hide()
@@ -150,21 +148,7 @@ end
 
 function Points:Show()
     if self.frame then
-        
-        --for i in ipairs(self.frame.st.cols) do
-        --    self.frame.st.cols[i].sort = nil
-        --end
-        --self.frame.st.cols[1].sort = 5
-        --
-        -- FauxScrollFrame_OnVerticalScroll(self.frame.st.scrollframe, 0, self.frame.st.rowHeight, function() self.frame.st:Refresh() end)
-        --Points:Update(true)
-        --self.frame.st:SortData()
-        Points:BuildScrollingTable()
-        --self.frame.st:Refresh()
-        self.frame.st:SortData()
-        --self.frame.st:SortData()
         self.frame:Show()
-        
     end
 end
 
@@ -177,6 +161,7 @@ function Points:Toggle()
         end
     end
 end
+
 -- @return ep, gp, pr
 function Points.Get(name)
     if points[name] then return points[name]:Get() end
@@ -194,25 +179,32 @@ function Get(name)
     return points[name]
 end
 
-function MemberModified(callback, name, note)
+-- todo : need to handle addition and removal of members to scrolling table
+
+function Points:MemberModified(event, name, note)
     Remove(name)
     Add(name, Models.PointEntry:FromGuildMember(GuildStorage:GetMember(name)))
-    Logging:Trace("MemberModified(%s) : %s ", name, Util.Objects.ToString(points[name], 1))
+    Logging:Trace("MemberModified(%s) : '%s'", name, note)
     -- todo : maintain standings?
 end
 
-function MemberDeleted(callback, name)
+function Points:MemberDeleted(event, name)
     Remove(name)
     Logging:Trace("MemberDeleted(%s)", name)
     -- todo : maintain standings?
 end
 
 -- todo : maybe it's better to just fire from individual events
-function DataChanged(callback, state)
+function Points:DataChanged(event, state)
+    Logging:Trace("DataChanged(%s) : %s", event, tostring(state))
     -- will get this once everything settles
-    -- individual events will have collected the appropraite point entries
-    if state == GuildStorage.States.Current then
-    
+    -- individual events will have collected the appropriate point entries
+    if event == GuildStorage.Events.Initialized then
+        Points:BuildScrollingTable()
+    elseif event == GuildStorage.Events.StateChanged then
+        if state == GuildStorage.States.Current then
+            self:Update()
+        end
     end
 end
 
@@ -233,35 +225,20 @@ function Points:BuildScrollingTable()
         i = i + 1
     end
     
-    --Logging:Debug('%s', Util.Objects.ToString(rows, 4))
     self.frame.st:SetData(rows)
 end
 
---function Points:Update(forceUpdate)
---    updatePending = false
---    if not forceUpdate and updateIntervalRemaining > 0 then
---        updatePending = true
---        return
---    end
---
---    if not self.frame then return end
---
---    updateIntervalRemaining = MIN_UPDATE_INTERVAL
---    self.frame.st:SortData()
---    self.frame.st:SortData()
---
---end
---
---updateFrame:SetScript("OnUpdate", function(self, elapsed)
---    if updateIntervalRemaining > elapsed then
---        updateIntervalRemaining = updateIntervalRemaining - elapsed
---    else
---        updateIntervalRemaining = 0
---    end
---    if updatePending and updateIntervalRemaining <= 0 then
---        Points:Update()
---    end
---end)
+function Points:Update(forceUpdate)
+    Logging:Trace("Update(%s)", tostring(forceUpdate or false))
+    if not forceUpdate and not self.updateHandler:Eligible() then return end
+    if not self.frame then return end
+    Logging:Trace("Update(%s) - Performing update", tostring(forceUpdate or false))
+    
+    -- todo : not sure if refresh() is needed
+    self.frame.st:Refresh()
+    self.frame.st:SortData()
+    self.updateHandler:RefreshInterval()
+end
 
 function Points:GetFrame()
     if self.frame then return self.frame end
@@ -282,7 +259,9 @@ function Points:GetFrame()
                                       -- MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0);
                                   -- update more info
                                   elseif button == "LeftButton" and row then
-                                      AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data)
+                                      AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
+                                                           function(name) return Get(name).class end
+                                      )
                                       --if IsAltKeyDown() then
                                       --    local name = data[realrow].name
                                       --    Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward,
@@ -296,7 +275,11 @@ function Points:GetFrame()
         -- show moreInfo on mouseover
         st:RegisterEvents({
                               ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                                  if row then AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data) end
+                                  if row then
+                                      AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
+                                                           function(name) return Get(name).class end
+                                      )
+                                  end
                                   -- Return false to have the default OnEnter handler take care mouseover
                                   return false
                               end
@@ -308,7 +291,8 @@ function Points:GetFrame()
                                   return false
                               end
                           })
-        
+    
+        st:SetFilter(Points.FilterFunc)
         st:EnableSelection(true)
         f.st = st
         f:SetWidth(f.st.frame:GetWidth() + 20)
@@ -318,11 +302,79 @@ function Points:GetFrame()
     -- more info widgets
     AddOn:EmbedMoreInfoWidgets(self:GetName(), f)
     
+    -- filter
+    local filter = UI:CreateButton(_G.FILTER, f.content)
+    filter:SetPoint("TOPRIGHT", f, "TOPRIGHT", -40, -20)
+    filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
+    filter:SetScript("OnEnter", function() UI:CreateTooltip(L["deselect_responses"]) end)
+    filter:SetScript("OnLeave", function() UI:HideTooltip() end)
+    f.filter = filter
+    
     return f
 end
 
 function Points.FilterMenu(menu, level)
+    
+    local Module = AddOn.db.profile.modules[Points:GetName()]
+    if level == 1 then
+        if not Module.filters then
+            Module.filters = {}
+        end
+        local ModuleFilters = Module.filters
+        
+        local info = MSA_DropDownMenu_CreateInfo()
+        info.text = _G.CLASS
+        info.isTitle = true
+        info.notCheckable = true
+        info.disabled = true
+        MSA_DropDownMenu_AddButton(info, level)
+        
+        local data = Util(ItemUtil.ClassDisplayNameToId):Keys()
+                -- todo : make this a reuable function
+                :Filter(
+                    function(class)
+                        if AddOn.playerFaction == 'Alliance' then
+                            return class ~= "Shaman"
+                        elseif AddOn.playerFaction == 'Horde' then
+                            return class ~= "Paladin"
+                        end
+                        return true
+                    end
+                ):Sort():Copy()()
+        
+        info = MSA_DropDownMenu_CreateInfo()
+        for _, class in pairs(data) do
+            info.text = class
+            info.colorCode = "|cff" .. AddOn:GetClassColorRGB(class)
+            info.keepShownOnClick = true
+            info.func = function()
+                ModuleFilters[class] = not ModuleFilters[class]
+                Points:Update(true)
+            end
+            info.checked = ModuleFilters[class]
+            MSA_DropDownMenu_AddButton(info, level)
+        end
+        
+    end
+end
 
+function Points.FilterFunc(table, row)
+    local Module = AddOn.db.profile.modules[Points:GetName()]
+    if not Module.filters then return true end
+    
+    local ModuleFilters = Module.filters
+    local name = row.name
+    local member = Get(name)
+    if member and member.class then
+        local classDisplayName = ItemUtil.ClassIdToDisplayName[ItemUtil.ClassTagNameToId[member.class]]
+        local display = true
+        if Util.Tables.ContainsKey(ModuleFilters, classDisplayName) then
+            display = ModuleFilters[classDisplayName]
+        end
+        
+        -- Logging:Debug("%s %s %s %s", name, classDisplayName, tostring(display), tostring(ModuleFilters[classDisplayName]))
+        return display
+    end
 end
 
 function Points.SetCellClass(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)

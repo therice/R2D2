@@ -101,10 +101,10 @@ function SetState(value)
     if state == value then return end
     
     if not StateTransitions[state][value] then
-        Logging:Debug("Ignoring state change from '%s' to '%s'", StateNames[state], StateNames[value])
+        Logging:Trace("Ignoring state change from '%s' to '%s'", StateNames[state], StateNames[value])
         return
     else
-        Logging:Debug("State change from '%s' to '%s'", StateNames[state], StateNames[value])
+        Logging:Trace("State change from '%s' to '%s'", StateNames[state], StateNames[value])
         state = value
         if value == States.PendingChanges then
             SendAddonMessage(MAJOR_VERSION, Messages.ChangesPending, "GUILD")
@@ -163,7 +163,7 @@ lib.frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 function lib:CHAT_MSG_ADDON(prefix, msg, type, sender)
     -- only look at messages from this library and ignore ones from yourself
     if prefix ~= MAJOR_VERSION or sender == UnitName("player") then return end
-    Logging:Debug("CHAT_MSG_ADDON: %s, %s, %s, %s", prefix, msg, type, sender)
+    Logging:Trace("CHAT_MSG_ADDON: %s, %s, %s, %s", prefix, msg, type, sender)
     
     if msg == Messages.ChangesPending then
         SetState(States.PersistingChanges)
@@ -293,7 +293,7 @@ local function OnUpdate()
         end
     end
     
-    Logging:Debug("OnUpdate() : %d guild members, %d ms elapsed", Util.Tables.Count(cache), debugprofilestop() - start)
+    Logging:Trace("OnUpdate() : %d guild members, %d ms elapsed", Util.Tables.Count(cache), debugprofilestop() - start)
 end
 
 lib.frame:SetScript("OnUpdate", OnUpdate)

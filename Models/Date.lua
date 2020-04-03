@@ -309,6 +309,12 @@ function DateFormat:initialize(fmt)
     self.vars = vars
 end
 
+function DateFormat:format(d)
+    if not Date.isInstanceOf(d, Date) then d = Date(d) end
+    
+    return date(self.outf, d.time)
+end
+
 local parse_date
 
 --- parse a string into a Date object.
@@ -389,7 +395,7 @@ local is_number = Util.Strings.IsNumber
 local function tonum(s, l1, l2, kind)
     kind = kind or ''
     local n = tonumber(s)
-    if not n then error(("%snot a number: '%s'"):format(kind, s)) end
+    if not n then error(("% is snot a number: '%s'"):format(kind, s)) end
     if n < l1 or n > l2 then
         error(("%s out of range: %s is not between %d and %d"):format(kind, s, l1, l2))
     end
@@ -424,7 +430,7 @@ local function parse_iso_end(p, ns, sec)
     return sec, tz
 end
 
-function parse_date_unsafe (s, US)
+function parse_date_unsafe(s, US)
     s = s:gsub('T', ' ') -- ISO 8601
     local parts = Util.Strings.Split(s:lower(), " ")
     local i, p = 1, parts[1]
@@ -544,7 +550,7 @@ function parse_date_unsafe (s, US)
     return res
 end
 
-function parse_date (s)
+function parse_date(s)
     local ok, d = pcall(parse_date_unsafe, s)
     if not ok then
         -- error

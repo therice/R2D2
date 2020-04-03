@@ -270,22 +270,6 @@ function AddOn:PrepareLootTable(lootTable)
     )
 end
 
-local moreInfo = false
-
-function AddOn:UpdateMoreInfo(row, data)
-    -- Logging:Trace("UpdateMoreInfo(%s) : %s", tostring(row), Util.Objects.ToString(data, 2))
-    local name
-    if data and row then
-        name = data[row].name
-    else
-        local selection = self.frame.st:GetSelection()
-        name = selection and self.frame.st:GetRow(selection).name or nil
-    end
-    
-    if not moreInfo or not name then
-        return self.frame.moreInfo:Hide()
-    end
-end
 
 function AddOn:Timer(type, ...)
     Logging:Trace("Timer(%s)", type)

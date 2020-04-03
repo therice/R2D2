@@ -520,7 +520,9 @@ function LootAllocate:GetFrame()
                     MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0);
                 -- update more info
                 elseif button == "LeftButton" and row then
-                    AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data)
+                    AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
+                                         function(name) return LootAllocate:GetCandidateData(session, name, "class") end
+                    )
                     if IsAltKeyDown() then
                         local name = data[realrow].name
                         Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, self:GetAwardPopupData(session, name))
@@ -533,7 +535,11 @@ function LootAllocate:GetFrame()
         -- show moreInfo on mouseover
         st:RegisterEvents({
             ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                if row then AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data) end
+                if row then
+                    AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
+                                         function(name) return LootAllocate:GetCandidateData(session, name, "class") end
+                    )
+                end
                 -- Return false to have the default OnEnter handler take care mouseover
                 return false
             end

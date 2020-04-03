@@ -150,7 +150,7 @@ function AddOn:RGBToHex(r,g,b)
 end
 
 function AddOn:GetClassColor(class)
-    local color = RAID_CLASS_COLORS[class]
+    local color = RAID_CLASS_COLORS[class:upper()]
     if not color then
         -- if class not found, return epic color.
         return {r=1,g=1,b=1,a=1}
@@ -158,6 +158,12 @@ function AddOn:GetClassColor(class)
         color.a = 1.0
         return color
     end
+end
+
+function AddOn:GetClassColorRGB(class)
+    local c = self:GetClassColor(class)
+    return self:RGBToHex(c.r,c.g,c.b)
+
 end
 
 function AddOn:GetUnitClassColoredName(name)

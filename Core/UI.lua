@@ -3,6 +3,7 @@ local Logging   = AddOn.Libs.Logging
 local L         = AddOn.components.Locale
 local Util      = AddOn.Libs.Util
 local UI        = AddOn.components.UI
+local Class     = AddOn.Libs.Class
 
 --@param module the module name (for determining settings associated with more info)
 --@param f the frame to which to add widgets
@@ -55,22 +56,74 @@ function AddOn:UpdateMoreInfo(module, f, row, data, classFn)
         name = selection and f.st:GetRow(selection).name or nil
     end
     
-    if not moreInfo or not name then
-        return f.moreInfo:Hide()
-    end
-    
+    if not moreInfo or not name then return f.moreInfo:Hide() end
     
     local color = AddOn:GetClassColor(classFn and classFn(name) or "")
+    Logging:Trace("UpdateMoreInfo() : color = %s", Util.Objects.ToString(color))
     local tip = f.moreInfo
     tip:SetOwner(f, "ANCHOR_RIGHT")
     tip:AddLine(AddOn.Ambiguate(name), color.r, color.g, color.b)
     
     if moreInfoData and moreInfoData[name] then
-    
+        local r, g, b
+        tip:AddLine(L["latest_items_won"])
+        for _, v in pairs(moreInfoData[name]) do
+            if v[3] then r, g, b = unpack(v[3], 1, 3) end
+            tip:AddDoubleLine(v[1], v[2], r or 1, g or 1, b or 1, r or 1, g or 1, b or 1)
+        end
+        tip:AddLine(" ")
+        tip:AddLine(_G.TOTAL)
+        for _, v in pairs(moreInfoData[name].totals.responses) do
+            if v[3] then r,g,b = unpack(v[3],1,3) end
+            tip:AddDoubleLine(v[1], v[2], r or 1,g or 1,b or 1, r or 1,g or 1,b or 1)
+        end
+        tip:AddDoubleLine(L["Number of raids received loot from:"], moreInfoData[name].totals.raids.num, 1,1,1, 1,1,1)
+        tip:AddDoubleLine(L["Total items received:"], moreInfoData[name].totals.total, 0,1,1, 0,1,1)
     else
-        tip:AddLine(L["no_entries_in_loot_hisory"])
+        tip:AddLine(L["no_entries_in_loot_history"])
     end
     
     tip:Show()
     tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
+end
+
+local UpdateHandler = Class('UpdateHandler')
+
+function UpdateHandler:initialize(callback, updateInterval)
+    self.pending = false
+    self.elapsed = 0.0
+    self.interval = updateInterval
+    self.frame = CreateFrame("FRAME")
+    self.callback = callback
+end
+
+function UpdateHandler:OnUpdate(elapsed)
+    self.elapsed = self.elapsed + elapsed
+    
+    -- Logging:Debug("OnUpdate(%.2f) : elapsed=%.2f, interval=%.2f, pending=%s", elapsed, self.elapsed, self.interval, tostring(self.pending))
+    if self.pending and self.elapsed > self.interval then
+        self.callback()
+        self.elapsed = 0
+    end
+end
+
+function UpdateHandler:Dispose()
+    self.frame:Hide()
+end
+
+function UpdateHandler:RefreshInterval()
+    self.elapsed = 0
+end
+
+function UpdateHandler:Eligible()
+    local eligible = self.elapsed > self.interval
+    if not eligible then self.pending = true end
+    return eligible
+end
+
+function AddOn:CreateUpdateHandler(callback, updateInterval)
+    local entry = UpdateHandler(callback, updateInterval)
+    entry.frame:SetScript("OnUpdate", function(self, elapsed) entry:OnUpdate(elapsed) end)
+    entry.frame:Show()
+    return entry
 end

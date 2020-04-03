@@ -64,7 +64,7 @@ do
                 :CopyFilter(function (v) return v.user_visible end, true, nil, true)()
 
     DefaultButtons.numButtons = Util.Tables.Count(UserVisibleAwards)
-    local index = 1
+    local index = 401
     for award, value in pairs(UserVisibleAwards) do
         Util.Tables.Push(DefaultButtons, {text = L[award], whisperKey = L['whisperkey_' .. award]})
         Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award]})
@@ -242,6 +242,10 @@ end
 function ML:RemoveCandidate(name)
     Logging:Trace("RemoveCandidate(%s)", name)
     Util.Tables.Remove(self.candidates, name)
+end
+
+function ML:GetCandidate(name)
+    return self.candidates[name]
 end
 
 function ML:UpdateCandidates(ask)
@@ -887,7 +891,7 @@ function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data,
     end
     if awarded then
         -- todo : remove loot history record if present
-        AddOn:LootHistoryModule():AddEntry(
+        AddOn:LootHistoryModule():CreateEntry(
                 data.winner,
                 data.link,
                 data.responseId,

@@ -290,6 +290,15 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                         self:ScheduleTimer("ResetReconnectRequest", 5)
                     end
                 end
+            -- todo : check if history is enabled
+            elseif command == C.Commands.LootHistoryAdd then
+                local winner, data = unpack(data)
+                local entry = Models.History.Loot():reconstitute(data)
+                local _, _, _, _, _, itemTypeId, itemSubTypeId = GetItemInfoInstant(entry.item)
+                entry.itemTypeId = itemTypeId
+                entry.itemSubTypeId = itemSubTypeId
+                self:LootHistoryModule():AddEntry(winner, entry)
+                -- todo : udpate the history window if shown
             end
         end
     end

@@ -111,6 +111,8 @@ function SemanticVersion:initialize(major, minor, patch, prerelease, build)
     
     if Util.Objects.IsString(major) then
         major,minor,patch,prerelease,build = parseVersion(major)
+    elseif Util.Objects.IsTable(major) then
+        major,minor,patch,prerelease,build = major.major, major.minor, major.patch, major.prerelease, major.build
     end
 
     patch = patch or 0
@@ -126,6 +128,7 @@ function SemanticVersion:initialize(major, minor, patch, prerelease, build)
     self.prerelease = prerelease
     self.build = build
 end
+
 
 function SemanticVersion:nextMajor()
     return SemanticVersion:new(self.major + 1, 0, 0)

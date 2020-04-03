@@ -108,6 +108,20 @@ local function _cycle_aware_copy(t, cache)
     return setmetatable(res,mt)
 end
 
+local function _strip_class_metadata(t)
+    if type(t) ~= 'table' then return t end
+    
+    local res = {}
+    for k, v in pairs(t) do
+        if k ~= "clazz" then
+            k = _strip_class_metadata(k)
+            v = _strip_class_metadata(v)
+            res[k] = v
+        end
+    end
+    
+    return res
+end
 
 local DefaultMixin = {
     __tostring   = function(self) return "instance of " .. tostring(self.clazz) end,
@@ -126,17 +140,14 @@ local DefaultMixin = {
 
     -- creates a copy of the current instance, but only the actual attributes
     -- class metadata is stripped
+    -- useful for serialzing the information over the wire
     toTable = function(self)
-        local t = {}
-        for k, v in pairs(self) do
-            -- skip the metadata field
-            if k ~= "clazz" then
-                t[k] = v
-            end
-        end
-        return t
+        return _strip_class_metadata(self)
     end,
 
+    -- allows for manipulation of reconstitute instance before being returned
+    afterReconstitute = function(self, instance) return instance end,
+    
     --creates a new instance of the class, populating attributes from specified table
     reconstitute = function(self, data)
         assert(type(data) == 'table', "You must provide data(table) from which to re-constitute'")
@@ -144,9 +155,9 @@ local DefaultMixin = {
         for k, v in pairs(data) do
             copy[k] = v
         end
-        return copy
+        return self.afterReconstitute(self, copy)
     end,
-
+    
     static = {
         allocate = function(self)
             assert(type(self) == 'table', "Make sure that you are using 'Class:allocate' instead of 'Class.allocate'")

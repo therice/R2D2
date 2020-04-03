@@ -3,8 +3,9 @@ local LootHistory   = AddOn:NewModule("LootHistory", "AceEvent-3.0", "AceTimer-3
 local Logging       = AddOn.Libs.Logging
 local Util          = AddOn.Libs.Util
 local L             = AddOn.components.Locale
+local Models        = AddOn.components.Models
 
-local stats, history, counter = {}, {}, 0
+local stats = {}
 
 function LootHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -16,7 +17,18 @@ function LootHistory:GetHistory()
     return self.db.factionrealm
 end
 
-function LootHistory:AddEntry(winner, link, responseId, boss, reason, session, candidateData)
+function LootHistory:AddEntry(winner, entry)
+    local history = self:GetHistory()
+    if history[winner] then
+        tinsert(history[winner], entry:toTable())
+    else
+        history[winner] = { entry:toTable() }
+    end
+end
+
+function LootHistory:CreateEntry(winner, link, responseId, boss, reason, session, candidateData)
+    local C = AddOn.Constants
+    
     -- if in test mode and not development mode, return
     if (AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) then return end
     
@@ -29,9 +41,30 @@ function LootHistory:AddEntry(winner, link, responseId, boss, reason, session, c
     -- name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic,
     --  instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
     local instanceName, _, _, _, _, _, _, instanceId, groupSize = GetInstanceInfo()
+    local candidate = ML:GetCandidate(winner)
     Logging:Debug("AddEntry() : %s, %s, %s, %s, %s, %s, %s",
                   winner, link, responseId, tostring(boss), tostring(reason), session, Util.Objects.ToString(candidateData))
+   
+    local entry = Models.History.Loot()
+    entry.item = link
+    entry.instance = instanceName
+    entry.mapId = instanceId
+    entry.boss = boss or _G.UNKNOWN
+    entry:SetOrigin(reason and true or false)
+    entry.response = reason and reason.text or response.text
+    entry.responseId = reason and reason.sort - 400 or responseId
+    entry.color = reason and reason.color or response.color
+    entry.class = candidate.class
+    entry.groupSize = groupSize
+    entry.note = candidateData and candidateData.note or nil
+    entry.owner = itemEntry and itemEntry.owner or winner
+    entry.typeCode = itemEntry and itemEntry.typeCode
     
+    AddOn:SendMessage(C.Messages.LootHistorySend, entry, winner, responseId, boss, reason, session, candidateData)
+    -- todo : allow for settings for sending and tracking history
+    -- todo : send to guild or group? group for now
+    AddOn:SendCommand(C.group, C.Commands.LootHistoryAdd, winner, entry)
+    return entry
 end
 
 --[[
@@ -60,11 +93,14 @@ stats[candidate_name] = {
 	}
 }
 --]]
+-- todo : make this not suck
 function LootHistory:GetStatistics()
     Logging:Trace("GetStatistics()")
     local check, ret = pcall(
             function()
                 local moreInfoEntries = AddOn.db.profile.moreInfoEntries
+                local currentTs = Models.Date()
+                
                 stats = {}
                 local entry, id
                 for name, data in pairs(self:GetHistory()) do
@@ -72,14 +108,14 @@ function LootHistory:GetStatistics()
                     stats[name] = {}
                     -- start from end (oldest)
                     for i = #data, 1, -1 do
-                        entry = data[i]
+                        entry = Models.History.Loot():reconstitute(data[i])
                         id = entry.responseId
                         -- may be string, e.g. "PASS"
-                        if type(id) == "number" then
+                        if Util.Objects.IsNumber(id) then
                             -- Bump to distinguish from normal awards
-                            if entry.isAwardReason then id = id + 100 end
+                            if entry:IsAwardReason() then id = id + 100 end
                         end
-    
+                        
                         count[id] = count[id] and count[id] + 1 or 1
                         responseText[id] = responseText[id] and responseText[id] or entry.response
                         -- If it's not already added
@@ -87,23 +123,26 @@ function LootHistory:GetStatistics()
                             (entry.color and #entry.color ~= 0)  then
                             color[id] = #entry.color ~= 0 and #entry.color == 4 and entry.color or {1,1,1}
                         end
-    
-                        if lastestAwardFound < 5 and Util.Objects.IsNumber(id) and not entry.isAwardReason and id <= moreInfoEntries then
+                        
+                        if lastestAwardFound < 5 and Util.Objects.IsNumber(id) and not entry:IsAwardReason() and id <= moreInfoEntries then
+                            local ts = entry:TimestampAsDate()
                             Util.Tables.Push(stats[name],
                                      {
-                                         entry.lootWon,
+                                         entry.item,
                                          -- todo : fix this
-                                         format(L["n_ago"], AddOn:ConvertIntervalToString(Util.Dates.GetInterval(entry.date))),
+                                         format(L["n_ago"], AddOn:ConvertIntervalToString(currentTs:diff(ts):Duration())),
                                          color[id],
                                          i
                                      }
                             )
                             lastestAwardFound = lastestAwardFound + 1
                         end
-                        raids[entry.date..entry.instance] =
-                            raids[entry.date .. entry.instance] and raids[entry.date .. entry.instance] + 1 or 0
+                        
+                        local formattedTs = entry:FormattedTimestamp()
+                        local raidKey =  formattedTs .. '_' .. entry.instance
+                        raids[raidKey] = raids[raidKey] and (raids[raidKey] + 1) or 0
                     end
-    
+                    
                     local total = 0
                     stats[name].totals = {}
                     stats[name].totals.responses = {}
@@ -127,6 +166,7 @@ function LootHistory:GetStatistics()
                     stats[name].totals.raids.num = total
                 end
     
+                Logging:Trace("GetStatistics() : %s", Util.Objects.ToString(stats, 10))
                 return stats
             end
     )
