@@ -3,6 +3,7 @@ local Util      = AddOn.Libs.Util
 local Class     = AddOn.Libs.Class
 local ItemUtil  = AddOn.Libs.ItemUtil
 local GP        = AddOn.Libs.GearPoints
+local Logging   = AddOn.Libs.Logging
 
 local Item = Class('Item')
 local ItemEntry = Class('ItemEntry', Item)
@@ -62,8 +63,9 @@ function Item:initialize(id, link, quality, ilvl, type, equipLoc, subType, textu
     self.subTypeId   = subTypeId
     self.subType     = subType
     self.texture     = texture
-    self.boe         = bindType == LE_ITEM_BIND_ON_EQUIP
+    self.boe         = (bindType == LE_ITEM_BIND_ON_EQUIP)
     self.classes     = classes
+    self.gp          = nil -- this is the base GP value of the item (as calculated using LibGearPoints)
 end
 
 -- create an Item via GetItemInfo
@@ -74,7 +76,9 @@ function Item:FromGetItemInfo(item)
     typeId, subTypeId, bindType, _, _, _ = GetItemInfo(item)
     local id = link and ItemUtil:ItemLinkToId(link)
     if name then
-        local customItem = ItemUtil:GetCustomItem(itemId)
+        -- check to see if a custom item has been setup for the id
+        -- which overrides anything provided by API
+        local customItem = ItemUtil:GetCustomItem(id)
         return Item:new(
                 id,
                 link,
@@ -125,20 +129,40 @@ function Item:GetTypeText()
     end
 end
 
--- @return number
-function Item:GetGp()
-    -- todo : could do this at initialization time instead
+-- @param awardReason an optional number, which indicates the user's response for which the item is being awarded
+-- @return tuple of numbers : BASE_GP, AWARD_GP (nil if no awardReason specified)
+function Item:GetGp(awardReason)
     if not self.gp then
         self.gp = GP:GetValue(self.link)
     end
-
-    return self.gp
+    
+    local awardGp
+    if awardReason then
+        local GP = AddOn:GearPointsModule()
+        if GP then
+            local awardScale = GP:GetAwardScale(awardReason)
+            if awardScale then
+                awardGp = math.floor(self.gp * awardScale)
+            end
+        end
+    end
+    
+    return self.gp, awardGp
 end
 
-function Item:GetGpText()
-    local gp = self:GetGp()
-    gp = gp or 0
-    return tostring(gp)
+-- @param awardReason an optional number, which indicates the user's response for which the item is being awarded
+-- @return the GP value as a formatted string, including details of award reason if specified ( AWARD_GP (BASE _GP))
+function Item:GetGpText(awardReason)
+    Logging:Debug("GetGpText(%s)", tostring(awardReason))
+    local gpBase, gpAward = self:GetGp(awardReason)
+    gpBase = gpBase or 0
+    if gpAward then
+        return format("%d (%d)", gpAward, gpBase)
+    else
+        -- Logging:Debug("|cff%s%s", AddOn:RGBToHex(unpack(AddOn:GearPointsModule().DefaultAwardColor)), "TEST")
+        return tostring(gpBase)
+    end
+    
 end
 
 --[[

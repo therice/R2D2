@@ -24,7 +24,7 @@ GP.defaults = {
             gp_multiplier       = 1,
 
         },
-        -- todo : remove silly suffixes and comment value
+        -- todo : remove silly suffixes and comment value, no need for multiple entires by slot
         slot_scaling = {
             head_scale_1            = 1,
             head_comment_1          = _G.INVTYPE_HEAD,
@@ -75,6 +75,9 @@ GP.defaults = {
         -- scale is the percentage of GP to give to character for that type of award
         -- user_visible determines if the award type is presented as option to user for loot response
         -- color determines how the response is displayed in game if available to user
+        --
+        -- each entry here that is user visible will be presented to player as a response option
+        -- when loot is available for award
         award_scaling = {
             ms_need  = {
                 scale = 1,
@@ -114,6 +117,10 @@ GP.defaults = {
         }
     }
 }
+
+GP.DefaultAwardColor = GP.defaults.profile.award_scaling.ms_need.color
+
+Logging:Debug("DefaultAwardColor = %s", Util.Objects.ToString(GP.DefaultAwardColor))
 
 -- These are arguments for configuring options via UI
 -- See UI/Config.lua
@@ -224,4 +231,43 @@ function GP:OnEnable()
             self.db.profile.formula.gp_coefficient_base,
             self.db.profile.formula.gp_multiplier
     )
+end
+
+local function AwardReasonToKey(awardReason)
+    if not awardReason then return end
+    if not Objects.IsString(awardReason) then error("Award Reason must be a 'string' (the award_scaling name)") end
+    
+    if not Util.Tables.Search(
+            GP.db.profile.award_scaling,
+            function(_, key)
+                return key == awardReason
+            end
+    ) then
+        awardReason = nil
+    end
+    
+    
+    Logging:Debug("AwardReasonToKey(%s) : END", tostring(awardReason))
+    return awardReason
+    
+end
+
+function GP:GetAwardColor(awardReason)
+    awardReason = AwardReasonToKey(awardReason)
+    if not awardReason then return GP.DefaultAwardColor end
+    Logging:Debug("GetAwardColor(%s)", tostring(awardReason))
+    local award = self.db.profile.award_scaling[awardReason]
+    if award and award.color then
+        return award.color
+    end
+end
+
+function GP:GetAwardScale(awardReason)
+    awardReason = AwardReasonToKey(awardReason)
+    if not awardReason then return end
+    Logging:Debug("GetAwardScale(%s)", tostring(awardReason))
+    local award = self.db.profile.award_scaling[awardReason]
+    if award and award.scale then
+        return tonumber(award.scale)
+    end
 end

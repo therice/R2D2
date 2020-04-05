@@ -3,6 +3,7 @@ local Logging   = AddOn.Libs.Logging
 local Util      = AddOn.Libs.Util
 local ItemUtil  = AddOn.Libs.ItemUtil
 local L         = AddOn.components.Locale
+local UI        = AddOn.components.UI
 
 function AddOn:IsInNonInstance()
     local instance_type = select(2, IsInInstance())
@@ -145,10 +146,6 @@ function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, colum
     end
 end
 
-function AddOn:RGBToHex(r,g,b)
-    return string.format("%02x%02x%02x",255*r, 255*g, 255*b)
-end
-
 function AddOn:GetClassColor(class)
     if Util.Objects.IsEmpty(class) then error("No class specified") end
     
@@ -164,7 +161,7 @@ end
 
 function AddOn:GetClassColorRGB(class)
     local c = self:GetClassColor(class)
-    return self:RGBToHex(c.r,c.g,c.b)
+    return UI.RGBToHex(c.r,c.g,c.b)
 
 end
 
@@ -173,7 +170,7 @@ function AddOn:GetUnitClassColoredName(name)
 
     if candidate and candidate.class then
         local c = self:GetClassColor(candidate.class)
-        return "|cff" .. self:RGBToHex(c.r,c.g,c.b) .. self.Ambiguate(name) .. "|r"
+        return UI.ColoredDecorator(c):decorate(self.Ambiguate(name))
     else
         local englishClass = select(2, UnitClass(Ambiguate(name, "short")))
         name = self:UnitName(name)
@@ -181,7 +178,7 @@ function AddOn:GetUnitClassColoredName(name)
             return self.Ambiguate(name)
         else
             local color = RAID_CLASS_COLORS[englishClass].colorStr
-            return "|c" .. color .. self.Ambiguate(name) .. "|r"
+            return UI.ColoredDecorator(color):decorate(self.Ambiguate(name))
         end
     end
 end

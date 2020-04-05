@@ -45,7 +45,7 @@ function AddOn:EmbedMoreInfoWidgets(module, f)
     end)
 end
 
-function AddOn:UpdateMoreInfo(module, f, row, data, classFn)
+function AddOn:UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
     local moreInfo, lootStats = AddOn:MoreInfoSettings(module)
     
     local name
@@ -56,9 +56,18 @@ function AddOn:UpdateMoreInfo(module, f, row, data, classFn)
         name = selection and f.st:GetRow(selection).name or nil
     end
     
-    if not moreInfo or not name then return f.moreInfo:Hide() end
+    -- if there is a GP display value, update it to reflect candidates response
+    if f.gp and gpSupplier and Util.Objects.IsFunction(gpSupplier) then
+        local gpText = gpSupplier(name)
+        Logging:Debug("gpText = %s", Util.Objects.ToString(gpText))
+        f.gp:SetText("GP: " .. (gpText and gpText or "UNKNOWN"))
+    end
     
-    local color = AddOn:GetClassColor(classFn and classFn(name) or "")
+    if not moreInfo or not name then
+        return f.moreInfo:Hide()
+    end
+    
+    local color = AddOn:GetClassColor(classSupplier and classSupplier(name) or "")
     local tip = f.moreInfo
     tip:SetOwner(f, "ANCHOR_RIGHT")
     tip:AddLine(AddOn.Ambiguate(name), color.r, color.g, color.b)

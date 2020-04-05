@@ -234,7 +234,7 @@ function Points:Update(forceUpdate)
     if not self.frame then return end
     Logging:Trace("Update(%s) - Performing update", tostring(forceUpdate or false))
     
-    -- todo : not sure if refresh() is needed
+    -- todo : need to fix this, as the constant callbacks are resulting in "jumping" rows
     self.frame.st:Refresh()
     self.frame.st:SortData()
     self.updateHandler:RefreshInterval()

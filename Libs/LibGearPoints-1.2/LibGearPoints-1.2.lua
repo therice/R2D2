@@ -14,9 +14,6 @@ local ItemUtil = LibStub("LibItemUtil-1.0")
 local ToStringFn = function(x) return x end
 function lib:SetToStringFn(fn) ToStringFn = fn end
 
-
--- Currently, we don't support have support for item modifiers/affixes (e.g. gem slots)
--- local ItemBonusGp = {}
 -- The default quality threshold, below which no GP will be calculated
 -- 0 - Poor
 -- 1 - Uncommon
@@ -284,9 +281,7 @@ function lib:GetValue(item)
 
     -- Is the item above our minimum threshold?
     -- todo : should this apply to custom items as well?
-    if not rarity or rarity < QualityThreshold then
-        return
-    end
+    if not rarity or rarity < QualityThreshold then return end
 
     if equipLoc == "CUSTOM_SCALE" then
         -- this will error out until support the custom scale attribute for custom items

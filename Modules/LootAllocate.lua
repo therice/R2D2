@@ -6,7 +6,6 @@ local L             = AddOn.components.Locale
 local UI            = AddOn.components.UI
 local ST            = AddOn.Libs.ScrollingTable
 local Util          = AddOn.Libs.Util
-local GP            = AddOn.Libs.GearPoints
 local Models        = AddOn.components.Models
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 15, 0.2
@@ -202,7 +201,7 @@ function LootAllocate:SwitchSession(sess)
     self.frame.itemText:SetText(entry.link)
     self.frame.iState:SetText(self:GetItemStatus(entry.link))
     self.frame.itemLvl:SetText(_G.ITEM_LEVEL_ABBR..": " .. entry:GetLevelText())
-    self.frame.gp:SetText("GP: " .. tostring(GP:GetValue(entry.link)))
+    self.frame.gp:SetText("GP: " .. entry:GetGpText())
     self.frame.itemType:SetText(entry:GetTypeText())
 
     --[[
@@ -499,6 +498,17 @@ function LootAllocate:GetReRollData(session, isRoll, noAutopass)
     return LootAllocate.GetLootTableEntry(session):GetReRollData(session, isRoll, noAutopass)
 end
 
+function LootAllocate.GetCandidateClass(name)
+    return LootAllocate:GetCandidateData(session, name, "class")
+end
+
+function LootAllocate.GetGpFromCandidateResponse(name)
+    local entry = LootAllocate.GetLootTableEntry(session)
+    local userResponse = LootAllocate.GetLootTableEntryResponse(session, name)
+    local response = AddOn:GetResponse(entry.typeCode or entry.equipLoc, userResponse.response)
+    Logging:Debug("GetGpFromCandidateResponse(%s)", tostring(response.award_scale))
+    return entry:GetGpText(response.award_scale)
+end
 
 function LootAllocate:GetFrame()
     if self.frame then return self.frame end
@@ -521,7 +531,8 @@ function LootAllocate:GetFrame()
                 -- update more info
                 elseif button == "LeftButton" and row then
                     AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
-                                         function(name) return LootAllocate:GetCandidateData(session, name, "class") end
+                                         LootAllocate.GetCandidateClass,
+                                         LootAllocate.GetGpFromCandidateResponse
                     )
                     if IsAltKeyDown() then
                         local name = data[realrow].name
@@ -537,8 +548,8 @@ function LootAllocate:GetFrame()
             ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                 if row then
                     AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
-                                         function(name) return LootAllocate:GetCandidateData(session, name, "class") end
-                    )
+                                         LootAllocate.GetCandidateClass,
+                                         LootAllocate.GetGpFromCandidateResponse)
                 end
                 -- Return false to have the default OnEnter handler take care mouseover
                 return false
@@ -547,7 +558,11 @@ function LootAllocate:GetFrame()
         -- return to the actual selected player when we remove the mouse
         st:RegisterEvents({
             ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                AddOn:UpdateMoreInfo(self:GetName(), f)
+                AddOn:UpdateMoreInfo(self:GetName(), f, nil, nil, nil,
+                                     function(name)
+                                         return LootAllocate.GetLootTableEntry(session):GetGpText()
+                                     end
+                )
                 return false
             end
         })
@@ -608,7 +623,6 @@ function LootAllocate:GetFrame()
     iState:SetTextColor(0,1,0,1)
     iState:SetText("")
     f.iState = iState
-
 
     local iType = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     iType:SetPoint("TOPLEFT", ilvl, "BOTTOMLEFT", 0, -4)
@@ -774,9 +788,8 @@ do
         elseif category == "RESPONSE" or MSA_DROPDOWNMENU_MENU_VALUE:find("_RESPONSE$") then
             local e = LootAllocate.GetLootTableEntry(session)
             local c = e:GetCandidateResponse(candidateName)
-            text = L["response"] .. ": " .. "|cff" ..
-                    (AddOn:RGBToHex(unpack(AddOn:GetResponse(e.typeCode or e.equipLoc, c.response).color)) or "ffffff") ..
-                    (AddOn:GetResponse(e.typeCode or e.equipLoc, c.response).text or "") .. "|r"
+            local r = AddOn:GetResponse(e.typeCode or e.equipLoc, c.response)
+            text = L["response"] .. ": " .. UI.ColoredDecorator(r.color or {1, 1, 1}):decorate(r.text or "")
         else
             Logging:Warn("Unexpected category or dropdown menu values - %s, %s", tostring(category), tostring(MSA_DROPDOWNMENU_MENU_VALUE))
         end
@@ -1028,7 +1041,7 @@ do
                     if k > LootAllocate.db.profile.awardReasons.numAwardReasons then break end
                     info.text = v.text
                     info.notCheckable = true
-                    info.colorCode = "|cff"..AddOn:RGBToHex(unpack(v.color))
+                    info.colorCode = UI.RGBToHexPrefix(unpack(v.color))
                     info.func = function()
                         Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, candidateName, v))
                     end
@@ -1039,7 +1052,7 @@ do
                 for i = 1, AddOn:GetNumButtons(e.typeCode or e.equipLoc) do
                     v = AddOn:GetResponse(e.typeCode or e.equipLoc, i)
                     info.text = v.text
-                    info.colorCode = "|cff"..AddOn:RGBToHex(unpack(v.color))
+                    info.colorCode = UI.RGBToHexPrefix(unpack(v.color))
                     info.notCheckable = true
                     info.func = function()
                         AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, candidateName, i)
@@ -1050,7 +1063,7 @@ do
                 -- Add pass button as well
                 local passResponse = AddOn:MasterLooterModule().db.profile.responses.default.PASS
                 info.text = passResponse.text
-                info.colorCode = "|cff" .. AddOn:RGBToHex(unpack(passResponse.color))
+                info.colorCode = UI.RGBToHexPrefix(unpack(passResponse.color))
                 info.notCheckable = true
                 info.func = function()
                     AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, candidateName, "PASS")
@@ -1120,7 +1133,7 @@ do
             info = MSA_DropDownMenu_CreateInfo()
             for k in ipairs(data) do
                 info.text = AddOn:GetResponse("", k).text
-                info.colorCode = "|cff" .. AddOn:RGBToHex(AddOn:GetResponseColor(nil,k))
+                info.colorCode = UI.RGBToHexPrefix(AddOn:GetResponseColor(nil,k))
                 info.func = function()
                     ModuleFilters[k] = not ModuleFilters[k]
                     LootAllocate:Update(true)
@@ -1136,7 +1149,7 @@ do
                         info.colorCode = "|cffde34e2"
                     else
                         info.text = AddOn:GetResponse("",k).text
-                        info.colorCode = "|cff"..AddOn:RGBToHex(AddOn:GetResponseColor(nil,k))
+                        info.colorCode = UI.RGBToHexPrefix(AddOn:GetResponseColor(nil,k))
                     end
                     info.func = function()
                         ModuleFilters[k] = not ModuleFilters[k]

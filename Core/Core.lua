@@ -17,6 +17,10 @@ function AddOn:MasterLooterModule()
     return self:GetModule("MasterLooter")
 end
 
+function AddOn:GearPointsModule()
+    return self:GetModule("GearPoints")
+end
+
 function AddOn:PointsModule()
     return self:GetModule("Points")
 end

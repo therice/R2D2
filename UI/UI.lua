@@ -1,4 +1,5 @@
 local _, AddOn = ...
+local Class = AddOn.Libs.Class
 
 local UI = {
     ConfigOptions = {}
@@ -104,8 +105,40 @@ function COpts.Toggle(name, order, descr, extra)
     return Extra(toggle, extra)
 end
 
--- UI native elements (no library/wrappers)
+function UI.RGBToHex(r,g,b)
+    return string.format("%02x%02x%02x", 255*r, 255*g, 255*b)
+end
 
+function UI.RGBToHexPrefix(r, g, b)
+    return "|cff" .. UI.RGBToHex(r, g, b)
+end
+
+local Decorator = Class('Decorator')
+function Decorator:initialize() end
+function Decorator:decorate(...) return Util.Strings.Join('', ...) end
+
+
+local ColoredDecorator = Class('ColoredDecorator', Decorator)
+AddOn.components.UI.ColoredDecorator = ColoredDecorator
+
+function ColoredDecorator:initialize(r, g, b)
+    ColoredDecorator.initialize(self)
+    if Util.Objects.IsTable(r) then
+        r, g, b = unpack(r)
+    end
+    
+    self.r = r
+    self.g = g
+    self.b = b
+    self.hex = UI.RGBToHex(self.r, self.g, self.b)
+end
+
+function ColoredDecorator:decorate(...)
+    return "|cff" .. self.hex .. ColoredDecorator.super.decorate(...) .. "|r"
+end
+
+
+-- UI native elements (no library/wrappers)
 local frames = {}
 local private = { elements = {}, num = {}, embeds = {}}
 UI.private = private

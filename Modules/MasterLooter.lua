@@ -59,15 +59,21 @@ do
     local DefaultButtons = ML.defaults.profile.buttons.default
     local DefaultResponses = ML.defaults.profile.responses.default
     local GP = AddOn:GetModule("GearPoints")
+    -- these are the responses available to player when presented with a loot decision
+    -- we only select ones that are "user visible", as others are only available to
+    -- master looter (e.g. 'Free', 'Disenchant', 'Bank', etc.)
     local UserVisibleAwards =
         Util(GP.defaults.profile.award_scaling)
                 :CopyFilter(function (v) return v.user_visible end, true, nil, true)()
 
     DefaultButtons.numButtons = Util.Tables.Count(UserVisibleAwards)
-    local index = 401
+    local index = 1
     for award, value in pairs(UserVisibleAwards) do
+        -- these are entries that represent buttons available to player at time of loot decision
         Util.Tables.Push(DefaultButtons, {text = L[award], whisperKey = L['whisperkey_' .. award]})
-        Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award]})
+        -- the are entries of the universe of possible responses, which are a super set of ones
+        -- presented to the player
+        Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award], award_scale=award})
         index = index + 1
     end
 end
