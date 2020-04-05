@@ -540,6 +540,7 @@ time = os.clock
 
 strmatch = string.match
 strlower = string.lower
+strupper = string.upper
 
 function SendChatMessage(text, chattype, language, destination)
 	assert(#text<255)

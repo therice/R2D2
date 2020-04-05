@@ -7,7 +7,7 @@ AddOn.defaults = {
         logThreshold    = AddOn.Libs.Logging.Level.Debug,
         onlyUseInRaids  = true,
         -- how many responses to show in the latest awarded items display
-        moreInfoEntries = 2,
+        moreInfoEntries = 4,
         usage = {
             never   =   false,
             ml      =   false,

@@ -46,7 +46,7 @@ function AddOn:EmbedMoreInfoWidgets(module, f)
 end
 
 function AddOn:UpdateMoreInfo(module, f, row, data, classFn)
-    local moreInfo, moreInfoData = AddOn:MoreInfoSettings(module)
+    local moreInfo, lootStats = AddOn:MoreInfoSettings(module)
     
     local name
     if data and row then
@@ -59,26 +59,28 @@ function AddOn:UpdateMoreInfo(module, f, row, data, classFn)
     if not moreInfo or not name then return f.moreInfo:Hide() end
     
     local color = AddOn:GetClassColor(classFn and classFn(name) or "")
-    Logging:Trace("UpdateMoreInfo() : color = %s", Util.Objects.ToString(color))
     local tip = f.moreInfo
     tip:SetOwner(f, "ANCHOR_RIGHT")
     tip:AddLine(AddOn.Ambiguate(name), color.r, color.g, color.b)
     
-    if moreInfoData and moreInfoData[name] then
+    if lootStats and lootStats:Get(name) then
+        local charEntry = lootStats:Get(name)
+        local charStats = charEntry:GetTotals()
+        
         local r, g, b
         tip:AddLine(L["latest_items_won"])
-        for _, v in pairs(moreInfoData[name]) do
+        for _, v in pairs(charEntry.awards) do
             if v[3] then r, g, b = unpack(v[3], 1, 3) end
             tip:AddDoubleLine(v[1], v[2], r or 1, g or 1, b or 1, r or 1, g or 1, b or 1)
         end
         tip:AddLine(" ")
         tip:AddLine(_G.TOTAL)
-        for _, v in pairs(moreInfoData[name].totals.responses) do
+        for k, v in pairs(charStats.responses) do
             if v[3] then r,g,b = unpack(v[3],1,3) end
             tip:AddDoubleLine(v[1], v[2], r or 1,g or 1,b or 1, r or 1,g or 1,b or 1)
         end
-        tip:AddDoubleLine(L["Number of raids received loot from:"], moreInfoData[name].totals.raids.num, 1,1,1, 1,1,1)
-        tip:AddDoubleLine(L["Total items received:"], moreInfoData[name].totals.total, 0,1,1, 0,1,1)
+        tip:AddDoubleLine(L["Number of raids received loot from:"], charStats.raids.count, 1, 1, 1, 1, 1, 1)
+        tip:AddDoubleLine(L["Total items received:"], charStats.count, 0, 1, 1, 0, 1, 1)
     else
         tip:AddLine(L["no_entries_in_loot_history"])
     end

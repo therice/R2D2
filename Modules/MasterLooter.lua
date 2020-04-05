@@ -258,6 +258,7 @@ function ML:UpdateCandidates(ask)
     local updates = false
 
     for i = 1, GetNumGroupMembers() do
+        -- https://wow.gamepedia.com/API_GetRaidRosterInfo
         --
         -- in classic, combat role will always be NONE (so no need to check against it)
         --

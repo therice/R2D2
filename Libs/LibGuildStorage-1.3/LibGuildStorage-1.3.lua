@@ -69,33 +69,40 @@ local Messages = {
 }
 
 lib.Events = {
-    Initialized         =   "Initialized",
-    StateChanged        =   "StateChanged",
-    GuildInfoChanged    =   "GuildInfoChanged",
-    GuildNoteChanged    =   "GuildNoteChanged",
-    GuildNoteConflict   =   "GuildNoteConflict",
-    GuildMemberDeleted  =   "GuildMemberDeleted",
+    Initialized              =   "Initialized",
+    StateChanged             =   "StateChanged",
+    GuildInfoChanged         =   "GuildInfoChanged",
+    GuildOfficerNoteChanged  =   "GuildNoteChanged",
+    GuildOfficerNoteConflict =   "GuildNoteConflict",
+    GuildMemberDeleted       =   "GuildMemberDeleted",
 }
 
 local state, initialized, index, cache, guildInfo =
     States.StaleAwaitingUpdate, false, nil, {}, nil
 
 
-local GuildMember = Class('GuildMember')
+local GuildStorageEntry = Class('GuildStorageEntry')
 
-function GuildMember:initialize(name, rank, rankIndex, class, note)
-    self.name           = name
-    self.rank           = rank
-    self.rankIndex      = rankIndex
-    self.class          = class
-    self.note           = note
-    self.pendingNote    = nil
-    self.seen           = nil
+--  name, rank, rankIndex, _, class, _, _, officerNote, _, _, classTag
+-- class : String - The class (Mage, Warrior, etc) of the player.
+-- classTag : String - Upper-case English classname - localisation independant.
+-- rank : String - The member's rank in the guild ( Guild Master, Member ...)
+-- rankIndex : Number - The number corresponding to the guild's rank (already with 1 added to API return value)
+function GuildStorageEntry:initialize(name, class, classTag, rank, rankIndex, officerNote)
+    self.name = name
+    self.class = class
+    self.classTag = classTag
+    self.rank = rank
+    self.rankIndex = rankIndex
+    self.officerNote = officerNote
+    self.pendingOfficerNote = nil
+    self.seen = nil
 end
 
-function GuildMember:HasPendingNote()
-    return self.pendingNote ~= nil
+function GuildStorageEntry:HasPendingOfficerNote()
+    return self.pendingOfficerNote ~= nil
 end
+
 
 function SetState(value)
     if state == value then return end
@@ -126,23 +133,23 @@ function lib:GetMemberAttribute(name, attr)
     if entry and entry[attr] then return entry[attr] end
 end
 
-function lib:GetNote(name)
-    return self:GetMemberAttribute(name, 'note')
+function lib:GetOfficerNote(name)
+    return self:GetMemberAttribute(name, 'officerNote')
 end
 
-function lib:SetNote(name, note)
+function lib:SetOfficeNote(name, note)
     local entry = self:GetMember(name)
     if entry then
-        if entry:HasPendingNote() then
+        if entry:HasPendingOfficerNote() then
             DEFAULT_CHAT_FRAME:AddMessage(
-                    format(MAJOR_VERSION .. " : ignoring attempt to set note before persisting pending note for %s", name)
+                    format(MAJOR_VERSION .. " : ignoring attempt to set officer note before persisting pending officer note for %s", name)
             )
         else
-            entry.pendingNote = note
+            entry.pendingOfficerNote = note
             SetState(States.PendingChanges)
         end
         
-        return entry.note
+        return entry.pendingOfficerNote
     end
 end
 
@@ -150,14 +157,21 @@ function lib:GetClass(name)
     return self:GetMemberAttribute(name, 'class')
 end
 
+function lib:GetClassTag(name)
+    return self:GetMemberAttribute(name, 'classTag')
+end
+
+-- @return member's rank and rankIndex
 function lib:GetRank(name)
     local entry = self:GetMember(name)
     if entry then return entry.rank, entry.rankIndex end
 end
 
 lib.frame:RegisterEvent("CHAT_MSG_ADDON")
+-- https://wow.gamepedia.com/PLAYER_GUILD_UPDATE
 lib.frame:RegisterEvent("PLAYER_GUILD_UPDATE")
 lib.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+-- https://wow.gamepedia.com/GUILD_ROSTER_UPDATE
 lib.frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 
 function lib:CHAT_MSG_ADDON(prefix, msg, type, sender)
@@ -217,43 +231,48 @@ local function OnUpdate()
         end
     end
     
+    Logging:Trace("Current index = %d, Guild Member Count = %d", index and index or -1, guildMemberCount)
     local lastIndex = math.min(index + 100, guildMemberCount)
     if not initialized then lastIndex = guildMemberCount end
     Logging:Trace("Processing guild members from %d to %s", index, lastIndex)
     
     for i = index, lastIndex do
-        local name, rank, rankIndex, _, _, _, _, note, _, _, class = GetGuildRosterInfo(i)
+        local name, rank, rankIndex, _, class, _, _, officerNote, _, _, classTag = GetGuildRosterInfo(i)
         -- The Rank Index starts at 0, add 1 to correspond with the index
         -- for usage in GuildControlGetRankName(index)
         rankIndex = rankIndex + 1
     
         if name then
             local entry = lib:GetMember(name)
+            -- Logging:Debug("BEFORE(%s) = %s", name, Util.Objects.ToString(entry))
+            
             if not entry then
-                --(name, rank, rankIndex, class, note)
-                entry = GuildMember:new(name, rank, rankIndex, class, note)
+                entry = GuildStorageEntry(name, class, classTag, rank, rankIndex, officerNote)
                 cache[name] = entry
             else
                 entry.rank = rank
                 entry.rankIndex = rankIndex
                 entry.class = class
+                entry.classTag = classTag
             end
             entry.seen = true
     
-            if entry.note ~= note then
-                entry.note = note
+            -- Logging:Debug("AFTER(%s) = %s", name, Util.Objects.ToString(entry))
+            
+            if entry.officerNote ~= officerNote then
+                entry.officerNote = officerNote
                 if initialized then
-                    callbacks:Fire(lib.Events.GuildNoteChanged, name, note)
+                    callbacks:Fire(lib.Events.GuildOfficerNoteChanged, name, officerNote)
                 end
-                if entry:HasPendingNote() then
-                    callbacks:Fire(lib.Events.GuildNoteConflict, name, note, entry.note, entry.pendingNote)
+                if entry:HasPendingOfficerNote() then
+                    callbacks:Fire(lib.Events.GuildOfficerNoteConflict, name, officerNote, entry.officerNote, entry.pendingOfficerNote)
                 end
             end
     
-            if entry:HasPendingNote() then
+            if entry:HasPendingOfficerNote() then
                 -- todo : uncomment when ready
-                -- GuildRosterSetOfficerNote(i, entry.pendingNote)
-                entry.pendingNote = nil
+                -- GuildRosterSetOfficerNote(i, entry.pendingOfficerNote)
+                entry.pendingOfficerNote = nil
             end
         end
     end
@@ -271,7 +290,7 @@ local function OnUpdate()
     
         if not initialized then
             for name, entry in pairs(cache) do
-                callbacks:Fire(lib.Events.GuildNoteChanged, name, entry.note)
+                callbacks:Fire(lib.Events.GuildOfficerNoteChanged, name, entry.officerNote)
             end
             initialized = true
             callbacks:Fire(lib.Events.Initialized)
@@ -282,7 +301,7 @@ local function OnUpdate()
         elseif state == States.ChangesPending then
             local pendingCount = Util.Tables.CountFn(cache,
                 function(entry)
-                   if entry.pendingNote then return 1 else return 0 end
+                   if entry.pendingOfficerNote then return 1 else return 0 end
                 end
             )
     
@@ -293,7 +312,7 @@ local function OnUpdate()
         end
     end
     
-    Logging:Trace("OnUpdate() : %d guild members, %d ms elapsed", Util.Tables.Count(cache), debugprofilestop() - start)
+    Logging:Debug("OnUpdate() : %d guild members, %d ms elapsed, current index %d", Util.Tables.Count(cache), debugprofilestop() - start, index and index or -1)
 end
 
 lib.frame:SetScript("OnUpdate", OnUpdate)

@@ -126,7 +126,7 @@ function Points:OnEnable()
     self.frame = self:GetFrame()
     self.updateHandler = AddOn:CreateUpdateHandler(function() Points:Update() end, MIN_UPDATE_INTERVAL)
     -- register callbacks with LibGuildStorage for events in which we are interested
-    GuildStorage.RegisterCallback(self, GuildStorage.Events.GuildNoteChanged, "MemberModified")
+    GuildStorage.RegisterCallback(self, GuildStorage.Events.GuildOfficerNoteChanged, "MemberModified")
     GuildStorage.RegisterCallback(self, GuildStorage.Events.GuildMemberDeleted, "MemberDeleted")
     GuildStorage.RegisterCallback(self, GuildStorage.Events.StateChanged, "DataChanged")
     GuildStorage.RegisterCallback(self, GuildStorage.Events.Initialized, "DataChanged")
@@ -196,7 +196,7 @@ end
 
 -- todo : maybe it's better to just fire from individual events
 function Points:DataChanged(event, state)
-    Logging:Trace("DataChanged(%s) : %s", event, tostring(state))
+    Logging:Debug("DataChanged(%s) : %s", event, tostring(state))
     -- will get this once everything settles
     -- individual events will have collected the appropriate point entries
     if event == GuildStorage.Events.Initialized then
@@ -329,8 +329,9 @@ function Points.FilterMenu(menu, level)
         info.disabled = true
         MSA_DropDownMenu_AddButton(info, level)
         
+        -- these will be a table of sorted display class names
         local data = Util(ItemUtil.ClassDisplayNameToId):Keys()
-                -- todo : make this a reuable function
+                -- todo : make this a reusable function
                 :Filter(
                     function(class)
                         if AddOn.playerFaction == 'Alliance' then
@@ -366,20 +367,17 @@ function Points.FilterFunc(table, row)
     local name = row.name
     local member = Get(name)
     if member and member.class then
-        local classDisplayName = ItemUtil.ClassIdToDisplayName[ItemUtil.ClassTagNameToId[member.class]]
         local display = true
-        if Util.Tables.ContainsKey(ModuleFilters, classDisplayName) then
-            display = ModuleFilters[classDisplayName]
+        if Util.Tables.ContainsKey(ModuleFilters, member.class) then
+            display = ModuleFilters[member.class]
         end
-        
-        -- Logging:Debug("%s %s %s %s", name, classDisplayName, tostring(display), tostring(ModuleFilters[classDisplayName]))
         return display
     end
 end
 
 function Points.SetCellClass(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    AddOn.SetCellClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, Get(name).class)
+    AddOn.SetCellClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, Get(name).classTag)
     data[realrow].cols[column].value = Get(name).class or ""
     -- Logging:Debug("Set row=%s col=%s to %s", tostring(realrow), tostring(column),  Get(name).class or "")
 end

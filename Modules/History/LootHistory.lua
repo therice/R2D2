@@ -96,77 +96,95 @@ stats[candidate_name] = {
 -- todo : make this not suck
 function LootHistory:GetStatistics()
     Logging:Trace("GetStatistics()")
+    --local check, ret = pcall(
+    --        function()
+    --            local moreInfoEntries = AddOn:GetNumButtons('default')
+    --            local currentTs = Models.Date()
+    --
+    --            stats = {}
+    --            local entry, id
+    --            for name, data in pairs(self:GetHistory()) do
+    --                local count, responseText, color, raids, latestAwardFound = {}, {},  {}, {}, 0
+    --                stats[name] = {}
+    --                -- start from end (oldest)
+    --                for i = #data, 1, -1 do
+    --                    entry = Models.History.Loot():reconstitute(data[i])
+    --                    id = entry.responseId
+    --                    -- may be string, e.g. "PASS"
+    --                    if Util.Objects.IsNumber(id) then
+    --                        -- Bump to distinguish from normal awards
+    --                        if entry:IsAwardReason() then id = id + 100 end
+    --                    end
+    --
+    --                    count[id] = count[id] and count[id] + 1 or 1
+    --                    responseText[id] = responseText[id] and responseText[id] or entry.response
+    --                    -- If it's not already added
+    --                    if (not color[id] or unpack(color[id],1,3) == unpack{1,1,1}) and
+    --                        (entry.color and #entry.color ~= 0)  then
+    --                        color[id] = #entry.color ~= 0 and #entry.color == 4 and entry.color or {1,1,1}
+    --                    end
+    --
+    --                    if latestAwardFound < 5 and Util.Objects.IsNumber(id) and not entry:IsAwardReason() and id <= moreInfoEntries then
+    --                        local ts = entry:TimestampAsDate()
+    --                        Util.Tables.Push(stats[name],
+    --                                 {
+    --                                     entry.item,
+    --                                     format(L["n_ago"], AddOn:ConvertIntervalToString(currentTs:diff(ts):Duration())),
+    --                                     color[id],
+    --                                     i
+    --                                 }
+    --                        )
+    --                        latestAwardFound = latestAwardFound + 1
+    --                    end
+    --
+    --                    -- if instances span days (e.g. start's on Tuesday and end on Weds), this won't count
+    --                    -- raids correctly
+    --                    local formattedTs = entry:FormattedDate()
+    --                    local raidKey =  formattedTs .. '_' .. entry.instance
+    --                    raids[raidKey] = raids[raidKey] and (raids[raidKey] + 1) or 0
+    --                end
+    --
+    --                local total = 0
+    --                stats[name].totals = {}
+    --                stats[name].totals.responses = {}
+    --                for id, num in pairs(count) do
+    --                    Util.Tables.Push(stats[name].totals.responses,
+    --                         {
+    --                            responseText[id],
+    --                            num,
+    --                            color[id],
+    --                            id
+    --                         }
+    --                    )
+    --                    total = total + 1
+    --                end
+    --
+    --                stats[name].totals.total = total
+    --                stats[name].totals.raids = raids
+    --
+    --                total = 0
+    --                for _ in pairs(raids) do total = total + 1 end
+    --                stats[name].totals.raids.num = total
+    --            end
+    --
+    --            Logging:Debug("GetStatistics() : %s", Util.Objects.ToString(stats, 10))
+    --            return stats
+    --        end
+    --)
+    
     local check, ret = pcall(
             function()
-                local moreInfoEntries = AddOn.db.profile.moreInfoEntries
-                local currentTs = Models.Date()
+                local stats = Models.History.LootStatistics()
                 
-                stats = {}
-                local entry, id
                 for name, data in pairs(self:GetHistory()) do
-                    local count, responseText, color, raids, lastestAwardFound = {}, {},  {}, {}, 0
-                    stats[name] = {}
-                    -- start from end (oldest)
+                    local statsEntry
+                    
                     for i = #data, 1, -1 do
-                        entry = Models.History.Loot():reconstitute(data[i])
-                        id = entry.responseId
-                        -- may be string, e.g. "PASS"
-                        if Util.Objects.IsNumber(id) then
-                            -- Bump to distinguish from normal awards
-                            if entry:IsAwardReason() then id = id + 100 end
-                        end
-                        
-                        count[id] = count[id] and count[id] + 1 or 1
-                        responseText[id] = responseText[id] and responseText[id] or entry.response
-                        -- If it's not already added
-                        if (not color[id] or unpack(color[id],1,3) == unpack{1,1,1}) and
-                            (entry.color and #entry.color ~= 0)  then
-                            color[id] = #entry.color ~= 0 and #entry.color == 4 and entry.color or {1,1,1}
-                        end
-                        
-                        if lastestAwardFound < 5 and Util.Objects.IsNumber(id) and not entry:IsAwardReason() and id <= moreInfoEntries then
-                            local ts = entry:TimestampAsDate()
-                            Util.Tables.Push(stats[name],
-                                     {
-                                         entry.item,
-                                         -- todo : fix this
-                                         format(L["n_ago"], AddOn:ConvertIntervalToString(currentTs:diff(ts):Duration())),
-                                         color[id],
-                                         i
-                                     }
-                            )
-                            lastestAwardFound = lastestAwardFound + 1
-                        end
-                        
-                        local formattedTs = entry:FormattedTimestamp()
-                        local raidKey =  formattedTs .. '_' .. entry.instance
-                        raids[raidKey] = raids[raidKey] and (raids[raidKey] + 1) or 0
+                        statsEntry = stats:ProcessEntry(name, data[i], i)
                     end
-                    
-                    local total = 0
-                    stats[name].totals = {}
-                    stats[name].totals.responses = {}
-                    for id, num in pairs(count) do
-                        Util.Tables.Push(stats[name].totals.responses,
-                             {
-                                responseText[id],
-                                num,
-                                color[id],
-                                id
-                             }
-                        )
-                        total = total + 1
-                    end
-                    
-                    stats[name].totals.total = total
-                    stats[name].totals.raids = raids
-                    
-                    total = 0
-                    for _ in pairs(raids) do total = total + 1 end
-                    stats[name].totals.raids.num = total
                 end
     
-                Logging:Trace("GetStatistics() : %s", Util.Objects.ToString(stats, 10))
+                -- Logging:Debug("GetStatistics() : %s", Util.Objects.ToString(stats, 10))
                 return stats
             end
     )

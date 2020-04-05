@@ -150,6 +150,8 @@ function AddOn:RGBToHex(r,g,b)
 end
 
 function AddOn:GetClassColor(class)
+    if Util.Objects.IsEmpty(class) then error("No class specified") end
+    
     local color = RAID_CLASS_COLORS[class:upper()]
     if not color then
         -- if class not found, return epic color.
@@ -272,7 +274,7 @@ function AddOn:GetItemLevelDifference(item, g1, g2)
     return diff
 end
 
-function AddOn:ConvertIntervalToString(days, months, years)
+function AddOn:ConvertIntervalToString(years, months, days)
     local text = format(L["n_days"], days)
     
     if years > 0 then

@@ -380,10 +380,15 @@ end
 -- Find the first element (optinally matching a fn)
 ---@return any
 function Self.First(t, fn, index, notVal, ...)
+    return Self.Nth(t, 2, fn, index, notVal, ...)
+end
+
+-- i should be desired index + 1, as the key will be in index 1
+function Self.Nth(t, i, fn, index, notVal, ...)
     if not fn then
-        return select(2, next(t))
+        return select(i, next(t))
     else
-        return select(2, Self.FindFn(t, fn, index, notVal, ...))
+        return select(i, Self.FindFn(t, fn, index, notVal, ...))
     end
 end
 

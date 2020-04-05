@@ -2,7 +2,8 @@ local _, AddOn = ...
 local Class = AddOn.Libs.Class
 local Util  = AddOn.Libs.Util
 
-local PointEntry = Class('PointEntry')
+local GuildMember = AddOn.components.Models.GuildMember
+local PointEntry = Class('PointEntry', GuildMember)
 
 AddOn.components.Models.PointEntry = PointEntry
 
@@ -20,18 +21,15 @@ local function EncodeNote(ep, gp)
     return string.format("%d,%d", math.max(ep, 0), math.max(gp, 0))
 end
 
-function PointEntry:initialize(name, ep, gp, rank, rankIndex, class)
-    self.name = name
+function PointEntry:initialize(name, class, rank, rankIndex, ep, gp)
+    GuildMember.initialize(self, name, class, rank, rankIndex)
     self.ep = ep
     self.gp = gp
-    self.rank = rank
-    self.rankIndex = rankIndex
-    self.class = class
 end
 
 function PointEntry:FromGuildMember(member)
-    local ep, gp = DecodeNode(member.note)
-    return PointEntry:new(member.name, ep, gp, member.rank, member.rankIndex, member.class)
+    local ep, gp = DecodeNode(member.officerNote)
+    return PointEntry:new(member.name, member.class, member.rank, member.rankIndex, ep, gp)
 end
 
 function PointEntry:GetPR()

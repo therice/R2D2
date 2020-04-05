@@ -317,7 +317,7 @@ function AddOn:ResetReconnectRequest()
     self.reconnectPending = false
 end
 
---@return tuple of (boolean, table) with 1st index being whether moreInfo is shown and 2nd being more info data
+--@return tuple of (boolean, table) with 1st index being whether moreInfo is shown and 2nd being instance of LootStatistics
 function AddOn:MoreInfoSettings(module)
     local moduleSettings = AddOn.db.profile.modules[module]
     return moduleSettings and moduleSettings.moreInfo or false, self:LootHistoryModule():GetStatistics()

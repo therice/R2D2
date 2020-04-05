@@ -99,7 +99,19 @@ function Self.LcFirst(str, locale)
 end
 
 function Self.Lower(str)
-    return strlower(str or "")
+    return string.lower(str or "")
+end
+
+function Self.IsLower(s)
+    return (s == Self.Lower(s))
+end
+
+function Self.Upper(str)
+    return string.upper(str or "")
+end
+
+function Self.IsUpper(s)
+    return (s == Self.Upper(s))
 end
 
 -- Check if string is a number
