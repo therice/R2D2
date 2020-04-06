@@ -201,7 +201,7 @@ function LootAllocate:SwitchSession(sess)
     self.frame.itemText:SetText(entry.link)
     self.frame.iState:SetText(self:GetItemStatus(entry.link))
     self.frame.itemLvl:SetText(_G.ITEM_LEVEL_ABBR..": " .. entry:GetLevelText())
-    self.frame.gp:SetText("GP: " .. entry:GetGpText())
+    self.frame.gp:SetText("GP: " .. AddOn:GearPointsModule():GetGpTextColored(entry, nil))
     self.frame.itemType:SetText(entry:GetTypeText())
 
     --[[
@@ -506,8 +506,8 @@ function LootAllocate.GetGpFromCandidateResponse(name)
     local entry = LootAllocate.GetLootTableEntry(session)
     local userResponse = LootAllocate.GetLootTableEntryResponse(session, name)
     local response = AddOn:GetResponse(entry.typeCode or entry.equipLoc, userResponse.response)
-    Logging:Debug("GetGpFromCandidateResponse(%s)", tostring(response.award_scale))
-    return entry:GetGpText(response.award_scale)
+    -- Logging:Debug("GetGpFromCandidateResponse(%s)", tostring(response.award_scale))
+    return AddOn:GearPointsModule():GetGpTextColored(entry, response.award_scale)
 end
 
 function LootAllocate:GetFrame()
@@ -560,7 +560,7 @@ function LootAllocate:GetFrame()
             ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                 AddOn:UpdateMoreInfo(self:GetName(), f, nil, nil, nil,
                                      function(name)
-                                         return LootAllocate.GetLootTableEntry(session):GetGpText()
+                                         return AddOn:GearPointsModule():GetGpTextColored(LootAllocate.GetLootTableEntry(session), nil)
                                      end
                 )
                 return false

@@ -7,6 +7,7 @@ local Tables    = Util.Tables
 local Objects   = Util.Objects
 local COpts     = AddOn.components.UI.ConfigOptions
 local LibGP     = AddOn.Libs.GearPoints
+local UI        = AddOn.components.UI
 
 local DisplayName = {}
 DisplayName.OneHWeapon  = L["%s %s"]:format(_G.INVTYPE_WEAPON, _G.WEAPON)
@@ -246,10 +247,7 @@ local function AwardReasonToKey(awardReason)
         awardReason = nil
     end
     
-    
-    Logging:Debug("AwardReasonToKey(%s) : END", tostring(awardReason))
     return awardReason
-    
 end
 
 function GP:GetAwardColor(awardReason)
@@ -270,4 +268,17 @@ function GP:GetAwardScale(awardReason)
     if award and award.scale then
         return tonumber(award.scale)
     end
+end
+
+---@param item any instance of Models.Item
+---@param awardReason string the award reason key for award_scaling table (can be nil)
+---@return string representation of GP, including any scale for award (if specified)
+function GP:GetGpTextColored(item, awardReason)
+    local baseGp, awardGp = item:GetGp(awardReason)
+    local text = UI.ColoredDecorator(GP.DefaultAwardColor):decorate(tostring(baseGp))
+    if awardGp and awardGp > 0 then
+        awardGp = UI.ColoredDecorator(self:GetAwardColor(awardReason)):decorate(tostring(awardGp))
+        text = awardGp .. "(" .. text .. ")"
+    end
+    return text
 end

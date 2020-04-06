@@ -196,7 +196,7 @@ end
 
 -- todo : maybe it's better to just fire from individual events
 function Points:DataChanged(event, state)
-    Logging:Debug("DataChanged(%s) : %s", event, tostring(state))
+    Logging:Trace("DataChanged(%s) : %s", event, tostring(state))
     -- will get this once everything settles
     -- individual events will have collected the appropriate point entries
     if event == GuildStorage.Events.Initialized then

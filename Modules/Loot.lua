@@ -183,6 +183,16 @@ function Loot:Update()
     end
 end
 
+-- this function updates the GP portion of Item Text with values based upon button (and associated award scaling)
+function Loot.UpdateItemText(entry, award_scale)
+    local item = entry.item
+    entry.itemLvl:SetText(
+            "Level " .. item:GetLevelText() ..
+            " " .. AddOn:GearPointsModule():GetGpTextColored(item, award_scale) ..
+            " |cff7fffff".. item:GetTypeText() .. "|r"
+    )
+end
+
 function Loot:OnRoll(entry, button)
     local C = AddOn.Constants
     local item = entry.item
@@ -268,10 +278,7 @@ do
             )
             entry.icon:SetNormalTexture(entry.item.texture or "Interface\\InventoryItems\\WoWUnknownItem01")
             entry.itemCount:SetText(#entry.item.sessions > 1 and #entry.item.sessions or "")
-            entry.itemLvl:SetText("Level " .. item:GetLevelText() ..
-                    " |cff00ff00GP " .. item:GetGpText() ..
-                    " |cff7fffff".. item:GetTypeText() .. "|r"
-            )
+            Loot.UpdateItemText(entry)
             if entry.item.note then
                 entry.noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up")
             else
@@ -354,7 +361,11 @@ do
                     else
                         b[i] = b[i] or UI:CreateButton(buttons[i].text, entry.frame)
                         b[i]:SetText(buttons[i].text)
-                        b[i]:SetScript("OnClick", function() Loot:OnRoll(entry, i) end)
+                        b[i]:SetMultipleScripts({
+                            OnEnter = function() Loot.UpdateItemText(entry, buttons[i].award_scale) end,
+                            OnLeave = function() Loot.UpdateItemText(entry) end,
+                            OnClick = function() Loot:OnRoll(entry, i) end,
+                        })
                     end
                     b[i]:SetWidth(b[i]:GetTextWidth() + 10)
                     if b[i]:GetWidth() < MIN_BUTTON_WIDTH then b[i]:SetWidth(MIN_BUTTON_WIDTH) end

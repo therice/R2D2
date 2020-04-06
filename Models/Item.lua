@@ -4,6 +4,7 @@ local Class     = AddOn.Libs.Class
 local ItemUtil  = AddOn.Libs.ItemUtil
 local GP        = AddOn.Libs.GearPoints
 local Logging   = AddOn.Libs.Logging
+local UI        = AddOn.components.UI
 
 local Item = Class('Item')
 local ItemEntry = Class('ItemEntry', Item)
@@ -148,21 +149,6 @@ function Item:GetGp(awardReason)
     end
     
     return self.gp, awardGp
-end
-
--- @param awardReason an optional number, which indicates the user's response for which the item is being awarded
--- @return the GP value as a formatted string, including details of award reason if specified ( AWARD_GP (BASE _GP))
-function Item:GetGpText(awardReason)
-    Logging:Debug("GetGpText(%s)", tostring(awardReason))
-    local gpBase, gpAward = self:GetGp(awardReason)
-    gpBase = gpBase or 0
-    if gpAward then
-        return format("%d (%d)", gpAward, gpBase)
-    else
-        -- Logging:Debug("|cff%s%s", AddOn:RGBToHex(unpack(AddOn:GearPointsModule().DefaultAwardColor)), "TEST")
-        return tostring(gpBase)
-    end
-    
 end
 
 --[[

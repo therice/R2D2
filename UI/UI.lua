@@ -122,19 +122,20 @@ local ColoredDecorator = Class('ColoredDecorator', Decorator)
 AddOn.components.UI.ColoredDecorator = ColoredDecorator
 
 function ColoredDecorator:initialize(r, g, b)
-    ColoredDecorator.initialize(self)
+    Decorator.initialize(self)
     if Util.Objects.IsTable(r) then
-        r, g, b = unpack(r)
+        if r.colorStr then
+            self.hex =  r.colorStr
+        else
+            self.hex = UI.RGBToHex(unpack(r))
+        end
+    else
+        self.hex = UI.RGBToHex(r, g, b)
     end
-    
-    self.r = r
-    self.g = g
-    self.b = b
-    self.hex = UI.RGBToHex(self.r, self.g, self.b)
 end
 
 function ColoredDecorator:decorate(...)
-    return "|cff" .. self.hex .. ColoredDecorator.super.decorate(...) .. "|r"
+    return "|cff" .. self.hex .. ColoredDecorator.super:decorate(...) .. "|r"
 end
 
 

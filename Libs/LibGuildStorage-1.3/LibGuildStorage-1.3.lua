@@ -312,7 +312,7 @@ local function OnUpdate()
         end
     end
     
-    Logging:Debug("OnUpdate() : %d guild members, %d ms elapsed, current index %d", Util.Tables.Count(cache), debugprofilestop() - start, index and index or -1)
+    Logging:Trace("OnUpdate() : %d guild members, %d ms elapsed, current index %d", Util.Tables.Count(cache), debugprofilestop() - start, index and index or -1)
 end
 
 lib.frame:SetScript("OnUpdate", OnUpdate)

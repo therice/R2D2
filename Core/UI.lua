@@ -59,7 +59,6 @@ function AddOn:UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
     -- if there is a GP display value, update it to reflect candidates response
     if f.gp and gpSupplier and Util.Objects.IsFunction(gpSupplier) then
         local gpText = gpSupplier(name)
-        Logging:Debug("gpText = %s", Util.Objects.ToString(gpText))
         f.gp:SetText("GP: " .. (gpText and gpText or "UNKNOWN"))
     end
     

@@ -70,7 +70,7 @@ do
     local index = 1
     for award, value in pairs(UserVisibleAwards) do
         -- these are entries that represent buttons available to player at time of loot decision
-        Util.Tables.Push(DefaultButtons, {text = L[award], whisperKey = L['whisperkey_' .. award]})
+        Util.Tables.Push(DefaultButtons, {text = L[award], whisperKey = L['whisperkey_' .. award], award_scale=award})
         -- the are entries of the universe of possible responses, which are a super set of ones
         -- presented to the player
         Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award], award_scale=award})
