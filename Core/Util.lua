@@ -146,7 +146,7 @@ function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, colum
     end
 end
 
-function AddOn:GetClassColor(class)
+function AddOn.GetClassColor(class)
     if Util.Objects.IsEmpty(class) then error("No class specified") end
     
     local color = RAID_CLASS_COLORS[class:upper()]
@@ -159,8 +159,8 @@ function AddOn:GetClassColor(class)
     end
 end
 
-function AddOn:GetClassColorRGB(class)
-    local c = self:GetClassColor(class)
+function AddOn.GetClassColorRGB(class)
+    local c = AddOn.GetClassColor(class)
     return UI.RGBToHex(c.r,c.g,c.b)
 
 end
@@ -169,7 +169,7 @@ function AddOn:GetUnitClassColoredName(name)
     local candidate = self.candidates[name]
 
     if candidate and candidate.class then
-        local c = self:GetClassColor(candidate.class)
+        local c = AddOn.GetClassColor(candidate.class)
         return UI.ColoredDecorator(c):decorate(self.Ambiguate(name))
     else
         local englishClass = select(2, UnitClass(Ambiguate(name, "short")))
@@ -194,7 +194,7 @@ function AddOn:GetPlayersGear(link, equipLoc, current)
         GetInventoryItemLink = function(_, slot) return current[slot] end
     end
 
-    -- todo : need to handle tokens and trinkeys
+    -- todo : need to handle tokens and trinkets
     local item1, item2
     -- map equipment location to slots where it can be equipped
     local gearSlots = ItemUtil:GetGearSlots(equipLoc)
@@ -281,4 +281,13 @@ function AddOn:ConvertIntervalToString(years, months, days)
     end
     
     return text
+end
+
+AddOn.FilterClassesByFactionFn = function(class)
+    if AddOn.playerFaction == 'Alliance' then
+        return class ~= "Shaman"
+    elseif AddOn.playerFaction == 'Horde' then
+        return class ~= "Paladin"
+    end
+    return true
 end

@@ -124,6 +124,11 @@ function lib:IsStateCurrent()
     return state == States.Current
 end
 
+-- @return table a copy of current guild members table
+function lib:GetMembers()
+    return Util(cache):Copy()()
+end
+
 function lib:GetMember(name)
     return cache[name]
 end

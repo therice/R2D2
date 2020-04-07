@@ -253,7 +253,7 @@ end
 function GP:GetAwardColor(awardReason)
     awardReason = AwardReasonToKey(awardReason)
     if not awardReason then return GP.DefaultAwardColor end
-    Logging:Debug("GetAwardColor(%s)", tostring(awardReason))
+    -- Logging:Debug("GetAwardColor(%s)", tostring(awardReason))
     local award = self.db.profile.award_scaling[awardReason]
     if award and award.color then
         return award.color
@@ -263,7 +263,7 @@ end
 function GP:GetAwardScale(awardReason)
     awardReason = AwardReasonToKey(awardReason)
     if not awardReason then return end
-    Logging:Debug("GetAwardScale(%s)", tostring(awardReason))
+    -- Logging:Debug("GetAwardScale(%s)", tostring(awardReason))
     local award = self.db.profile.award_scaling[awardReason]
     if award and award.scale then
         return tonumber(award.scale)

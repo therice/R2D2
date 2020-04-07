@@ -67,9 +67,6 @@ function Self.Set(t, ...)
     return t, val
 end
 
-function Self.ContainsKey(t, k)
-    return t[k] ~= nil
-end
 
 -- Get a random key from the table
 function Self.RandomKey(t)
@@ -306,6 +303,14 @@ function Self.Contains(t, u, deep)
         end
     end
     return true
+end
+
+function Self.ContainsKey(t, k)
+    return t[k] ~= nil
+end
+
+function Self.ContainsValue(t, v)
+    return Self.Find(t, v) and true or false
 end
 
 -- Check if two tables are equal

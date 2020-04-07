@@ -44,7 +44,7 @@ do
     local sortLevel = 401
     for index, award in ipairs(NonUserVisibleAwards) do
         -- Logging:Trace("%s", Util.Objects.ToString(AwardScaling[award]))
-        Util.Tables.Insert(AwardReasons, index, { color = AwardScaling[award].color, sort=sortLevel, text = L[award]})
+        Util.Tables.Insert(AwardReasons, index, { color = AwardScaling[award].color, sort=sortLevel, text = L[award], award_scale=award})
         sortLevel = sortLevel + 1
     end
 end
@@ -53,19 +53,19 @@ function LootAllocate:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     local C = AddOn.Constants
     DefaultScrollTableData = {
-        { name = "",                DoCellUpdate = LootAllocate.SetCellClass,       colName = "class",      sortnext = 2,       width = 20, }, -- 1 Class
-        { name = _G.NAME,			DoCellUpdate = LootAllocate.SetCellName,		colName = "name",		defaultsort = 1,	width = 120,}, -- 2 Candidate Name
-        { name = _G.RANK,			DoCellUpdate = LootAllocate.SetCellRank,		colName = "rank",		sortnext = 4,		width = 95, comparesort = GuildRankSort,}, -- 3 Guild rank
-        { name = L["response"],	    DoCellUpdate = LootAllocate.SetCellResponse,	colName = "response",   sortnext = 7,		width = 240,comparesort = ResponseSort,}, -- 4 Response
-        { name = L["ep_abbrev"],	DoCellUpdate = LootAllocate.SetCellEp,		    colName = "ep",		    sortnext = 6,		width = 45, comparesort = EpSort,}, -- 5 EP
-        { name = L["gp_abbrev"],	DoCellUpdate = LootAllocate.SetCellGp,		    colName = "gp",		    sortnext = 9,		width = 45, comparesort = GpSort,}, -- 6 GP
-        { name = L["pr_abbrev"],	DoCellUpdate = LootAllocate.SetCellPr,		    colName = "pr",		    sortnext = 13,		width = 45, comparesort = PrSort,}, -- 7 PR
-        { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = LootAllocate.SetCellIlvl,	    colName = "ilvl",		sortnext = 9,		width = 45, }, -- 8 Total ilvl
-        { name = L["diff"],		    DoCellUpdate = LootAllocate.SetCellDiff,		colName = "diff",							width = 40, }, -- 9 ilvl difference
-        { name = L["g1"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear1",                          width = 20, align = "CENTER", }, -- 10 Current gear 1
-        { name = L["g2"],			DoCellUpdate = LootAllocate.SetCellGear,		colName = "gear2",	                        width = 20, align = "CENTER", }, -- 11 Current gear 2
-        { name = L["notes"],		DoCellUpdate = LootAllocate.SetCellNote,		colName = "note",							width = 50, align = "CENTER", }, -- 12 Note icon
-        { name = _G.ROLL,			DoCellUpdate = LootAllocate.SetCellRoll, 		colName = "roll",		sortnext = 5,		width = 50, align = "CENTER", }, -- 13 Roll
+        { name = "",                DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellClass),    colName = "class",      sortnext = 2,       width = 20, }, -- 1 Class
+        { name = _G.NAME,			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellName),		colName = "name",		defaultsort = 1,	width = 120,}, -- 2 Candidate Name
+        { name = _G.RANK,			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellRank),		colName = "rank",		sortnext = 4,		width = 95, comparesort = GuildRankSort,}, -- 3 Guild rank
+        { name = L["response"],	    DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellResponse),	colName = "response",   sortnext = 7,		width = 240,comparesort = ResponseSort,}, -- 4 Response
+        { name = L["ep_abbrev"],	DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellEp),		colName = "ep",		    sortnext = 6,		width = 45, comparesort = EpSort,}, -- 5 EP
+        { name = L["gp_abbrev"],	DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellGp),		colName = "gp",		    sortnext = 9,		width = 45, comparesort = GpSort,}, -- 6 GP
+        { name = L["pr_abbrev"],	DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellPr),		colName = "pr",		    sortnext = 13,		width = 45, comparesort = PrSort,}, -- 7 PR
+        { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellIlvl),	    colName = "ilvl",		sortnext = 9,		width = 45, }, -- 8 Total ilvl
+        { name = L["diff"],		    DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellDiff),		colName = "diff",							width = 40, }, -- 9 ilvl difference
+        { name = L["g1"],			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellGear),		colName = "gear1",                          width = 20, align = "CENTER", }, -- 10 Current gear 1
+        { name = L["g2"],			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellGear),		colName = "gear2",	                        width = 20, align = "CENTER", }, -- 11 Current gear 2
+        { name = L["notes"],		DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellNote),		colName = "note",							width = 50, align = "CENTER", }, -- 12 Note icon
+        { name = _G.ROLL,			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellRoll), 	colName = "roll",		sortnext = 5,		width = 50, align = "CENTER", }, -- 13 Roll
     }
     self.scrollCols = { unpack(DefaultScrollTableData) }
     self.db = AddOn.db:RegisterNamespace(self:GetName(), LootAllocate.defaults)
@@ -530,7 +530,7 @@ function LootAllocate:GetFrame()
                     MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0);
                 -- update more info
                 elseif button == "LeftButton" and row then
-                    AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
+                    AddOn.UpdateMoreInfo(self:GetName(), f, realrow, data,
                                          LootAllocate.GetCandidateClass,
                                          LootAllocate.GetGpFromCandidateResponse
                     )
@@ -547,7 +547,7 @@ function LootAllocate:GetFrame()
         st:RegisterEvents({
             ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                 if row then
-                    AddOn:UpdateMoreInfo(self:GetName(), f, realrow, data,
+                    AddOn.UpdateMoreInfo(self:GetName(), f, realrow, data,
                                          LootAllocate.GetCandidateClass,
                                          LootAllocate.GetGpFromCandidateResponse)
                 end
@@ -558,7 +558,7 @@ function LootAllocate:GetFrame()
         -- return to the actual selected player when we remove the mouse
         st:RegisterEvents({
             ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                AddOn:UpdateMoreInfo(self:GetName(), f, nil, nil, nil,
+                AddOn.UpdateMoreInfo(self:GetName(), f, nil, nil, nil,
                                      function(name)
                                          return AddOn:GearPointsModule():GetGpTextColored(LootAllocate.GetLootTableEntry(session), nil)
                                      end
@@ -644,7 +644,7 @@ function LootAllocate:GetFrame()
     f.abortBtn = b1
     
     -- more info widgets
-    AddOn:EmbedMoreInfoWidgets(self:GetName(), f)
+    AddOn.EmbedMoreInfoWidgets(self:GetName(), f)
     
     -- filter
     local b3 = UI:CreateButton(_G.FILTER, f.content)
@@ -1011,32 +1011,14 @@ do
         }
     }
     
-    local info = MSA_DropDownMenu_CreateInfo()
-    function LootAllocate.RightClickMenu(menu, level)
-        -- Logging:Trace("RightClickMenu()")
-        if not AddOn.isMasterLooter then return end
-        
-        local C = AddOn.Constants
-        local candidateName = menu.name
-        local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
-        for _, entry in ipairs(LootAllocate.RightClickEntries[level]) do
-            info = MSA_DropDownMenu_CreateInfo()
-            if not entry.special then
-                if not entry.onValue or entry.onValue == value or (Util.Objects.IsFunction(entry.onValue) and entry.onValue(candidateName)) then
-                    if (entry.hidden and Util.Objects.IsFunction(entry.hidden) and not entry.hidden(candidateName)) or not entry.hidden then
-                        for name, val in pairs(entry) do
-                            if name == "func" then
-                                info[name] = function() return val(candidateName) end
-                            elseif Util.Objects.IsFunction(val) then
-                                info[name] = val(candidateName)
-                            else
-                                info[name] = val
-                            end
-                        end
-                        MSA_DropDownMenu_AddButton(info, level)
-                    end
-                end
-            elseif value == "AWARD_FOR" and entry.special == value then
+    LootAllocate.RightClickMenu = UI.RightClickMenu(
+        function() return AddOn.isMasterLooter end,
+        LootAllocate.RightClickEntries,
+        function(info, menu, level, entry, value)
+            local candidateName = menu.name
+            local C = AddOn.Constants
+            
+            if value == "AWARD_FOR" and entry.special == value then
                 for k,v in ipairs(LootAllocate.db.profile.awardReasons) do
                     if k > LootAllocate.db.profile.awardReasons.numAwardReasons then break end
                     info.text = v.text
@@ -1059,7 +1041,7 @@ do
                     end
                     MSA_DropDownMenu_AddButton(info, level)
                 end
-                
+        
                 -- Add pass button as well
                 local passResponse = AddOn:MasterLooterModule().db.profile.responses.default.PASS
                 info.text = passResponse.text
@@ -1068,13 +1050,12 @@ do
                 info.func = function()
                     AddOn:SendCommand(C.group, C.Commands.ChangeResponse, session, candidateName, "PASS")
                 end
-                MSA_DropDownMenu_AddButton(info, level)
                 
-                info = MSA_DropDownMenu_CreateInfo()
+                MSA_DropDownMenu_AddButton(info, level)
+                MSA_DropDownMenu_CreateInfo()
             end
         end
-    end
-    
+    )
     
     function LootAllocate.FilterMenu(menu, level)
         -- Logging:Trace("FilterMenu()")
@@ -1202,9 +1183,9 @@ do
     end
 end
 
+-- todo : make sure filtering is working here
 function LootAllocate.FilterFunc(table, row)
     --Logging:Debug("FilterFunc(%s, %s) : %s ", row.name, tostring(session), Util.Objects.ToString(LootAllocate.GetLootTableEntry(session)))
-
     local Module = AddOn.db.profile.modules[LootAllocate:GetName()]
     if not Module.filters then return true end
 
@@ -1294,7 +1275,7 @@ function LootAllocate:Update(forceUpdate)
         self.frame.awardString:SetText(L["item_awarded_to"])
         self.frame.awardString:Show()
         self.frame.awardStringPlayer:SetText(AddOn.Ambiguate(entry.awarded))
-        local c = AddOn:GetClassColor(response.class)
+        local c = AddOn.GetClassColor(response.class)
         self.frame.awardStringPlayer:SetTextColor(c.r,c.g,c.b,c.a)
         self.frame.awardStringPlayer:Show()
         AddOn.SetCellClassIcon(nil,self.frame.awardStringPlayer.classIcon,nil,nil,nil,nil,nil,nil,nil,response.class)
@@ -1429,7 +1410,7 @@ function LootAllocate.SetCellName(rowFrame, frame, data, cols, row, realrow, col
     else
         frame.text:SetText(AddOn.Ambiguate(name))
     end
-    local c = AddOn:GetClassColor(LootAllocate.GetLootTableEntryResponse(session, name).class)
+    local c = AddOn.GetClassColor(LootAllocate.GetLootTableEntryResponse(session, name).class)
     frame.text:SetTextColor(c.r, c.g, c.b, c.a)
     data[realrow].cols[column].value = name or ""
 end

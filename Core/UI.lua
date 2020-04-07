@@ -7,7 +7,7 @@ local Class     = AddOn.Libs.Class
 
 --@param module the module name (for determining settings associated with more info)
 --@param f the frame to which to add widgets
-function AddOn:EmbedMoreInfoWidgets(module, f)
+function AddOn.EmbedMoreInfoWidgets(module, f)
     local moreInfo = AddOn:MoreInfoSettings(module)
     
     -- more info button
@@ -33,7 +33,7 @@ function AddOn:EmbedMoreInfoWidgets(module, f)
             button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
             button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
         end
-        self:UpdateMoreInfo(module, f)
+        AddOn.UpdateMoreInfo(module, f)
     end)
     miButton:SetScript("OnEnter", function() UI:CreateTooltip(L["click_more_info"]) end)
     miButton:SetScript("OnLeave", function() UI:HideTooltip() end)
@@ -45,7 +45,7 @@ function AddOn:EmbedMoreInfoWidgets(module, f)
     end)
 end
 
-function AddOn:UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
+function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
     local moreInfo, lootStats = AddOn:MoreInfoSettings(module)
     
     local name
@@ -66,7 +66,7 @@ function AddOn:UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
         return f.moreInfo:Hide()
     end
     
-    local color = AddOn:GetClassColor(classSupplier and classSupplier(name) or "")
+    local color = AddOn.GetClassColor(classSupplier and classSupplier(name) or "")
     local tip = f.moreInfo
     tip:SetOwner(f, "ANCHOR_RIGHT")
     tip:AddLine(AddOn.Ambiguate(name), color.r, color.g, color.b)
@@ -131,7 +131,7 @@ function UpdateHandler:Eligible()
     return eligible
 end
 
-function AddOn:CreateUpdateHandler(callback, updateInterval)
+function AddOn.CreateUpdateHandler(callback, updateInterval)
     local entry = UpdateHandler(callback, updateInterval)
     entry.frame:SetScript("OnUpdate", function(self, elapsed) entry:OnUpdate(elapsed) end)
     entry.frame:Show()

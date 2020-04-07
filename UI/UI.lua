@@ -105,6 +105,66 @@ function COpts.Toggle(name, order, descr, extra)
     return Extra(toggle, extra)
 end
 
+function UI.RightClickMenu(predicate, entries, callback)
+    return function(menu, level)
+        if not predicate() then return end
+        if not menu or not level then return end
+        
+        local info = MSA_DropDownMenu_CreateInfo()
+        local candidateName = menu.name
+        local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
+        
+        for _, entry in ipairs(entries[level]) do
+            info = MSA_DropDownMenu_CreateInfo()
+            if not entry.special then
+                if not entry.onValue or entry.onValue == value or (Util.Objects.IsFunction(entry.onValue) and entry.onValue(candidateName)) then
+                    if (entry.hidden and Util.Objects.IsFunction(entry.hidden) and not entry.hidden(candidateName)) or not entry.hidden then
+                        for name, val in pairs(entry) do
+                            if name == "func" then
+                                info[name] = function() return val(candidateName) end
+                            elseif Util.Objects.IsFunction(val) then
+                                info[name] = val(candidateName)
+                            else
+                                info[name] = val
+                            end
+                        end
+                        MSA_DropDownMenu_AddButton(info, level)
+                    end
+                end
+            else
+                if callback then callback(info, menu, level, entry, value) end
+            end
+        end
+    end
+end
+
+-- wrapper around a Scrolling Table's DoCellUpdate which handles necessary post execution
+-- stuff which could be missed if not handled on a case by case basis
+function UI.ScrollingTableDoCellUpdate(fn)
+    local function after(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
+        local rowdata = table:GetRow(realrow)
+        local celldata = table:GetCell(rowdata, column)
+    
+        local highlight = nil
+        if type(celldata) == "table" then
+            highlight = celldata.highlight
+        end
+    
+        if table.fSelect then
+            if table.selected == realrow then
+                table:SetHighLightColor(rowFrame, highlight or cols[column].highlight or rowdata.highlight or table:GetDefaultHighlight())
+            else
+                table:SetHighLightColor(rowFrame, table:GetDefaultHighlightBlank())
+            end
+        end
+    end
+    
+    return function(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
+        fn(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
+        after(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
+    end
+end
+
 function UI.RGBToHex(r,g,b)
     return string.format("%02x%02x%02x", 255*r, 255*g, 255*b)
 end
@@ -116,7 +176,6 @@ end
 local Decorator = Class('Decorator')
 function Decorator:initialize() end
 function Decorator:decorate(...) return Util.Strings.Join('', ...) end
-
 
 local ColoredDecorator = Class('ColoredDecorator', Decorator)
 AddOn.components.UI.ColoredDecorator = ColoredDecorator
@@ -361,6 +420,19 @@ function UI:HideTooltip()
         self.tooltip.showing = false
     end
     GameTooltip:Hide()
+end
+
+-- Used to decorate LibDialog Popups
+function UI.DecoratePopup(frame)
+    frame:SetFrameStrata("DIALOG")
+    frame:SetBackdrop({
+                          bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                          edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                          tile = true, tileSize = 8, edgeSize = 4,
+                          insets = { left = 2, right = 2, top = 2, bottom = 2 }
+                      })
+    frame:SetBackdropColor(0, 0, 0, 1)
+    frame:SetBackdropBorderColor(0, 0, 0, 1)
 end
 
 --[[

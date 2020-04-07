@@ -1,10 +1,11 @@
 local name, AddOn = ...
-local ML        = AddOn:NewModule("MasterLooter", "AceEvent-3.0", "AceBucket-3.0", "AceComm-3.0", "AceTimer-3.0", "AceHook-3.0")
-local L         = AddOn.components.Locale
-local Logging   = AddOn.components.Logging
-local Util      = AddOn.Libs.Util
-local ItemUtil  = AddOn.Libs.ItemUtil
-local Models    = AddOn.components.Models
+local ML = AddOn:NewModule("MasterLooter", "AceEvent-3.0", "AceBucket-3.0", "AceComm-3.0", "AceTimer-3.0", "AceHook-3.0")
+local L = AddOn.components.Locale
+local Logging = AddOn.components.Logging
+local Util = AddOn.Libs.Util
+local ItemUtil = AddOn.Libs.ItemUtil
+local Models = AddOn.components.Models
+local UI = AddOn.components.UI
 
 local CANDIDATE_SEND_COOLDOWN = 10
 
@@ -883,8 +884,9 @@ end
 -- Award popup control functions
 -- data contains: session, winner, responseId, reason, gear1, gear2, isTierRoll, isRelicRoll, link, isToken
 function ML.AwardPopupOnShow(frame, data)
+    UI.DecoratePopup(frame)
     local awardTo =  AddOn.Ambiguate(data.winner)
-    local c = AddOn:GetClassColor(data.class)
+    local c = AddOn.GetClassColor(data.class)
     frame:SetFrameStrata("FULLSCREEN")
     frame.text:SetText(format(L["confirm_award_item_to_player"], data.link, c:WrapTextInColorCode(awardTo)))
     frame.icon:SetTexture(data.texture)

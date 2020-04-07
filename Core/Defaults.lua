@@ -37,13 +37,16 @@ AddOn.defaults = {
         -- module specific data storage
         modules = {
             ['*'] = {
-                -- by deault, fiters are included
+                -- by default, following are included
                 filters = {
                     ['*'] = true,
                     ranks = {
                         ['*'] = true
                     },
                     class = {
+                        ['*'] = true
+                    },
+                    member_of = {
                         ['*'] = false
                     }
                 },

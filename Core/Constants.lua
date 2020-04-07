@@ -79,6 +79,7 @@ AddOn.Constants = {
     },
 
     Popups = {
+        ConfirmAdjustPoints     =   name .. "_ConfirmAdjustPoints",
         ConfirmAbort            =   name .. "_ConfigAbort",
         ConfirmAward            =   name .. "_ConfirmAward",
         ConfirmReannounceItems  =   name .. "_ConfirmReannounceItems",

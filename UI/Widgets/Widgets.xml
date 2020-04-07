@@ -2,4 +2,5 @@
     <Script file="Button.lua"/>
     <Script file="Text.lua"/>
     <Script file="IconBordered.lua"/>
+    <Script file="EditBox.lua"/>
 </Ui>
