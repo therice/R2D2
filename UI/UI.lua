@@ -15,6 +15,8 @@ local Objects   = Util.Objects
 local Numbers   = Util.Numbers
 local Logging   = AddOn.components.Logging
 local COpts     = UI.ConfigOptions
+local L         = AddOn.components.Locale
+
 
 -- AceConfig Options
 local function Extra(options, extra)
@@ -434,6 +436,51 @@ function UI.DecoratePopup(frame)
     frame:SetBackdropColor(0, 0, 0, 1)
     frame:SetBackdropBorderColor(0, 0, 0, 1)
 end
+
+-- Embeds an error tooltip into a frame for use (as needed)
+function UI.EmbedErrorTooltip(module, f)
+    f.errorTooltip = CreateFrame( "GameTooltip", "R2D2_" .. module .. "_ErrorTooltip", nil, "GameTooltipTemplate" )
+    f.content:SetScript("OnSizeChanged", function()
+        f.errorTooltip:SetScale(f:GetScale() * 0.6)
+    end)
+end
+
+function UI.UpdateErrorTooltip(f, errors)
+    local tip = f.errorTooltip
+    tip:SetOwner(f, "ANCHOR_LEFT")
+    tip:AddLine("Errors")
+    tip:AddLine(" ")
+    for _, error in pairs(errors) do
+        tip:AddDoubleLine(error)
+    end
+    
+    tip:Show()
+    tip:SetAnchorType("ANCHOR_LEFT", 0, -tip:GetHeight())
+end
+
+--[[
+function CreateErrorDialog()
+    local f = UI:CreateFrame("R2D2_Error_Dialog", "ErrorDialog", L["R2D2 Errors"], 250, 250)
+    f.title:SetPoint("CENTER", f, "TOP", 0 ,-5)
+    
+    local close = UI:CreateButton("Close", f.content)
+    close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -13, 5)
+    close:SetScript("OnClick", function() f:Hide() end)
+    f.close = close
+    
+    return f
+end
+
+local ErrorDialog
+-- @param errors an array of string errors to display
+function UI.ShowErrorDialog(frame, errors)
+    if not ErrorDialog then ErrorDialog = CreateErrorDialog() end
+    -- todo : adjust this
+    if frame then ErrorDialog:SetPoint("TOPLEFT", frame, "TOPRIGHT") end
+    
+    if not ErrorDialog:IsVisible() then ErrorDialog:Show() end
+end
+--]]
 
 --[[
  Enable chain-calling for UI elements (for Ace3GUI)

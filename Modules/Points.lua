@@ -400,7 +400,11 @@ function Points:GetAdjustFrame()
     
     local close = UI:CreateButton("Cancel", f.content)
     close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -13, 5)
-    close:SetScript("OnClick", function() f:Hide() end)
+    close:SetScript("OnClick",
+                    function()
+                        f.errorTooltip:Hide()
+                        f:Hide()
+                    end)
     f.close = close
     
     local apply = UI:CreateButton("Adjust", f.content)
@@ -408,13 +412,15 @@ function Points:GetAdjustFrame()
     apply:SetScript("OnClick",
                     function()
                         f.Validate()
-                        Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, Points:GetAdjustPointsData())
+                        --Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, Points:GetAdjustPointsData())
                     end
     )
     f.clear = apply
     
-    function f.Validate()
+    UI.EmbedErrorTooltip("Points", f)
     
+    function f.Validate()
+        UI.UpdateErrorTooltip(f, {"Test Error 1", "Test Error 2"})
     end
     
     self.adjustFrame = f
