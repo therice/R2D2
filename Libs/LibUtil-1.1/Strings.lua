@@ -122,7 +122,7 @@ function Self.IsNumber2(str, leadingZero)
 end
 
 function Self.IsNumber(str)
-    return type(str) == 'sting' and string.find(s,'^%d+$') == 1
+    return type(str) == 'string' and tonumber(str) ~= nil
 end
 
 -- Get abbreviation of given length

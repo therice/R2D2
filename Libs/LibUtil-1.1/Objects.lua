@@ -13,15 +13,15 @@ local Self = Util.Objects
 
 function Self.IsEmpty(obj)
     if Self.IsNil(obj) then return true end
-    if Self.IsString(obj) then Util.Strings.IsEmpty(obj) end
+    if Self.IsString(obj) then return Util.Strings.IsEmpty(obj) end
     if Self.IsTable(obj) then return Util.Tables.IsEmpty(obj) end
+    
     return false
 end
 
 function Self.IsSet(val)
     return not Self.IsEmpty(val)
 end
-
 
 function Self.IsString(obj)
     return type(obj) == 'string'

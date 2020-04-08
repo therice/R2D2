@@ -287,7 +287,8 @@ function Points:GetFrame()
         -- return to the actual selected player when we remove the mouse
         st:RegisterEvents({
                               ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                                  AddOn.UpdateMoreInfo(self:GetName(), f)
+                                  AddOn.UpdateMoreInfo(self:GetName(), f, nil, nil,
+                                                       function(name) return Get(name).class end)
                                   return false
                               end
                           })
@@ -328,7 +329,7 @@ function Points:GetAdjustFrame()
     
     local rtLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     rtLabel:SetPoint("TOPLEFT", f.content, "TOPLEFT", 15, -45)
-    rtLabel:SetText("Resource Type")
+    rtLabel:SetText(L["resource_type"])
     f.rtLabel = rtLabel
     
     local resourceType =
@@ -344,7 +345,7 @@ function Points:GetAdjustFrame()
     
     local atLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     atLabel:SetPoint("TOPLEFT", f.rtLabel, "TOPLEFT", 0, -45)
-    atLabel:SetText("Action Type")
+    atLabel:SetText(L["action_type"])
     f.atLabel = atLabel
     
     local actionType =
@@ -360,7 +361,7 @@ function Points:GetAdjustFrame()
     
     local qtyLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     qtyLabel:SetPoint("TOPLEFT", f.atLabel, "TOPLEFT", 0, -45)
-    qtyLabel:SetText("Quantity")
+    qtyLabel:SetText(L["quantity"])
     f.qtyLabel = qtyLabel
     
     local quantity = UI:New("EditBox", f.content)
@@ -381,7 +382,7 @@ function Points:GetAdjustFrame()
     
     local descLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     descLabel:SetPoint("TOPLEFT", f.qtyLabel, "TOPLEFT", 0, -48)
-    descLabel:SetText("Description")
+    descLabel:SetText(L["description"])
     f.descLabel = descLabel
 
     local desc = UI:New("EditBox", f.content)
@@ -398,7 +399,7 @@ function Points:GetAdjustFrame()
     end)
     f.desc = desc
     
-    local close = UI:CreateButton("Cancel", f.content)
+    local close = UI:CreateButton(_G.CANCEL, f.content)
     close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -13, 5)
     close:SetScript("OnClick",
                     function()
@@ -407,12 +408,17 @@ function Points:GetAdjustFrame()
                     end)
     f.close = close
     
-    local apply = UI:CreateButton("Adjust", f.content)
+    local apply = UI:CreateButton(L["adjust"], f.content)
     apply:SetPoint("RIGHT", f.close, "LEFT", -25)
     apply:SetScript("OnClick",
                     function()
-                        f.Validate()
-                        --Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, Points:GetAdjustPointsData())
+                        local data, validationErrors = f.Validate()
+                        if Util.Tables.Count(validationErrors) ~= 0 then
+                            UI.UpdateErrorTooltip(f, validationErrors)
+                        else
+                            f.errorTooltip:Hide()
+                            Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, data)
+                        end
                     end
     )
     f.clear = apply
@@ -420,7 +426,45 @@ function Points:GetAdjustFrame()
     UI.EmbedErrorTooltip("Points", f)
     
     function f.Validate()
-        UI.UpdateErrorTooltip(f, {"Test Error 1", "Test Error 2"})
+        local validationErrors = {}
+        local data = {}
+        
+        local subject = f.name:GetText()
+        if Util.Strings.IsEmpty(subject) then
+            Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["name"]))
+        else
+            Util.Tables.Insert(data, 'subject', subject)
+        end
+        
+        local actionType = f.actionType:GetValue()
+        if Util.Objects.IsEmpty(actionType) or not Util.Objects.IsNumber(actionType) then
+            Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["action_type"]))
+        else
+            Util.Tables.Insert(data, 'actionType', tonumber(actionType))
+        end
+    
+        local resourceType = f.resourceType:GetValue()
+        if Util.Objects.IsEmpty(resourceType) or not Util.Objects.IsNumber(resourceType) then
+            Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["resource_type"]))
+        else
+            Util.Tables.Insert(data, 'resourceType', tonumber(resourceType))
+        end
+        
+        local quantity = f.quantity:GetText()
+        if Util.Objects.IsEmpty(quantity) or not Util.Strings.IsNumber(quantity) then
+            Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["quantity"]))
+        else
+            Util.Tables.Insert(data, 'quantity', tonumber(quantity))
+        end
+        
+        local description = f.desc:GetText()
+        if Util.Strings.IsEmpty(description) then
+            Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["description"]))
+        else
+            Util.Tables.Insert(data, 'description', description)
+        end
+        
+        return data, validationErrors
     end
     
     self.adjustFrame = f
@@ -433,32 +477,39 @@ function Points:UpdateAdjustFrame(name, resource)
     local char = Get(name)
     local c = (AddOn.GetClassColor(char.class))
     
-    self.adjustFrame.name:SetText(AddOn.Ambiguate(name))
+    --self.adjustFrame.name:SetText(AddOn.Ambiguate(name))
+    self.adjustFrame.name:SetText(name)
     self.adjustFrame.name:SetTextColor(c.r, c.g, c.b, c.a)
     
     self.adjustFrame.resourceType:SetValue(resource)
     self.adjustFrame.resourceType:SetText(Traffic.TypeIdToResource[resource]:upper())
     
-    if not self.adjustFrame:IsVisible() then self.adjustFrame:Show() end
-end
-
-function Points:GetAdjustPointsData()
-    if not self.adjustFrame then return {} end
+    self.adjustFrame.actionType:SetValue(nil)
+    self.adjustFrame.actionType:SetText(nil)
     
-    return {
-        subject = self.adjustFrame.name:GetText(),
-        actionType = self.adjustFrame.actionType:GetValue(),
-        resourceType = self.adjustFrame.resourceType:GetValue(),
-        quantity = self.adjustFrame.quantity:GetText(),
-        description = self.adjustFrame.desc:GetText(),
-    }
+    self.adjustFrame.quantity:SetText('')
+    self.adjustFrame.desc:SetText('')
+    
+    if not self.adjustFrame:IsVisible() then self.adjustFrame:Show() end
 end
 
 
 function Points.AdjustPointsOnShow(frame, data)
     UI.DecoratePopup(frame)
-    Logging:Debug("AdjustPointsOnShow() : %s", Util.Objects.ToString(data))
-    --frame.text:SetText(format(L["confirm_award_item_to_player"], data.link, c:WrapTextInColorCode(awardTo)))
+    
+    local char = Get(data.subject)
+    local c = (AddOn.GetClassColor(char.class))
+    local classDeco = UI.ColoredDecorator(c.r, c.g, c.b)
+    -- Are you certain you want to %s %d %s %s %s?
+    frame.text:SetText(
+            format(L["confirm_adjust_player_points"],
+                   Traffic.TypeIdToAction[data.actionType]:lower(),
+                   data.quantity,
+                   Traffic.TypeIdToResource[data.resourceType]:upper(),
+                   data.actionType == Traffic.ActionType.Add and "to" or "from",
+                   classDeco:decorate(data.subject)
+            )
+    )
 end
 
 Points.RightClickEntries = {

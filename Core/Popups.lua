@@ -103,7 +103,6 @@ Dialog:Register(AddOn.Constants.Popups.ConfirmAdjustPoints, {
         },
         {
             text = _G.NO,
-            on_click = function() end,
         },
     },
     hide_on_escape = true,

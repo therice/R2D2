@@ -5,12 +5,12 @@ local _, AddOn = ...
 AddOn.defaults = {
     profile = {
         logThreshold    = AddOn.Libs.Logging.Level.Debug,
-        onlyUseInRaids  = true,
+        onlyUseInRaids  = false,
         -- how many responses to show in the latest awarded items display
         moreInfoEntries = 4,
         usage = {
             never   =   false,
-            ml      =   false,
+            ml      =   true,
             ask_ml  =   true,
             state   =   "ask_ml",
         },

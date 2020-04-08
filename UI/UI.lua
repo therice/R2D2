@@ -428,10 +428,10 @@ end
 function UI.DecoratePopup(frame)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
-                          bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                          bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
                           edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-                          tile = true, tileSize = 8, edgeSize = 4,
-                          insets = { left = 2, right = 2, top = 2, bottom = 2 }
+                          tile     = true, tileSize = 8, edgeSize = 4,
+                          insets   = { left = 2, right = 2, top = 2, bottom = 2 }
                       })
     frame:SetBackdropColor(0, 0, 0, 1)
     frame:SetBackdropBorderColor(0, 0, 0, 1)
@@ -448,12 +448,12 @@ end
 function UI.UpdateErrorTooltip(f, errors)
     local tip = f.errorTooltip
     tip:SetOwner(f, "ANCHOR_LEFT")
-    tip:AddLine("Errors")
+    tip:AddLine(ColoredDecorator(0.77, 0.12, 0.23):decorate(L["errors"]))
     tip:AddLine(" ")
+    local errorDeco = ColoredDecorator(1, 0.96, 0.41)
     for _, error in pairs(errors) do
-        tip:AddDoubleLine(error)
+        tip:AddLine(errorDeco:decorate(error))
     end
-    
     tip:Show()
     tip:SetAnchorType("ANCHOR_LEFT", 0, -tip:GetHeight())
 end

@@ -904,7 +904,7 @@ function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data,
                 data.winner,
                 data.link,
                 data.responseId,
-                nil,
+                nil, -- boss
                 data.reason,
                 session,
                 data
