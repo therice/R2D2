@@ -280,12 +280,15 @@ end
 function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
     Logging:Trace("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
     Logging:Trace("OnCommReceived() : %s", serializedMsg)
+    
     local C = AddOn.Constants
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
         local fromMl = AddOn:UnitIsUnit(sender, AddOn.masterLooter)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, fromMl=%s, data=%s,",
-                      tostring(success), command, tostring(fromMl), Util.Objects.ToString(data, 3))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, fromMl=%s, data=%s,",
+                      tostring(success), command, tostring(sender), tostring(dist),
+                      tostring(fromMl), Util.Objects.ToString(data, 3)
+        )
         
         if success then
             if command == C.Commands.ChangeResponse then

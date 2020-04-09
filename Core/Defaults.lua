@@ -4,16 +4,10 @@ local _, AddOn = ...
 -- The second magic key is ['**']. It works similar to the ['*'] key, except that it'll also be inherited by all the keys in the same table.
 AddOn.defaults = {
     profile = {
-        logThreshold    = AddOn.Libs.Logging.Level.Debug,
-        onlyUseInRaids  = false,
+        logThreshold = AddOn.Libs.Logging.Level.Debug,
         -- how many responses to show in the latest awarded items display
+        -- this should probably go away
         moreInfoEntries = 4,
-        usage = {
-            never   =   false,
-            ml      =   true,
-            ask_ml  =   true,
-            state   =   "ask_ml",
-        },
         minimap = {
           shown = true,
           locked = false,

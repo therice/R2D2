@@ -6,11 +6,25 @@ local UI            = AddOn.components.UI
 local L             = AddOn.components.Locale
 local Models        = AddOn.components.Models
 
+TrafficHistory.options = {
+    name = 'Traffic History',
+    desc = 'Traffic History Description',
+    args = {
+    
+    }
+    
+}
+
+TrafficHistory.defaults = {
+    profile = {
+        enabled = true,
+    }
+}
+
 
 function TrafficHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
-    -- traffic history
-    self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB')
+    self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB', TrafficHistory.defaults)
 end
 
 function TrafficHistory:GetHistory()

@@ -157,6 +157,15 @@ function R2D2:SessionError(...)
     Logging:Error(...)
 end
 
+-- this is hooked primarily through the Module Prototype (SetDbValue) in Init.lua
+-- but can be invoked directly as needed (for instance if you don't use the standard set definition
+-- for an option)
+function R2D2:ConfigTableChanged(moduleName, val)
+    Logging:Debug("ConfigTableChanged('%s') : %s", moduleName, Util.Objects.ToString(val))
+    -- need to serialize the values, as AceBucket (if used on other end) only groups by a signle value
+    self:SendMessage(AddOn.Constants.Messages.ConfigTableChanged, self:Serialize(moduleName, val))
+end
+
 function R2D2:Help()
     print(format(L["chat version"], tostring(self.version)))
     for _, v in ipairs(self.chatCmdHelp) do

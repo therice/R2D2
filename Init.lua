@@ -76,6 +76,7 @@ AddOn.components.Logging    = R2D2.Libs.Logging
 
 local Logging = AddOn.components.Logging
 local Tables = AddOn.Libs.Util.Tables
+local Objects = AddOn.Libs.Util.Objects
 
 -- Establish a prototype for mixing into any add-on modules
 -- These are used for the configuration UI
@@ -96,12 +97,16 @@ local ModulePrototype = {
         Logging:Trace("Module:SetEnabled(%s) : %s", self:GetName(), tostring(self.db.profile.enabled))
     end,
     GetDbValue = function (self, i)
+        -- Logging:Debug("Module:GetDbValue(%s, %s) : %s", self:GetName(), tostring(i[#i]), Objects.ToString(i))
         Logging:Trace("Module:GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))
         return Tables.Get(self.db.profile, tostring(i[#i]))
     end,
     SetDbValue = function (self, i, v)
+        --Logging:Debug("Module:SetDbValue(%s, %s, %s) : %s ", self:GetName(), tostring(i[#i]), tostring(v or 'nil'), Objects.ToString(i))
         Logging:Trace("Module:SetDbValue(%s, %s, %s)", self:GetName(), tostring(i[#i]), tostring(v or 'nil'))
         Tables.Set(self.db.profile, tostring(i[#i]), v)
+        -- we probably want to get the namespace here as well
+        AddOn:ConfigTableChanged(self:GetName(), i[#i])
     end,
 }
 R2D2:SetDefaultModulePrototype(ModulePrototype)

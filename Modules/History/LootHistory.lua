@@ -5,12 +5,25 @@ local Util          = AddOn.Libs.Util
 local L             = AddOn.components.Locale
 local Models        = AddOn.components.Models
 
-local stats = {}
+LootHistory.options = {
+    name = 'Loot History',
+    desc = 'Loot History Description',
+    args = {
+    
+    }
+}
+
+LootHistory.defaults = {
+    profile = {
+        enabled = true,
+    }
+}
+
 
 function LootHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     -- loot history
-    self.db = AddOn.Libs.AceDB:New('R2D2_LootDB')
+    self.db = AddOn.Libs.AceDB:New('R2D2_LootDB', LootHistory.defaults)
 end
 
 function LootHistory:GetHistory()
@@ -61,7 +74,7 @@ function LootHistory:CreateEntry(winner, link, responseId, boss, reason, session
     entry.typeCode = itemEntry and itemEntry.typeCode
     
     AddOn:SendMessage(C.Messages.LootHistorySend, entry, winner, responseId, boss, reason, session, candidateData)
-    -- todo : allow for settings for sending and tracking history
+    -- todo : support settings for sending and tracking history
     -- todo : send to guild or group? group for now
     AddOn:SendCommand(C.group, C.Commands.LootHistoryAdd, winner, entry)
     return entry

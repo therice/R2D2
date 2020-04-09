@@ -97,6 +97,7 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
     tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
 end
 
+-- bet we can use AceBucket for this
 local UpdateHandler = Class('UpdateHandler')
 
 function UpdateHandler:initialize(callback, updateInterval)

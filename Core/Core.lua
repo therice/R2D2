@@ -34,7 +34,7 @@ function AddOn:LootHistoryModule()
 end
 
 function AddOn:GetMasterLooter()
-    Logging:Trace("GetMasterLooter()")
+    Logging:Debug("GetMasterLooter()")
     local MasterLooterDbCheck = AddOn.Constants.Commands.MasterLooterDbCheck
 
     -- always the player when testing alone
@@ -85,33 +85,40 @@ function AddOn:NewMasterLooterCheck()
         return
     end
     
-    if self.db.profile.usage.never then return end
+    -- if self.db.profile.usage.never then return end
+    if self:MasterLooterModule():DbValue('usage.never') then return end
     if self.masterLooter == nil then return end
-    
     -- Someone else has become ML
-    if not self.isMasterLooter and self.masterLooter then
-        return
-    end
+    if not self.isMasterLooter and self.masterLooter then return end
+    -- if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
+    if not IsInRaid() and self:MasterLooterModule():DbValue('onlyUseInRaids') then return end
     
-    if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
+    Logging:Debug("NewMasterLooterCheck() : isMasterLooter=%s", tostring(self.isMasterLooter))
     
     -- we are ml and shouldn't as for usage
-    if self.isMasterLooter and self.db.profile.usage.ml then
+    --  self.db.profile.usage.ml
+    if self.isMasterLooter and self:MasterLooterModule():DbValue('usage.ml') then
         self:StartHandleLoot()
     -- ask if using master looter
-    elseif self.isMasterLooter and self.db.profile.usage.ask_ml then
+    -- self.db.profile.usage.ask_ml
+    elseif self.isMasterLooter and self:MasterLooterModule():DbValue('usage.ask_ml') then
         return Dialog:Spawn(AddOn.Constants.Popups.ConfirmUsage)
     end
 end
 
 
 function AddOn:OnRaidEnter()
-    if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
+    Logging:Debug("OnRaidEnter()")
+    
+    --if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
+    if not IsInRaid() and self:MasterLooterModule():DbValue('onlyUseInRaids') then return end
     if not self.masterLooter and UnitIsGroupLeader("player") then
-        if self.db.profile.usage.leader then
+        -- self.db.profile.usage.leader
+        if self:MasterLooterModule():DbValue('usage.leader') then
             self.isMasterLooter, self.masterLooter = true, self.playerName
             self:StartHandleLoot()
-        elseif self.db.profile.usage.ask_leader then
+        -- self.db.profile.usage.ask_leader
+        elseif self:MasterLooterModule():DbValue('usage.ask_leader') then
             return Dialog:Spawn(AddOn.Constants.Popups.ConfirmUsage)
         end
     end
@@ -126,7 +133,8 @@ function AddOn:StartHandleLoot()
         self:Print(L["changing_loot_method_to_ml"])
         SetLootMethod("master", self.Ambiguate(self.playerName))
     end
-    -- todo : probably want this to be a configuration param, not just 'epic
+    
+    -- todo : probably want this to be a configuration param, not just 'epic'
     SetLootThreshold(4)
     self:Print(format(L["player_handles_looting"], self.playerName))
     self.handleLoot = true
@@ -149,21 +157,21 @@ function AddOn:GetMasterLooterDbValue(...)
 end
 
 function AddOn:OnMasterLooterDbReceived(mlDb)
-    Logging:Debug("OnMasterLooterDbReceived()")
+    Logging:Debug("OnMasterLooterDbReceived() : %s", Util.Objects.ToString(mlDb, 4))
     local ML = self:MasterLooterModule()
 
     self.mlDb = mlDb
     for type, _ in pairs(mlDb.responses) do
-        if not ML:GetDefaultDbValue('profile.responses', type) then
-            setmetatable(self.mlDb.responses[type], {__index = ML:GetDefaultDbValue('profile.responses.default')})
+        if not ML:DefaultDbValue('profile.responses', type) then
+            setmetatable(self.mlDb.responses[type], {__index = ML:DefaultDbValue('profile.responses.default')})
         end
     end
 
     if not self.mlDb.responses.default then self.mlDb.responses.default = {} end
-    setmetatable(self.mlDb.responses.default, {__index = ML:GetDefaultDbValue('profile.responses.default')})
+    setmetatable(self.mlDb.responses.default, {__index = ML:DefaultDbValue('profile.responses.default')})
 
     if not self.mlDb.buttons.default then self.mlDb.buttons.default = {} end
-    setmetatable(self.mlDb.buttons.default, { __index = ML:GetDefaultDbValue('profile.buttons.default')})
+    setmetatable(self.mlDb.buttons.default, { __index = ML:DefaultDbValue('profile.buttons.default')})
 end
 
 function AddOn:GetLootSlotInfo(slot)
@@ -192,7 +200,7 @@ function AddOn:GetResponse(type, name)
     end
     
     local function DbValue(path, attr)
-        local dbValue = ML:GetDbValue(path)
+        local dbValue = ML:DbValue(path)
         return Util.Tables.ContainsKey(dbValue, attr) and dbValue[attr] or nil
     end
     
@@ -205,7 +213,7 @@ function AddOn:GetResponse(type, name)
             return response
         else
             Logging:Warn("No default responses entry for response '%s'", tostring(name))
-            return ML:GetDefaultDbValue('profile.responses.default.DEFAULT')
+            return ML:DefaultDbValue('profile.responses.default.DEFAULT')
         end
     -- must be supplied by master looter's db
     else
@@ -219,7 +227,7 @@ function AddOn:GetResponse(type, name)
                     return response
                 else
                     Logging:Warn("Unknown response - type '%s' / name '%s'", tostring(type), tostring(name))
-                    return ML:GetDefaultDbValue('profile.responses.default.DEFAULT')
+                    return ML:DefaultDbValue('profile.responses.default.DEFAULT')
                 end
             end
         else
@@ -240,14 +248,14 @@ function AddOn:GetNumButtons(type)
 
     -- if no master looter db, just use the defaults
     if not next(self.mlDb) then
-        local buttons = ML:GetDbValue('buttons', type)
+        local buttons = ML:DbValue('buttons', type)
         return buttons and buttons.numButtons or 0
     end
     -- todo : button slots?
     if Util.Objects.Equals(type, "default") or not self:GetMasterLooterDbValue('buttons', type) then
         return self:GetMasterLooterDbValue('buttons.default') and
                 self:GetMasterLooterDbValue('buttons.default.numButtons') or
-                ML:GetDbValue('buttons.default.numButtons') or 0
+                ML:DbValue('buttons.default.numButtons') or 0
     else
         if self:GetMasterLooterDbValue('buttons', type) then
             return #self.mlDb.buttons[type]

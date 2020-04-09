@@ -56,11 +56,13 @@ function Config.SetupOptions()
             end
 
             if m.options.name then
-                Logging:Trace("Config:SetupOptions() : Registering option arguments with name %s", name)
+                local childGroups = m.options.childGroups and m.options.childGroups or 'tree'
+                Logging:Debug("Config:SetupOptions() : Registering option arguments with name %s", name)
                 Options.args[name]= {
                     handler = m,
                     order = 100,
                     type = 'group',
+                    childGroups = childGroups,
                     name = m.options.name,
                     desc = m.options.desc,
                     args = m.options.args,

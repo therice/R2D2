@@ -6,11 +6,23 @@ local Util = AddOn.Libs.Util
 local ItemUtil = AddOn.Libs.ItemUtil
 local Models = AddOn.components.Models
 local UI = AddOn.components.UI
+local COpts = UI.ConfigOptions
 
 local CANDIDATE_SEND_COOLDOWN = 10
 
 ML.defaults = {
     profile = {
+        -- should it only be enabled in raids
+        onlyUseInRaids = true,
+        -- various types of usage for add-on
+        usage = {
+            never  = false,
+            ml     = false,
+            ask_ml = true,
+            state  = "ask_ml",
+        },
+        -- is 'out of raid' support enabled (specifies auto-responses when user not in instance, but in raid)
+        outOfRaid = false,
         buttons = {
             -- dynamically constructed in the do/end loop below
             -- example data left behind for illustration
@@ -51,6 +63,134 @@ ML.defaults = {
     }
 }
 
+ML.options = {
+    name = L['ml'],
+    type = 'group',
+    --childGroups = 'tab',
+    ignore_enable_disable = true,
+    args = {
+        description = COpts.Description(L["ml_desc"]),
+        general = {
+            order = 1,
+            type = 'group',
+            name = _G.GENERAL,
+            args = {
+                usageOptions = {
+                    order = 1,
+                    type = 'group',
+                    name = L['usage_options'],
+                    inline = true,
+                    args = {
+                        usage = COpts.Select(
+                                L['usage'], 1, L['usage_desc'],
+                                {
+                                    ml     = L["usage_ml"],
+                                    ask_ml = L["usage_ask_ml"],
+                                    never  = L["usage_never"]
+                                },
+                                function() return ML:DbValue('usage.state') end,
+                                function(_, key)
+                                    for k in pairs(ML.db.profile.usage) do
+                                        if k == key then
+                                            ML.db.profile.usage[k] = true
+                                        else
+                                            ML.db.profile.usage[k] = false
+                                        end
+                                    end
+                                    ML.db.profile.usage.state = key
+                                    AddOn:ConfigTableChanged(ML:GetName(), 'usage.state')
+                                end,
+                                { width = 'double' }
+                        ),
+                        spacer = COpts.Header("", nil, 2),
+                        -- a toggle that has special requirements in regards to setup
+                        -- so don't use COpts.Toggle() and emit directly
+                        leaderUsage = {
+                            order = 3,
+                            name = function()
+                                return ML.db.profile.usage.ml and L["usage_leader_always"] or L["usage_leader_ask"]
+                            end,
+                            desc = L["usage_leader_desc"],
+                            type = 'toggle',
+                            get = function()
+                                return ML.db.profile.usage.leader or ML.db.profile.usage.ask_leader
+                            end,
+                            set = function(_, val)
+                                ML.db.profile.usage.leader, ML.db.profile.usage.ask_leader = false, false
+                                if ML.db.profile.usage.ml then
+                                    ML.db.profile.usage.leader = val
+                                    AddOn:ConfigTableChanged(ML:GetName(), 'usage.leader')
+                                end
+                                if ML.db.profile.usage.ask_ml then
+                                    ML.db.profile.usage.ask_leader = val
+                                    AddOn:ConfigTableChanged(ML:GetName(), 'usage.ask_leader')
+                                end
+                            end,
+                            disabled = function()
+                                return ML.db.profile.usage.never
+                            end
+                        },
+                        onlyUseInRaids = COpts.Toggle(L['only_use_in_raids'], 4, L['only_use_in_raids_desc']),
+                        outOfRaid = COpts.Toggle(L['out_of_raid'], 5, L['out_of_raid_desc']),
+                    }
+                },
+            },
+        },
+        announcements = {
+            order = 2,
+            type = 'group',
+            name = 'Announcements',
+            args = {
+                description = COpts.Description('TODO : Incomplete'),
+                awards = {
+                    order = 1,
+                    name = "Awards",
+                    type = 'group',
+                    inline = true,
+                    args = {
+                    
+                    }
+                },
+                considerations = {
+                    order = 2,
+                    name = "Considerations",
+                    type = 'group',
+                    inline = true,
+                    args = {
+                    
+                    }
+                }
+            }
+        },
+        responses = {
+            order = 3,
+            type = 'group',
+            name = 'Responses',
+            args = {
+                description = COpts.Description('TODO : Incomplete'),
+                timeout = {
+                    order = 1,
+                    name = "Timeout",
+                    type = 'group',
+                    inline = true,
+                    args = {
+        
+                    }
+                },
+                whisperResponses = {
+                    order = 2,
+                    name = "Responses From Whisper",
+                    type = 'group',
+                    inline = true,
+                    args = {
+        
+                    }
+                }
+            }
+        }
+    }
+}
+
 -- Copy defaults from GearPoints into our defaults for buttons/responses
 -- This actually should be done via the AddOn's DB once it's initialized, but we currently
 -- don't allow users to change these values (either here or from GearPoints) so we can
@@ -82,6 +222,7 @@ end
 function ML:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), ML.defaults)
+    -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(self.db.namespaces, 2))
     -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(ML.defaults, 6))
     --[[
         {profile =
@@ -135,7 +276,10 @@ function ML:OnEnable()
     -- is a session in flight
     self.running = false
     self:RegisterComm(name, "OnCommReceived")
-    self:RegisterEvent("CHAT_MSG_WHISPER", "OnEvent")
+    self:RegisterEvent(AddOn.Constants.Events.ChatMessageWhisper, "OnEvent")
+    self:RegisterEvent(AddOn.Constants.Events.PlayerRegenEnabled, "OnEvent")
+    self:RegisterBucketEvent(AddOn.Constants.Events.GuildRosterUpdate, 10, "UpdateCandidates")
+    self:RegisterBucketMessage(AddOn.Constants.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
 end
 
 function ML:OnDisable()
@@ -147,33 +291,52 @@ function ML:OnDisable()
     self:UnhookAll()
 end
 
+-- when the db was changed, need to check if we must broadcast the new MasterLooter Db
+-- the msg will be in the format of 'ace serialized message' = 'count of event'
+-- where the deserialized message will be a tuple of 'module of origin' (e.g MasterLooter), 'db key name' (e.g. outOfRaid)
+function ML:ConfigTableChanged(msg)
+    -- Logging:Debug("ConfigTableChanged() : %s", Util.Objects.ToString(msg))
+    if not AddOn.mlDb then return ML:UpdateDb() end
+    for serializedMsg, _ in pairs(msg) do
+        local success, module, val = AddOn:Deserialize(serializedMsg)
+        --Logging:Debug("ConfigTableChanged(%s) : %s",  Util.Objects.ToString(module), Util.Objects.ToString(val))
+        if success and self:GetName() == module then
+            for key in pairs(AddOn.mlDb) do
+                if key == val then return ML:UpdateDb() end
+            end
+        end
+    end
+end
+
 -- @return the 'db' value at specified path
-function ML:GetDbValue(...)
+-- intentionally not named 'Get'DbValue to avoid conflict with default module prototype as specified
+-- in Init.lua
+function ML:DbValue(...)
     local path = Util.Strings.Join('.', ...)
+    -- Logging:Debug('ML:DbValue(%s)', path)
     return Util.Tables.Get(self.db.profile, path)
 end
 
 -- @return the 'default' value at specified path
-function ML:GetDefaultDbValue(...)
+function ML:DefaultDbValue(...)
     local path = Util.Strings.Join('.', ...)
+    -- Logging:Debug('ML:DefaultDbValue(%s)', path)
     return Util.Tables.Get(ML.defaults, path)
 end
 
-
 function ML:BuildDb()
     local db = self.db.profile
-
     -- iterate through the responses and capture any changes
     local changedResponses = {}
     for type, responses in pairs(db.responses) do
         for i,_ in ipairs(responses) do
             -- don't capture more than number of buttons
-            if i > self:GetDbValue('buttons', type, 'numButtons') then break end
+            if i > self:DbValue('buttons', type, 'numButtons') then break end
 
-            local defaultResponses = self:GetDefaultDbValue('profile.responses', type)
+            local defaultResponses = self:DefaultDbValue('profile.responses', type)
             local defaultResponse = defaultResponses and defaultResponses[i] or nil
 
-            local dbResponse = self:GetDbValue('responses', type)[i]
+            local dbResponse = self:DbValue('responses', type)[i]
 
             -- look at type, text and color
             if not defaultResponse
@@ -190,12 +353,12 @@ function ML:BuildDb()
     for type, buttons in pairs(db.buttons) do
         for i in ipairs(buttons) do
             -- don't capture more than number of buttons
-            if i > self:GetDbValue('buttons', type, 'numButtons') then break end
+            if i > self:DbValue('buttons', type, 'numButtons') then break end
 
-            local defaultResponses = self:GetDefaultDbValue('profile.buttons', type)
+            local defaultResponses = self:DefaultDbValue('profile.buttons', type)
             local defaultResponse = defaultResponses and defaultResponses[i] or nil
 
-            local dbResponse = self:GetDbValue('buttons', type)[i]
+            local dbResponse = self:DbValue('buttons', type)[i]
 
             -- look a type and text
             if not defaultResponse
@@ -211,6 +374,7 @@ function ML:BuildDb()
     local Db = {
         buttons     =   changedButtons,
         responses   =   changedResponses,
+        outOfRaid   =   db.outOfRaid,
     }
 
     --[[
@@ -223,7 +387,8 @@ function ML:BuildDb()
                 default = {
                     numButtons = 4
                 }
-            }
+            },
+            ...
         }
     --]]
     AddOn:SendMessage(AddOn.Constants.Messages.MasterLooterBuildDb, Db)
@@ -837,10 +1002,15 @@ end
 function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
     Logging:Trace("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
     Logging:Trace("OnCommReceived() : %s", serializedMsg)
+    
     local C = AddOn.Constants
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 3))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
+                      tostring(success), command, tostring(sender), tostring(dist),
+                      Util.Objects.ToString(data, 3)
+        )
+        
         -- only ML receives these commands
         if success and AddOn.isMasterLooter then
             if command == C.Commands.PlayerInfo then

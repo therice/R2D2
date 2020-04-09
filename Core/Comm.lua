@@ -169,7 +169,10 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
 
     if prefix == C.name then
         local success, command, data = self:Deserialize(serializedMsg)
-        Logging:Debug("OnCommReceived() : success=%s, command=%s, data=%s", tostring(success), command, Util.Objects.ToString(data, 3))
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
+                      tostring(success), command, tostring(sender), tostring(dist),
+                      Util.Objects.ToString(data, 3)
+        )
 
         if success then
             if command == C.Commands.LootTable then
@@ -211,9 +214,9 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                     end
 
                     -- for anyone that is currently part of group, but outside of instances
-                    -- automatically respond to each item
-                    if GetNumGroupMembers() >= 10 and not IsInInstance() then
-                       self:Debug("Raid member, but not in the instance. Responding to each item to that affect.")
+                    -- automatically respond to each item (if support is enabled)
+                    if self:GetMasterLooterDbValue('outOfRaid') and GetNumGroupMembers() >= 8 and not IsInInstance() then
+                        self:Debug("Raid member, but not in the instance. Responding to each item to that affect.")
                         Util.Tables.Iter(self.lootTable,
                                 function(entry, session)
                                     self:SendResponse(C.group, session, C.Responses.NotInRaid,
@@ -221,6 +224,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                                     )
                                 end
                         )
+                        return
                     end
 
                     self:DoAutoPass(self.lootTable)

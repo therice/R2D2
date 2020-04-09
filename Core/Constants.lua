@@ -53,6 +53,7 @@ AddOn.Constants = {
     },
 
     Events = {
+        ChatMessageWhisper      =   "CHAT_MSG_WHISPER",
         EncounterEnd            =   "ENCOUNTER_END",
         EncounterStart          =   "ENCOUNTER_START",
         GuildRosterUpdate       =   "GUILD_ROSTER_UPDATE",
@@ -72,6 +73,7 @@ AddOn.Constants = {
     Messages = {
         AwardFailed             =   name .. "_AwardFailed",
         AwardSuccess            =   name .. "_AwardSuccess",
+        ConfigTableChanged      =   name .. "_ConfigTableChanged",
         LootHistorySend         =   name .. "_LootHistorySend",
         MasterLooterAddItem     =   name .. "_MasterLooterAddItem",
         MasterLooterBuildDb     =   name .. "_MasterLooterBuildDb",
