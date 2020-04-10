@@ -1,5 +1,15 @@
 local _, AddOn = ...
+local AceGUI = AddOn.Libs.AceGUI
+local Util = AddOn.Libs.Util
+local Window = AddOn.Libs.Window
+local Strings = Util.Strings
+local Objects = Util.Objects
+local Numbers = Util.Numbers
+local Logging = AddOn.components.Logging
+
+local L = AddOn.components.Locale
 local Class = AddOn.Libs.Class
+local ST = AddOn.Libs.ScrollingTable
 
 local UI = {
     ConfigOptions = {}
@@ -7,16 +17,7 @@ local UI = {
 
 AddOn.components.UI = UI
 
-local AceGUI    = AddOn.Libs.AceGUI
-local Util      = AddOn.Libs.Util
-local Window    = AddOn.Libs.Window
-local Strings   = Util.Strings
-local Objects   = Util.Objects
-local Numbers   = Util.Numbers
-local Logging   = AddOn.components.Logging
-local COpts     = UI.ConfigOptions
-local L         = AddOn.components.Locale
-
+local COpts = UI.ConfigOptions
 
 -- AceConfig Options
 local function Extra(options, extra)
@@ -167,6 +168,37 @@ function UI.ScrollingTableDoCellUpdate(fn)
         after(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     end
 end
+
+function UI.Sort(table, rowa, rowb, sortbycol, valueFn)
+    local column = table.cols[sortbycol]
+    local row1, row2 = table:GetRow(rowa), table:GetRow(rowb)
+    local v1, v2 = valueFn(row1), valueFn(row2)
+    
+    if v1 == v2 then
+        if column.sortnext then
+            local nextcol = table.cols[column.sortnext]
+            if nextcol and not(nextcol.sort) then
+                if nextcol.comparesort then
+                    return nextcol.comparesort(table, rowa, rowb, column.sortnext)
+                else
+                    return table:CompareSort(rowa, rowb, column.sortnext)
+                end
+            else
+                return false
+            end
+        else
+            return false
+        end
+    else
+        local direction = column.sort or column.defaultsort or ST.SORT_DSC
+        if direction == ST.SORT_ASC then
+            return v1 < v2
+        else
+            return v1 > v2
+        end
+    end
+end
+
 
 function UI.RGBToHex(r,g,b)
     return string.format("%02x%02x%02x", 255*r, 255*g, 255*b)

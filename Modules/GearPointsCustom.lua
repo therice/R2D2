@@ -142,7 +142,6 @@ end
 function GpCustom:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     ItemUtil:SetCustomItems(self.db.profile.custom_items)
-    --TestItemUtil(18832)
 end
 
 function GpCustom:OnDisable()

@@ -36,6 +36,11 @@ function Loot:OnDisable()
     self:CancelAllTimers()
 end
 
+
+function Loot:EnableOnStartup()
+    return false
+end
+
 -- @param item a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
     --[[

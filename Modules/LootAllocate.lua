@@ -102,6 +102,10 @@ function LootAllocate:OnDisable()
     updateIntervalRemaining = 0
 end
 
+function LootAllocate:EnableOnStartup()
+    return false
+end
+
 function LootAllocate:Hide()
     self.frame.moreInfo:Hide()
     self.frame:Hide()

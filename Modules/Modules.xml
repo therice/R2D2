@@ -9,6 +9,7 @@
     <Script file="LootAllocate.lua" />
     <Script file="LootSession.lua" />
     <Script file="Loot.lua" />
+    <Script file="VersionCheck.lua" />
     <Script file="History\LootHistory.lua" />
     <Script file="History\TrafficHistory.lua" />
 </Ui>

@@ -1,4 +1,4 @@
-local _, AddOn = ...
+local name, AddOn = ...
 local L         = AddOn.components.Locale
 local Logging   = AddOn.components.Logging
 local Util      = AddOn.Libs.Util
@@ -47,11 +47,15 @@ function Config.SetupOptions()
                         spacer = COpts.Header("", nil, 3),
                         test = COpts.Execute(L["Test"], 4, L["test_desc"],
                                              function()
-                                                 AddOn:Config()
+                                                 AddOn.Libs.AceConfigDialog:Close(name)
                                                  AddOn:Test(4)
                                              end
                         ),
-                        verCheck = COpts.Execute(L['version_check'], 5, L["version_check_desc"], function() end),
+                        verCheck = COpts.Execute(L['version_check'], 5, L["version_check_desc"],
+                                                 function()
+                                                     AddOn.Libs.AceConfigDialog:Close(name)
+                                                     AddOn:CallModule('VersionCheck')
+                                                 end),
                         sync = COpts.Execute(L["sync"], 6, L["sync_desc"], function() end),
                     }
                 }

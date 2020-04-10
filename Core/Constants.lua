@@ -45,6 +45,8 @@ AddOn.Constants = {
         Roll                    =   "Roll",
         Rolls                   =   "Rolls",
         StartHandleLoot         =   "StartHandleLoot",
+        VersionCheck            =   "VersionCheck",
+        VersionCheckReply       =   "VersionCheckReply",
     },
 
     DropDowns = {
@@ -81,6 +83,12 @@ AddOn.Constants = {
         SessionChangedPost      =   name .. "_SessionChangedPost"
     },
 
+    Modes = {
+        Standard                =   0x01,
+        Test                    =   0x02,
+        Develop                 =   0x04,
+    },
+    
     Popups = {
         ConfirmAdjustPoints     =   name .. "_ConfirmAdjustPoints",
         ConfirmAbort            =   name .. "_ConfigAbort",
@@ -94,9 +102,8 @@ AddOn.Constants = {
         NotInRaid               =   "NotInRaid",
     },
 
-    Modes = {
-        Standard                =   0x01,
-        Test                    =   0x02,
-        Develop                 =   0x04,
+    VersionStatus = {
+        Current   = "Current",
+        OutOfDate = "OutOfDate"
     }
 }

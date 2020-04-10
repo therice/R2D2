@@ -10,6 +10,7 @@ local Class        = AddOn.Libs.Class
 local GuildStorage = AddOn.Libs.GuildStorage
 
 local Mode = Class('Mode')
+AddOn.Mode = Mode
 
 function Mode:initialize()
     self.bitfield = AddOn.Constants.Modes.Standard
@@ -31,8 +32,8 @@ function Mode:Disabled(flag)
     return bit.band(self.bitfield, flag) == 0
 end
 
-if _G.R2D2_Testing then
-    AddOn.Mode = Mode
+function Mode:__tostring()
+    return Util.Numbers.BinaryRepr(self.bitfield)
 end
 
 function R2D2:OnInitialize()
@@ -81,6 +82,8 @@ function R2D2:OnInitialize()
     self.reconnectPending = false
     self.instanceName = ""
     self.inCombat = false
+    -- have we completed our initial version check (for being out of date)
+    self.versionCheckComplete = false
     -- core add-on settings
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
@@ -94,7 +97,8 @@ function R2D2:OnEnable()
     self.mode:Enable(R2D2.Constants.Modes.Develop)
     
     for name, module in self:IterateModules() do
-        if not module.db or module.db.profile.enabled or not module.defaults then
+        -- todo : fix this nonsense
+        if module:EnableOnStartup() then
             Logging:Debug("OnEnable(%s) - Enabling module (startup) '%s'", self:GetName(), name)
             module:Enable()
         end
@@ -129,12 +133,13 @@ function R2D2:OnEnable()
                 end
         )
         
+        self:ScheduleTimer("SendGuildVersionCheck", 2)
     end
     
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
+    self:Print(format(L["chat version"], tostring(self.version)) .. " is now loaded. Thank you for trusting us to handle all your EP/GP needs!")
 end
-
 
 function R2D2:OnDisable()
     self:UnregisterAllEvents()
@@ -204,8 +209,12 @@ function R2D2:Config()
     end
 end
 
-function R2D2:Version()
-
+function R2D2:Version(showOutOfDateClients)
+    if showOutOfDateClients then
+        self:VersionCheckModule():PrintOutOfDateClients()
+    else
+        self:CallModule('VersionCheck')
+    end
 end
 
 
@@ -222,7 +231,7 @@ function R2D2:ChatCommand(msg)
     elseif cmd == 'test' or cmd == "t" then
         self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then
-        self:Version()
+        self:Version(args[1])
     elseif cmd == 'dev' then
         local flag = R2D2.Constants.Modes.Develop
         if self.mode:Enabled(flag) then

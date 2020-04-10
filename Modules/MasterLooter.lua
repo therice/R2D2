@@ -282,6 +282,10 @@ function ML:OnInitialize()
     --]]
 end
 
+function ML:EnableOnStartup()
+    return false
+end
+
 function ML:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     -- mapping of candidateName = { class, role, rank }

@@ -4,8 +4,8 @@ if not lib then
 	return; -- Already loaded and no upgrade necessary.
 end
 
-local Logging = LibStub('LibLogging-1.0')
-local Util = LibStub('LibUtil-1.1')
+-- local Logging = LibStub('LibLogging-1.0')
+-- local Util = LibStub('LibUtil-1.1')
 
 do
 	lib.SORT_ASC = 1;
@@ -344,8 +344,8 @@ do
 	-- @see Core.lua
 	local function CompareSort (self, rowa, rowb, sortbycol)
 		local cella, cellb = self:GetCell(rowa, sortbycol), self:GetCell(rowb, sortbycol)
-		Logging:Debug("CompareSort(%d, %d) : %s", sortbycol, rowa, Util.Objects.ToString(cella, 4))
-		Logging:Debug("CompareSort(%d, %d) : %s", sortbycol, rowb, Util.Objects.ToString(cellb, 4))
+		-- Logging:Debug("CompareSort(%d, %d) : %s", sortbycol, rowa, Util.Objects.ToString(cella, 4))
+		-- Logging:Debug("CompareSort(%d, %d) : %s", sortbycol, rowb, Util.Objects.ToString(cellb, 4))
 		
 		local a1, b1 = cella, cellb
 		if type(a1) == 'table' then

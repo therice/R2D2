@@ -186,7 +186,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                         Logging:Trace("Sent Disabled response to %s", sender)
                         return
                     end
-
+            
                     -- determine how many uncached items there are
                     local uncached = Util.Tables.CountFn(
                             self.lootTable,
@@ -196,41 +196,41 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                     if uncached > 0 then
                         return self:ScheduleTimer("OnCommReceived", 0, prefix, serializedMsg, dist, sender)
                     end
-
+            
                     -- Unpacking doesn't bring back class meta-data, need to reconstitute the entries
                     Util.Tables.Map(self.lootTable, function (entry) return Models.ItemEntry:new():reconstitute(entry) end)
                     self:PrepareLootTable(self.lootTable)
-
+            
                     -- Received LootTable without having received MasterLooterDb, well...
                     if not self.mlDb then
                         self:Warn("Received LootTable without having MasterLooterDb from %s", sender)
                         self:SendCommand(self.masterLooter, C.Commands.MasterLooterDbRequest)
                         return self:ScheduleTimer("OnCommReceived", 5, prefix, serializedMsg, dist, sender)
                     end
-
+            
                     -- we're the master looter, then start allocation
                     if self.isMasterLooter then
                         AddOn:CallModule("LootAllocate")
                         AddOn:GetModule("LootAllocate"):ReceiveLootTable(self.lootTable)
                     end
-
+            
                     -- for anyone that is currently part of group, but outside of instances
                     -- automatically respond to each item (if support is enabled)
                     if self:GetMasterLooterDbValue('outOfRaid') and GetNumGroupMembers() >= 8 and not IsInInstance() then
                         self:Debug("Raid member, but not in the instance. Responding to each item to that affect.")
                         Util.Tables.Iter(self.lootTable,
-                                function(entry, session)
-                                    self:SendResponse(C.group, session, C.Responses.NotInRaid,
-                                            nil, nil, entry.link, entry.ilvl, entry.equipLoc, true
-                                    )
-                                end
+                                         function(entry, session)
+                                             self:SendResponse(C.group, session, C.Responses.NotInRaid,
+                                                               nil, nil, entry.link, entry.ilvl, entry.equipLoc, true
+                                             )
+                                         end
                         )
                         return
                     end
-
+            
                     self:DoAutoPass(self.lootTable)
                     self:SendLootAck(self.lootTable)
-
+            
                     AddOn:CallModule("Loot")
                     AddOn:GetModule("Loot"):Start(self.lootTable)
                 else
@@ -258,14 +258,45 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 else
                     Logging:Warn("Non-MasterLooter %s sent DB", sender)
                 end
+            elseif command == C.Commands.VersionCheck and not self:UnitIsUnit(sender, "player") then
+                local name, _, _, v, mode = unpack(data)
+                local VC = self:VersionCheckModule()
+                local version = Models.SemanticVersion():reconstitute(v)
+                VC:TrackVersion(
+                        name,
+                        version,
+                        AddOn.Mode():reconstitute(mode)
+                )
+                if dist == "GUILD" then sender = C.guild end
+                self:SendCommand(sender,  C.Commands.VersionCheck.VersionCheckReply , self.playerName, self.playerClass, self.guildRank, self.version, self.mode)
+        
+                if self.versionCheckComplete then return end
+    
+                local verCheck = VC.CheckVersion(self.version, version)
+                if verCheck == C.VersionStatus.OutOfDate then
+                    self:PrintOutOfDateVersionWarning(version)
+                end
+            elseif command ==  C.Commands.VersionCheck.VersionCheckReply then
+                local name, _, _, v, mode = unpack(data)
+                if not name then Logging:Warn("VersionCheckReply without name from %s", sender)  end
+                local VC = self:VersionCheckModule()
+                local version = Models.SemanticVersion():reconstitute(v)
+                
+                VC:TrackVersion(
+                        name,
+                        version,
+                        AddOn.Mode():reconstitute(mode)
+                )
+    
+                if self.versionCheckComplete then return end
+                
+                local verCheck = VC.CheckVersion(self.version, version)
+                if verCheck == C.VersionStatus.OutOfDate then
+                    self:PrintOutOfDateVersionWarning(version)
+                end
             elseif command == C.Commands.ReRoll then
                 AddOn:Print(format(L["player_requested_reroll"], self.Ambiguate(sender)))
                 local table = unpack(data)
-                --[[
-                {
-                    {equipLoc = INVTYPE_WEAPONMAINHAND, ilvl = 65, link = [Sorcerous Dagger], isRoll = true, classes = 4294967295, noAutopass = true, typeCode = default, session = 4, texture = 135643}
-                }
-                --]]
                 Logging:Debug("ReRoll : %s", Util.Objects.ToString(table, 4))
                 Util.Tables.Map(table, function (entry) return Models.ItemEntry:new():reconstitute(entry) end)
                 self:PrepareLootTable(table)
@@ -295,7 +326,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                         self:ScheduleTimer("ResetReconnectRequest", 5)
                     end
                 end
-            -- todo : check if history is enabled
+                -- todo : check if history is enabled
             elseif command == C.Commands.LootHistoryAdd then
                 local winner, data = unpack(data)
                 local entry = Models.History.Loot():reconstitute(data)

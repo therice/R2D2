@@ -14,7 +14,7 @@ function AddOn.EmbedMoreInfoWidgets(module, f)
     local miButton = CreateFrame("Button", nil, f.content, "UIPanelButtonTemplate")
     miButton:SetSize(25, 25)
     miButton:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -20)
-    Logging:Debug("EmbedMoreInfoWidgets(%s)", tostring(moreInfo))
+    --Logging:Debug("EmbedMoreInfoWidgets(%s)", tostring(moreInfo))
     
     if moreInfo then
         miButton:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")

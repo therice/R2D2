@@ -115,4 +115,13 @@ local ModulePrototype = {
     GetDbValue = GetDbValue,
     SetDbValue = SetDbValue,
 }
+
+-- by default, try to use any associated db instance to determine if enabled
+-- can be override on a by module basis
+function ModulePrototype:EnableOnStartup()
+    local enable = (self.db and ((self.db.profile and self.db.profile.enabled) or self.db.enabled)) or false
+    Logging:Debug("EnableOnStartup(%s) : %s", self:GetName(), tostring(enable))
+    return enable
+end
+
 R2D2:SetDefaultModulePrototype(ModulePrototype)

@@ -32,6 +32,10 @@ function LootSession:OnDisable()
     self.frame.rows = {}
 end
 
+function LootSession:EnableOnStartup()
+    return false
+end
+
 function LootSession:Show(data)
     -- don't show another window if a session is active
     if sessionActive then return end

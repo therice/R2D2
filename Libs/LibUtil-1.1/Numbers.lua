@@ -38,3 +38,12 @@ end
 function Self.ToHex(num, minLength)
     return ("%." .. (minLength or 1) .. "x"):format(num)
 end
+
+function Self.BinaryRepr(n)
+    local t = {}
+    for i=7,0,-1 do
+        t[#t+1] = math.floor(n / 2^i)
+        n = n % 2^i
+    end
+    return table.concat(t)
+end

@@ -144,6 +144,10 @@ function LoggingUI:OnEnable()
     preInitLogging = {}
 end
 
+function LoggingUI:EnableOnStartup()
+    return true
+end
+
 function LoggingUI:Toggle()
     if self.frame:IsVisible() then
         self.frame:Hide()

@@ -11,6 +11,10 @@ function Minimap:OnEnable()
     self.mm:Initialize()
 end
 
+function Minimap:EnableOnStartup()
+    return true
+end
+
 local MinimapButton = {}
 MinimapButton.__index = MinimapButton
 
@@ -53,6 +57,7 @@ end
 function MinimapButton:Initialize()
     DbIcon:Register("R2D2", self.dataBroker, AddOn.db.profile.minimap)
 end
+
 
 function Minimap:GetButton()
     if self.mm then return self.mm end

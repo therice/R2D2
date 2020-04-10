@@ -13,7 +13,7 @@ local Traffic       = Models.History.Traffic
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 25, 10
 local DefaultScrollTableData = {}
-local Sort, Get
+local Get
 local MenuFrame, FilterMenu
 local points = {}
 
@@ -30,7 +30,7 @@ function Points:OnInitialize()
             colName      = "class",
             width        = 20,
             comparesort  = function(table, rowa, rowb, sortbycol)
-                return Sort(table, rowa, rowb, sortbycol,
+                return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
                                 return Get(row.name).class
                             end
@@ -46,7 +46,7 @@ function Points:OnInitialize()
             defaultsort  = ST.SORT_ASC,
             sortnext     = 1,
             comparesort  = function(table, rowa, rowb, sortbycol)
-                return Sort(table, rowa, rowb, sortbycol,
+                return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
                                 return AddOn.Ambiguate(row.name)
                             end
@@ -62,7 +62,7 @@ function Points:OnInitialize()
             defaultsort  = ST.SORT_ASC,
             sortnext     = 2,
             comparesort  = function(table, rowa, rowb, sortbycol)
-                return Sort(table, rowa, rowb, sortbycol,
+                return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
                                 return Get(row.name).rankIndex
                             end
@@ -78,7 +78,7 @@ function Points:OnInitialize()
             defaultsort  = ST.SORT_DSC,
             sortnext     = 5,
             comparesort  = function(table, rowa, rowb, sortbycol)
-                return Sort(table, rowa, rowb, sortbycol,
+                return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
                                 return Get(row.name).ep
                             end
@@ -94,7 +94,7 @@ function Points:OnInitialize()
             defaultsort  = ST.SORT_DSC,
             sortnext     = 3,
             comparesort  = function(table, rowa, rowb, sortbycol)
-                return Sort(table, rowa, rowb, sortbycol,
+                return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
                                 return Get(row.name).gp
                             end
@@ -110,7 +110,7 @@ function Points:OnInitialize()
             sort         = ST.SORT_DSC,
             sortnext     = 4,
             comparesort  = function(table, rowa, rowb, sortbycol)
-                return Sort(table, rowa, rowb, sortbycol,
+                return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
                                 return Get(row.name):GetPR()
                             end
@@ -146,6 +146,9 @@ function Points:OnDisable()
     self.updateHandler:Dispose()
 end
 
+function Points:EnableOnStartup()
+    return true
+end
 
 function Points.Get(name)
     if points[name] then return points[name]:Get() end
@@ -702,36 +705,6 @@ function Points.AfterCellUpdate(rowFrame, cellFrame, data, cols, row, realrow, c
             table:SetHighLightColor(rowFrame, highlight or cols[column].highlight or rowdata.highlight or table:GetDefaultHighlight())
         else
             table:SetHighLightColor(rowFrame, table:GetDefaultHighlightBlank())
-        end
-    end
-end
-
-function Sort(table, rowa, rowb, sortbycol, valueFn)
-    local column = table.cols[sortbycol]
-    local row1, row2 = table:GetRow(rowa), table:GetRow(rowb)
-    local v1, v2 = valueFn(row1), valueFn(row2)
-    
-    if v1 == v2 then
-        if column.sortnext then
-            local nextcol = table.cols[column.sortnext]
-            if nextcol and not(nextcol.sort) then
-                if nextcol.comparesort then
-                    return nextcol.comparesort(table, rowa, rowb, column.sortnext)
-                else
-                    return table:CompareSort(rowa, rowb, column.sortnext)
-                end
-            else
-                return false
-            end
-        else
-            return false
-        end
-    else
-        local direction = column.sort or column.defaultsort or ST.SORT_DSC
-        if direction == ST.SORT_ASC then
-            return v1 < v2
-        else
-            return v1 > v2
         end
     end
 end

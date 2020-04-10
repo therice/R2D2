@@ -11,6 +11,7 @@ local UI = AddOn.components.UI
 local relogged = true
 
 function AddOn:CallModule(module)
+    if not self.enabled then return end
     self:EnableModule(module)
 end
 
@@ -28,6 +29,10 @@ end
 
 function AddOn:LootSessionModule()
     return self:GetModule("LootSession")
+end
+
+function AddOn:VersionCheckModule()
+    return self:GetModule("VersionCheck")
 end
 
 function AddOn:LootAllocateModule()
@@ -477,3 +482,14 @@ function AddOn:LeaveCombat()
     if not self.db.profile.minimizeInCombat then return end
     UI.MaximizeFrames()
 end
+
+function AddOn:SendGuildVersionCheck()
+    local C = AddOn.Constants
+    self:SendCommand(C.guild, C.Commands.VersionCheck, self.version, self.mode)
+end
+
+function AddOn:PrintOutOfDateVersionWarning(newVersion, ourVersion)
+    self:Print(format(L["version_out_of_date_msg"], ourVersion or self.version, newVersion))
+    self.versionCheckComplete = true
+end
+
