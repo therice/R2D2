@@ -56,6 +56,7 @@ AddOn.Constants = {
         ChatMessageWhisper      =   "CHAT_MSG_WHISPER",
         EncounterEnd            =   "ENCOUNTER_END",
         EncounterStart          =   "ENCOUNTER_START",
+        GroupRosterUpdate       =   "GROUP_ROSTER_UPDATE",
         GuildRosterUpdate       =   "GUILD_ROSTER_UPDATE",
         GroupLeft               =   "GROUP_LEFT",
         LootClosed              =   "LOOT_CLOSED",

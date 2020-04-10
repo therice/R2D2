@@ -8,13 +8,55 @@ local Config    = {}
 
 AddOn.components.Config = Config
 -- name, width, height
-AddOn.Libs.AceConfigDialog:SetDefaultSize("R2D2",  1100, 800)
+AddOn.Libs.AceConfigDialog:SetDefaultSize("R2D2",  850, 600)
 
 function Config.SetupOptions()
     local Options = Util.Tables.Copy(AddOn.Options)
+    -- setup some basic configuration options that don't belong to any module (but the add-on itself)
     Options.args = {
         -- General configuration options header
-        R2D2_Header = COpts.Header(L["version"] .. format(": |cff99ff33%s|r", tostring(AddOn.version)), 'full')
+        R2D2_Header = COpts.Header(L["version"] .. format(": |cff99ff33%s|r", tostring(AddOn.version)), 'full'),
+        general = {
+            order = 1,
+            type = "group",
+            name = _G.GENERAL,
+            args = {
+                generalOptions = {
+                    name = L["general_options"],
+                    type = "group",
+                    inline = true,
+                    args = {
+                        enable = {
+                            order = 1,
+                            name  = L["active"],
+                            desc  = L["active_desc"],
+                            type  = "toggle",
+                            set   = function()
+                                AddOn.enabled = not AddOn.enabled
+                                if not AddOn.enabled and AddOn.isMasterLooter then
+                                    AddOn.isMasterLooter = false
+                                    AddOn.masterLooter = nil
+                                    AddOn:MasterLooterModule():Disable()
+                                else
+                                    AddOn:NewMasterLooterCheck()
+                                end
+                            end,
+                            get   = function() return AddOn.enabled end,
+                        },
+                        minimizeInCombat = COpts.Toggle(L["minimize_in_combat"], 2, L["minimize_in_combat_desc"]),
+                        spacer = COpts.Header("", nil, 3),
+                        test = COpts.Execute(L["Test"], 4, L["test_desc"],
+                                             function()
+                                                 AddOn:Config()
+                                                 AddOn:Test(4)
+                                             end
+                        ),
+                        verCheck = COpts.Execute(L['version_check'], 5, L["version_check_desc"], function() end),
+                        sync = COpts.Execute(L["sync"], 6, L["sync_desc"], function() end),
+                    }
+                }
+            }
+        }
     }
 
     AddOn.Libs.AceConfig:RegisterOptionsTable("R2D2", Options)

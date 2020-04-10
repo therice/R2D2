@@ -291,3 +291,48 @@ AddOn.FilterClassesByFactionFn = function(class)
     end
     return true
 end
+
+function AddOn:ExtractCreatureId(guid)
+    if not guid then return nil end
+    local id = guid:match(".+(%b--)")
+    return id and (id:gsub("-", "")) or nil
+end
+
+AddOn.BlacklistedItemClasses = {
+    [0]  = { -- Consumables
+        all = true
+    },
+    [5]  = { -- Reagents
+        all = true
+    },
+    [7]  = { -- Tradeskills
+        all = true
+    },
+    [15] = { -- Misc
+        [1] = true, -- Reagent
+    }
+}
+
+function AddOn:IsItemBlacklisted(item)
+    if not item then return false end
+    local _, _, _, _, _, itemClassId, itemsubClassId = GetItemInfoInstant(item)
+    if not (itemClassId and itemsubClassId) then return false end
+    if AddOn.BlacklistedItemClasses[itemClassId] then
+        if AddOn.BlacklistedItemClasses[itemClassId].all or AddOn.BlacklistedItemClasses[itemClassId][itemsubClassId] then
+            return true
+        end
+    end
+    return false
+end
+
+function AddOn:IsItemBoe(item)
+    if not item then return false end
+    -- Item binding type: 0 - none; 1 - on pickup; 2 - on equip; 3 - on use; 4 - quest.
+    return select(14, GetItemInfo(item)) == LE_ITEM_BIND_ON_EQUIP
+end
+
+function AddOn:IsItemBop(item)
+    if not item then return false end
+    -- Item binding type: 0 - none; 1 - on pickup; 2 - on equip; 3 - on use; 4 - quest.
+    return select(14, GetItemInfo(item)) == LE_ITEM_BIND_ON_ACQUIRE
+end

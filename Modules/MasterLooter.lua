@@ -8,12 +8,10 @@ local Models = AddOn.components.Models
 local UI = AddOn.components.UI
 local COpts = UI.ConfigOptions
 
-local CANDIDATE_SEND_COOLDOWN = 10
+local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT = 10, 3
 
 ML.defaults = {
     profile = {
-        -- should it only be enabled in raids
-        onlyUseInRaids = true,
         -- various types of usage for add-on
         usage = {
             never  = false,
@@ -21,8 +19,18 @@ ML.defaults = {
             ask_ml = true,
             state  = "ask_ml",
         },
+        -- should it only be enabled in raids
+        onlyUseInRaids = true,
         -- is 'out of raid' support enabled (specifies auto-responses when user not in instance, but in raid)
         outOfRaid = false,
+        -- should a session automatically be started with all eligibile items
+        autoStart  = false,
+        -- automatically add all eligible equipable items from loot to session frame
+        autoLootEquipable = true,
+        -- automatically add all eligible non-equipable items from loot to session frame (e.g. mounts)
+        autoLootNonEquipable = true,
+        -- automatically add all BOE items from loot to session frame
+        autoLootBoe = true,
         buttons = {
             -- dynamically constructed in the do/end loop below
             -- example data left behind for illustration
@@ -134,6 +142,19 @@ ML.options = {
                         outOfRaid = COpts.Toggle(L['out_of_raid'], 5, L['out_of_raid_desc']),
                     }
                 },
+                lootOptions = {
+                    order = 2,
+                    name = L['loot_options'],
+                    type = 'group',
+                    inline = true,
+                    args = {
+                        autoStart = COpts.Toggle(L['auto_start'], 1, L['auto_start_desc']),
+                        spacer = COpts.Header("", nil, 2),
+                        autoLootEquipable = COpts.Toggle( _G.AUTO_LOOT_DEFAULT_TEXT .. ' ' .. L['equipable'], 3, L['auto_loot_equipable_desc']),
+                        autoLootNonEquipable = COpts.Toggle( _G.AUTO_LOOT_DEFAULT_TEXT .. ' ' .. L['equipable_not'], 4, L['auto_loot_non_equipable_desc'], function() return not ML.db.profile.autoLootEquipable end),
+                        autoLootBoe = COpts.Toggle( _G.AUTO_LOOT_DEFAULT_TEXT .. ' BOE', 5, L['auto_loot_boe_desc'], function() return not ML.db.profile.autoLootEquipable end),
+                    }
+                }
             },
         },
         announcements = {
@@ -190,6 +211,7 @@ ML.options = {
         }
     }
 }
+
 
 -- Copy defaults from GearPoints into our defaults for buttons/responses
 -- This actually should be done via the AddOn's DB once it's initialized, but we currently
@@ -278,7 +300,7 @@ function ML:OnEnable()
     self:RegisterComm(name, "OnCommReceived")
     self:RegisterEvent(AddOn.Constants.Events.ChatMessageWhisper, "OnEvent")
     self:RegisterEvent(AddOn.Constants.Events.PlayerRegenEnabled, "OnEvent")
-    self:RegisterBucketEvent(AddOn.Constants.Events.GuildRosterUpdate, 10, "UpdateCandidates")
+    self:RegisterBucketEvent(AddOn.Constants.Events.GroupRosterUpdate, 10, "UpdateCandidates")
     self:RegisterBucketMessage(AddOn.Constants.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
 end
 
@@ -606,29 +628,59 @@ function ML:HaveFreeSpaceForItem(item)
     return false
 end
 
+ML.AwardReasons = {
+    Failure = {
+        Bagged                    = "Bagged",
+        BaggedItemCannotBeAwarded = "BaggedItemCannotBeAwarded",
+        BaggingAwardedItem        = "BaggingAwardedItem",
+        Locked                    = "Locked",
+        LootGone                  = "LootGone",
+        LootNotOpen               = "LootNotOpen",
+        ManuallyBagged            = "ManuallyBagged",
+        MLInventoryFull           = "MLInventoryFull",
+        MLNotInInstance           = "MLNotInInstance",
+        NotBop                    = "NotBop",
+        NotInGroup                = "NotInGroup",
+        NotMLCandidate            = "NotMLCandidate",
+        Offline                   = "Offline",
+        OutOfInstance             = "OutOfInstance",
+        QualityBelowThreshold     = "QualityBelowThreshold",
+        Timeout                   = "Timeout",
+        UnLootedItemInBag         = "UnLootedItemInBag",
+    },
+    Success = {
+        Indirect      = "Indirect",
+        ManuallyAdded = "ManuallyAdded",
+        Normal        = "Normal",
+    },
+    Neutral = {
+        TestMode = "TestMode",
+    }
+}
+
 function ML:CanGiveLoot(slot, item, winner)
     local lootSlotInfo = AddOn:GetLootSlotInfo(slot)
     
     if not AddOn.lootOpen then
-        return false, "loot_not_open"
+        return false, ML.AwardReasons.Failure.LootNotOpen
     elseif not lootSlotInfo or (not AddOn:ItemIsItem(lootSlotInfo.link, item)) then
-        return false, "loot_gone"
+        return false, ML.AwardReasons.Failure.LootGone
     elseif lootSlotInfo.locked then
-        return false, "locked"
+        return false, ML.AwardReasons.Failure.Locked
     elseif AddOn:UnitIsUnit(winner, "player") and not self:HaveFreeSpaceForItem(item.link) then
-        return false, "ml_inventory_full"
+        return false, ML.AwardReasons.Failure.MLInventoryFull
     elseif AddOn:UnitIsUnit(winner, "player") then
         if lootSlotInfo.quality < GetLootThreshold() then
-            return false, "quality_below_threshold"
+            return false, ML.AwardReasons.Failure.QualityBelowThreshold
         end
         
         local shortName = Ambiguate(winner, "short"):lower()
         if not UnitIsInParty(shortName) and not UnitIsInRaid(shortName) then
-            return false, "not_in_group"
+            return false, ML.AwardReasons.Failure.NotInGroup
         end
     
         if not UnitIsConnected(shortName) then
-            return false, "offline"
+            return false, ML.AwardReasons.Failure.Offline
         end
         
         local found = false
@@ -640,25 +692,60 @@ function ML:CanGiveLoot(slot, item, winner)
         end
     
         if not IsInInstance() then
-            return false, "ml_not_in_instance"
+            return false, ML.AwardReasons.Failure.MLNotInInstance
         end
     
         if select(4, UnitPosition(Ambiguate(winner, "short"))) ~= select(4, UnitPosition("player")) then
-            return false, "out_of_instance"
+            return false, ML.AwardReasons.Failure.OutOfInstance
         end
         
         
         if not found then
             local bindType = select(14, GetItemInfo(item))
             if bindType ~= LE_ITEM_BIND_ON_ACQUIRE then
-                return false, "not_bop"
+                return false, ML.AwardReasons.Failure.NotBop
             else
-                return false, "not_ml_candidate"
+                return false, ML.NotMLCandidate
             end
         end
     end
     
     return true
+end
+
+function ML:PrintLootError(cause, slot, item, winner)
+    Logging:Warn("PrintLootError() %s, %s, %s, %s", cause, tostring(slot), tostring(item), tostring(winner))
+    
+    if cause == ML.AwardReasons.Failure.LootNotOpen then
+        AddOn:Print(L["unable_to_give_loot_without_loot_window_open"])
+    elseif cause == ML.AwardReasons.Failure.Timeout then
+        AddOn:Print(format(L["timeout_giving_item_to_player"], item, AddOn:GetUnitClassColoredName(winner)), " - ", _G.ERR_INV_FULL)
+    elseif cause == ML.AwardReasons.Failure.Locked then
+        AddOn:SessionError(format(L["no_permission_to_loot_item_at_x"], slot))
+    else
+        local prefix = format(L["unable_to_give_item_to_player'"], item, addon:GetUnitClassColoredName(winner)) .. "  - "
+        if cause ==  ML.AwardReasons.Failure.LootGone then
+            AddOn:Print(prefix, _G.LOOT_GONE)
+        elseif cause == ML.AwardReasons.Failure.MLInventoryFull then
+            AddOn:Print(prefix, _G.ERR_INV_FULL)
+        elseif cause == ML.AwardReasons.Failure.QualityBelowThreshold then
+            AddOn:Print(prefix, L["item_quality_below_threshold"])
+        elseif cause == ML.AwardReasons.Failure.NotInGroup then
+            AddOn:Print(prefix, L["player_not_in_group"])
+        elseif cause == ML.AwardReasons.Failure.Offline then
+            AddOn:Print(prefix, L["player_offline"])
+        elseif cause == ML.AwardReasons.Failure.MLNotInInstance then
+            AddOn:Print(prefix, L["you_are_not_in_instance"])
+        elseif cause == ML.AwardReasons.Failure.OutOfInstance then
+            AddOn:Print(prefix, L["player_not_in_instance"])
+        elseif cause == ML.AwardReasons.Failure.NotMLCandidate then
+            AddOn:Print(prefix, L["player_ineligible_for_item"])
+        elseif cause == ML.AwardReasons.Failure.NotBop then
+            AddOn:Print(prefix, L["item_only_able_to_be_looted_by_you_bop"])
+        else
+            AddOn:Print(prefix)
+        end
+    end
 end
 
 local function AwardFailed(session, winner, status, callback, ...)
@@ -703,18 +790,20 @@ local function RegisterAndAnnounceBagged(session)
     local C, self = AddOn.Constants, ML
     local itemEntry = self:GetItem(session)
     
+    -- important to emit this for now in case this code path is hit
+    Logging:Warn("RegisterAndAnnounceBagged(%d) : Bagging an item, but support lacking for awarding later", session)
+    
     -- todo : put item into storage
-    -- item looted by ML, annouce it
-    -- also, announce if the item is to be awarded later
-    if item.lootSlot and self.running then
+    -- todo: all of this is superfolous without that
+    
+    if itemEntry.lootSlot and self.running then
         self:AnnounceAward(L["loot_master"], itemEntry.link, L["store_in_bag_award_later"], nil, session)
     else
-        AddOn:Print(format(L["item_added_to_award_later_list"], link))
+        AddOn:Print(format(L["item_added_to_award_later_list"], itemEntry.link))
     end
     
-    -- bagged, no longer on loot table
-    itemEntry.lootSlot = nil
-    itemEntry.bagged = {} -- todo : replace with actual item
+    self.lootTable[session].lootSlot = nil
+    self.lootTable[session].bagged = {} -- todo : replace with actual item
     
     if self.running then
         AddOn:SendCommand(C.group, C.Commands.Bagged, session, AddOn.playerName)
@@ -746,14 +835,14 @@ function ML:Award(session, winner, response, reason, callback, ...)
     
     -- UnLootedItemInBag : an item that's currently in loot table is also bagged
     if itemEntry.lootSlot and itemEntry.bagged then
-        AwardFailed(session, winner, "UnLootedItemInBag", callback, ...)
+        AwardFailed(session, winner, ML.AwardReasons.Failure.UnLootedItemInBag, callback, ...)
         AddOn:SessionError("Session %d has an un-looted item in the bag?!", session)
         return false
     end
     
     -- BaggedItemCannotBeAwarded : an item was previously bagged, but cannot be awarded
     if itemEntry.bagged and not winner then
-        AwardFailed(session, nil, "BaggedItemCannotBeAwarded", callback, ...)
+        AwardFailed(session, nil, ML.AwardReasons.Failure.BaggedItemCannotBeAwarded, callback, ...)
         Logging:Error("Award() : " .. L["item_bagged_cannot_be_awarded"])
         AddOn:Print(L["item_bagged_cannot_be_awarded"])
         return false
@@ -761,7 +850,7 @@ function ML:Award(session, winner, response, reason, callback, ...)
     
     -- BaggingAwardedItem : an item has been previously awarded, but trying to award later
     if itemEntry.awarded and not winner then
-        AwardFailed(session, nil, "BaggingAwardedItem", callback, ...)
+        AwardFailed(session, nil, ML.AwardReasons.Failure.BaggingAwardedItem, callback, ...)
         Logging:Error("Award() " .. L["item_awarded_no_reaward"])
         AddOn:Print(L["item_awarded_no_reaward"])
         return false
@@ -771,11 +860,11 @@ function ML:Award(session, winner, response, reason, callback, ...)
     if itemEntry.awarded then
         RegisterAndAnnounceAward(session, winner, response, reason)
         if not itemEntry.lootSlot and not itemEntry.bagged then
-            AwardSuccess(session, winner, AddOn:TestModeEnabled() and "test_mode" or "manually_added", callback, ...)
+            AwardSuccess(session, winner, AddOn:TestModeEnabled() and ML.AwardReasons.Neutral.TestMode or  ML.AwardReasons.Success.ManuallyAdded, callback, ...)
         elseif itemEntry.bagged then
-            AwardSuccess(session, winner, "indirect", callback, ...)
+            AwardSuccess(session, winner, ML.AwardReasons.Success.Indirect, callback, ...)
         else
-            AwardSuccess(session, winner, "normal", callback, ...)
+            AwardSuccess(session, winner, ML.AwardReasons.Success.Normal, callback, ...)
         end
         return true
     end
@@ -783,17 +872,17 @@ function ML:Award(session, winner, response, reason, callback, ...)
     -- item has not yet been awarded
     if not itemEntry.lootSlot and not itemEntry.bagged then
         if winner then
-            AwardSuccess(session, winner, AddOn:TestModeEnabled() and "test_mode" or "manually_added", callback, ...)
+            AwardSuccess(session, winner, AddOn:TestModeEnabled() and  ML.AwardReasons.Neutral.TestMode or  ML.AwardReasons.Success.ManuallyAdded, callback, ...)
             RegisterAndAnnounceAward(session, winner, response, reason)
             return true
         else
             if AddOn:TestModeEnabled() then
-                AwardFailed(session, nil, "test_mode", callback, ...)
+                AwardFailed(session, nil, ML.AwardReasons.Neutral.TestMode, callback, ...)
                 AddOn:Print(L["award_later_unsupported_when_testing"])
                 return false
             else
                 RegisterAndAnnounceBagged(session)
-                AwardFailed(session, nil, "manually_bagged", callback, ...)
+                AwardFailed(session, nil, ML.AwardReasons.Failure.ManuallyBagged, callback, ...)
                 return false
             end
         end
@@ -802,7 +891,7 @@ function ML:Award(session, winner, response, reason, callback, ...)
     -- awarding item from bag
     if itemEntry.bagged then
         RegisterAndAnnounceAward(session, winner, response, reason)
-        AwardSuccess(session, winner, "indirect", callback, ...)
+        AwardSuccess(session, winner, ML.AwardReasons.Success.Indirect, callback, ...)
         return true
     end
     
@@ -814,12 +903,84 @@ function ML:Award(session, winner, response, reason, callback, ...)
     
     local canGiveLoot, cause = self:CanGiveLoot(itemEntry.lootSlot, itemEntry.link, winner or AddOn.playerName)
     if not canGiveLoot then
-    
+        if cause == ML.AwardReasons.Failure.QualityBelowThreshold or cause == ML.AwardReasons.Failure.NotBop then
+            self:PrintLootError(cause, itemEntry.lootSlot, itemEntry.link, winner or AddOn.playerName)
+            AddOn:Print("Gave the item to you for distribution")
+            return self:Award(session, nil, response, reason, callback, ...)
+        else
+            AwardFailed(session, winner, cause, callback, ...)
+            self:PrintLootError(cause, itemEntry.lootSlot, itemEntry.link, winner or AddOn.playerName)
+            return false
+        end
     else
         if winner then
-        
+            self:GiveLoot(
+                    itemEntry.lootSlot,
+                    winner,
+                    function(awarded, cause)
+                        if awarded then
+                            RegisterAndAnnounceAward(session, winner, response, reason)
+                            AwardSuccess(session, winner, ML.AwardReasons.Success.Normal, callback, unpack(args))
+                            return true
+                        else
+                            AwardFailed(session, winner, cause, callback, unpack(args))
+                            self:PrintLootError(cause, itemEntry.lootSlot, itemEntry.link, winner)
+                            return false
+                        end
+                    end
+            )
         else
-        
+            self:GiveLoot(
+                    itemEntry.lootSlot,
+                    AddOn.playerName,
+                    function(awarded, cause)
+                        if awarded then
+                            RegisterAndAnnounceBagged(session)
+                            AwardFailed(session, nil, ML.AwardReasons.Failure.Bagged, callback, unpack(args))
+                        else
+                            AwardFailed(session, nil, cause, callback, unpack(args))
+                            self:PrintLootError(cause, itemEntry.lootSlot, itemEntry.link, AddOn.playerName)
+                        end
+                        return false
+                    end
+            )
+        end
+    end
+end
+
+local function OnGiveLootTimeout(entry)
+    -- remove entry from queue
+    for k, v in pairs(ML.lootQueue) do
+        if v == entry then
+            tremove(ML.lootQueue, k)
+        end
+    end
+    
+    if entry.callback then
+        -- loot attempt failed
+        entry.callback(false, ML.AwardReasons.Failure.Timeout, unpack(entry.cargs))
+    end
+end
+
+function ML:GiveLoot(slot, winner, callback, ...)
+    if AddOn.lootOpen then
+        local entry = {slot = slot, callback = callback, args = {...}, }
+        entry.timer = self:ScheduleTimer(OnGiveLootTimeout, LOOT_TIMEOUT, entry)
+        Util.Tables.Push(self.lootQueue, entry)
+    
+        for i = 1, MAX_RAID_MEMBERS do
+            if AddOn.UnitIsUnit(GetMasterLootCandidate(slot, i), winner) then
+                Logging:Debug("GiveLoot(%d, %d)", slot, i)
+                GiveMasterLoot(slot, i)
+                break
+            end
+        end
+    
+        -- if the loot goes to ML, may need to self-loot
+        -- won't hurt if previous block gave it out
+        if AddOn:UnitIsUnit(winner, "player") then
+            Logging:Debug("GiveLoot(%d) - Giving to ML", slot)
+            LootSlot(slot)
         end
     end
 end
@@ -996,7 +1157,18 @@ end
 
 function ML:OnEvent(event, ...)
     Logging:Debug("OnEvent(%s)", event)
-
+    
+    if event == AddOn.Constants.Events.ChatMessageWhisper and AddOn.isMasterLooter then -- and self.db.acceptWhispers
+        local msg, sender = ...
+        if msg == 'r2d2help' then
+            -- todo : send help
+        elseif self.running then
+            -- todo : extract items from message
+        end
+    elseif event == AddOn.Constants.Events.PlayerRegenEnabled then
+        -- todo : when award later is implemented, check if any items are low on trade time remaining
+        -- todo : should i implement callbacks in case of combat to resume loot allocation?
+    end
 end
 
 function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
@@ -1036,6 +1208,88 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
     end
 end
 
+function ML:CanWeLootItem(item, quality)
+    local ret = false
+    -- item is set (AND)
+    -- auto-loot is enabled (AND)
+    -- item is equipable OR auto-loot non-equipable (AND)
+    -- quality is set and >= our threshol
+    if item and self.db.profile.autoLootEquipable and
+        (IsEquippableItem(item) or self.db.profile.autoLootNonEquipable) and
+        (quality and quality >= GetLootThreshold()) then
+        return self.db.profile.autoLootBoe or not AddOn:IsItemBoe(item)
+    end
+    Logging:Debug("CanWeLootItem(%s, %s) = %s", item, tostring(quality), tostring(ret))
+    return ret
+end
+
+function ML:LootOpened()
+    if AddOn.isMasterLooter and GetNumLootItems() > 0 then
+        local LS = AddOn:LootSessionModule()
+        
+        -- check if we need to update the existing session
+        if self.running and LS:IsRunning() then
+            self:UpdateLootSlots()
+        -- not running, just add the loot
+        else
+            for i = 1, GetNumLootItems() do
+                local item =  AddOn:GetLootSlotInfo(i)
+                if item then
+                    local link = item.link
+                    local quantity = item.quantity
+                    local quality = item.quality
+                    -- todo : alt-click looting (maybe)
+                    -- todo : auto-awarding of items (probably not)
+                    
+                    -- check if we are allowed to loot item
+                    if link and self:CanWeLootItem(link, quality) and quantity > 0 then
+                        self:AddItem(link, false, i)
+                    -- currency
+                    elseif quantity == 0 then
+                        LootSlot(i)
+                    end
+                end
+            end
+            
+    
+            if #self.lootTable > 0 and not self.running then
+                if self.db.profile.autoStart and AddOn:GetCandidate(AddOn.playerName) then
+                    self:StartSession()
+                else
+                    AddOn:CallModule(LS:GetName())
+                    LS:Show(self.lootTable)
+                end
+            end
+        end
+    end
+end
+
+function ML:OnLootOpen()
+    if AddOn.handleLoot then
+        wipe(self.lootQueue)
+        if not InCombatLockdown() then -- skip combat lock-down setting?
+            self:LootOpened()
+        else
+            AddOn:Print("You can't start a loot session while in combat")
+        end
+    end
+end
+
+function ML:OnLootSlotCleared(slot, link)
+    for i = #self.lootQueue, 1, -1 do
+        local entry = self.lootQueue[i]
+        -- loot success
+        if entry and entry.slot == slot then
+            self:CancelTimer(entry.timer)
+            self.lootQueue[i] = nil
+            if entry.callback then
+                entry.callback(true, nil, unpack(entry.args))
+            end
+            break
+        end
+    end
+end
+
 function ML:Test(items)
     Logging:Debug("Test(%s)", Util.Tables.Count(items))
     local C = AddOn.Constants
@@ -1047,6 +1301,10 @@ function ML:Test(items)
     for _, name in ipairs(items) do
         self:AddItem(name)
     end
+    if self.db.profile.autoStart then
+        AddOn:Print("Auto-start isn't supported when testing")
+    end
+    
     AddOn:CallModule("LootSession")
     AddOn:GetModule("LootSession"):Show(self.lootTable)
 end

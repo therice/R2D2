@@ -10,7 +10,9 @@ R2D2.Options = {
     name = AddOnName,
     type = 'group',
     childGroups = 'tab',
-    handler = self,
+    handler = AddOn,
+    get = "GetDbValue",
+    set = "SetDbValue",
     args = {
 
     }
@@ -76,7 +78,21 @@ AddOn.components.Logging    = R2D2.Libs.Logging
 
 local Logging = AddOn.components.Logging
 local Tables = AddOn.Libs.Util.Tables
-local Objects = AddOn.Libs.Util.Objects
+
+
+local function GetDbValue(self, i)
+    -- Logging:Debug("GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))
+    return Tables.Get(self.db.profile, tostring(i[#i]))
+end
+
+local function SetDbValue(self, i, v)
+    -- Logging:Debug("SetDbValue(%s, %s, %s)", self:GetName(), tostring(i[#i]), tostring(v or 'nil'))
+    Tables.Set(self.db.profile, tostring(i[#i]), v)
+    AddOn:ConfigTableChanged(self:GetName(), i[#i])
+end
+
+AddOn.GetDbValue = GetDbValue
+AddOn.SetDbValue = SetDbValue
 
 -- Establish a prototype for mixing into any add-on modules
 -- These are used for the configuration UI
@@ -96,17 +112,7 @@ local ModulePrototype = {
         self.db.profile.enabled = v
         Logging:Trace("Module:SetEnabled(%s) : %s", self:GetName(), tostring(self.db.profile.enabled))
     end,
-    GetDbValue = function (self, i)
-        -- Logging:Debug("Module:GetDbValue(%s, %s) : %s", self:GetName(), tostring(i[#i]), Objects.ToString(i))
-        Logging:Trace("Module:GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))
-        return Tables.Get(self.db.profile, tostring(i[#i]))
-    end,
-    SetDbValue = function (self, i, v)
-        --Logging:Debug("Module:SetDbValue(%s, %s, %s) : %s ", self:GetName(), tostring(i[#i]), tostring(v or 'nil'), Objects.ToString(i))
-        Logging:Trace("Module:SetDbValue(%s, %s, %s)", self:GetName(), tostring(i[#i]), tostring(v or 'nil'))
-        Tables.Set(self.db.profile, tostring(i[#i]), v)
-        -- we probably want to get the namespace here as well
-        AddOn:ConfigTableChanged(self:GetName(), i[#i])
-    end,
+    GetDbValue = GetDbValue,
+    SetDbValue = SetDbValue,
 }
 R2D2:SetDefaultModulePrototype(ModulePrototype)

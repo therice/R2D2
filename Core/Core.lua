@@ -1,10 +1,11 @@
 local _, AddOn = ...
 
-local Logging      = AddOn.components.Logging
-local Util         = AddOn.Libs.Util
-local ItemUtil     = AddOn.Libs.ItemUtil
-local L            = AddOn.components.Locale
-local Dialog       = AddOn.Libs.Dialog
+local Logging = AddOn.components.Logging
+local Util = AddOn.Libs.Util
+local ItemUtil = AddOn.Libs.ItemUtil
+local L = AddOn.components.Locale
+local Dialog = AddOn.Libs.Dialog
+local UI = AddOn.components.UI
 
 -- keep track of whether we need to re-request data due to a reload
 local relogged = true
@@ -23,6 +24,10 @@ end
 
 function AddOn:PointsModule()
     return self:GetModule("Points")
+end
+
+function AddOn:LootSessionModule()
+    return self:GetModule("LootSession")
 end
 
 function AddOn:LootAllocateModule()
@@ -109,7 +114,6 @@ end
 
 function AddOn:OnRaidEnter()
     Logging:Debug("OnRaidEnter()")
-    
     --if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
     if not IsInRaid() and self:MasterLooterModule():DbValue('onlyUseInRaids') then return end
     if not self.masterLooter and UnitIsGroupLeader("player") then
@@ -124,7 +128,6 @@ function AddOn:OnRaidEnter()
     end
 end
 
-
 function AddOn:StartHandleLoot()
     Logging:Debug("StartHandleLoot()")
     local C = AddOn.Constants
@@ -133,9 +136,8 @@ function AddOn:StartHandleLoot()
         self:Print(L["changing_loot_method_to_ml"])
         SetLootMethod("master", self.Ambiguate(self.playerName))
     end
-    
-    -- todo : probably want this to be a configuration param, not just 'epic'
-    SetLootThreshold(4)
+    -- not manipulating this here, let ML set the loot threshold (not via addon)
+    -- SetLootThreshold(4)
     self:Print(format(L["player_handles_looting"], self.playerName))
     self.handleLoot = true
     self:SendCommand(C.group, C.Commands.HandleLootStart)
@@ -335,19 +337,12 @@ function AddOn:MoreInfoSettings(module)
     return moduleSettings and moduleSettings.moreInfo or false, self:LootHistoryModule():GetStatistics()
 end
 
-
 function AddOn:OnEvent(event, ...)
     Logging:Debug("OnEvent(%s)", event)
     local C = AddOn.Constants.Commands
     local E = AddOn.Constants.Events
     if Util.Objects.In(event, E.PartyLootMethodChanged, E.PartyLeaderChanged, E.GroupLeft) then
         self:NewMasterLooterCheck()
-    -- we may want to eliminate this entirely and rely upon hook into LibGuildStorage
-    elseif event == E.GuildRosterUpdate then
-        self.guildRank = self:GetPlayersGuildRank()
-        if not self.pendingGuildEvent then
-            self:UnregisterEvent(E.GuildRosterUpdate)
-        end
     elseif event == E.RaidInstanceWelcome then
         self:ScheduleTimer("OnRaidEnter", 2)
     elseif event == E.PlayerEnteringWorld then
@@ -369,31 +364,116 @@ function AddOn:OnEvent(event, ...)
         self:UpdatePlayersData()
         relogged = false
     elseif event == E.EncounterStart then
-
+        wipe(self.lootStatus)
+        self:UpdatePlayersData()
     elseif event == E.EncounterEnd then
-    
-    elseif event == E.GuildRosterUpdate then
-
+        self.lastEncounterID, self.bossName = ...
+    -- Fired when loot is removed from a corpse
     elseif event == E.LootSlotCleared then
-
+        local slot = ...
+        local loot = self.lootSlotInfo[slot]
+        if loot and not loot.isLooted then
+            local link =  loot.link
+            local quality = loot.quality
+            Logging:Debug("LootSlotCleared : %d, %s, %s", slot, link, quality)
+            -- no-op for now
+            if quality and quality >= GetLootThreshold() and IsInInstance() then end
+            loot.isLooted = true
+            
+            if self.isMasterLooter then
+                self:MasterLooterModule():OnLootSlotCleared(slot, link)
+            end
+        end
+    -- Fired when you a corpse is looted, regardless of whether loot frame is shown
     elseif event == E.LootReady then
-    
+        if not IsInInstance() then return end
+        if GetNumLootItems() <= 0 then return end
+        wipe(self.lootSlotInfo)
+        self.lootOpen = true
+        for i = 1, GetNumLootItems() do
+            if LootSlotHasItem(i) then
+                Logging:Debug("LootReady(): Adding Loot Slot %d", i)
+                if not self:AddLootSlotInfo(i, ...) then
+                    Logging:Debug("LootReady() : Uncached items in loot, retrying again...")
+                    return self:ScheduleTimer("OnEvent", 0, "LOOT_READY")
+                end
+            end
+        end
     else
         Logging:Debug("OnEvent(%s) : Unhandled event", event)
     end
 end
 
+-- Fired when a corpse is looted
 function AddOn:LootOpened(...)
     self.lootOpen = true
+    if AddOn.isMasterLooter then
+        for i =1, GetNumLootItems() do
+            local loot = self.lootSlotInfo[i]
+            if (loot and LootSlotHasItem(i)) or (loot and not self:ItemIsItem(loot.link, GetLootSlotLink(i))) then
+                Logging:Debug("LootOpened():  Re-building Loot Slot %d", i)
+                if not self:AddLootSlotInfo(i, ...) then
+                    Logging:Debug("LootOpened() : Uncached items in loot, retrying again...")
+                    local autoloot, attempt = ...
+                    if not attempt then attempt = 1 else attempt = attempt + 1 end
+                    return self:ScheduleTimer("LootOpened", attempt / 10, autoloot, attempt)
+                end
+            end
+        end
+        
+        self:MasterLooterModule():OnLootOpen()
+    end
 end
 
+function AddOn:AddLootSlotInfo(i, ...)
+    local texture, name, quantity, currencyId, quality = GetLootSlotInfo(i)
+    local guid = self:ExtractCreatureId(GetLootSourceInfo(i))
+    
+    if texture then
+        local link = GetLootSlotLink(i)
+        if currencyId then
+            Logging:Debug("LootOpened() : ignoring %s as it's a currency", link)
+        elseif not self:IsItemBlacklisted(link) then
+            Logging:Debug("LootOpened() : adding %s (%d) from %s to Loot Slot Info", link, i, guid)
+            -- todo : make the entry a a class
+            self.lootSlotInfo[i] = {
+                name     = name,
+                link     = link,
+                quantity = quantity,
+                quality  = quality,
+                guid     = guid,
+                boss     = (GetUnitName("target")),
+                autoloot = select(1, ...),
+            }
+        end
+        
+        -- it ws cached, so we did the needful
+        return true
+    end
+    
+    -- item not cached, no needful
+    return false
+end
+
+-- Fired when a player ceases looting a corpse. Note that this will fire before the last
+-- CHAT_MSG_LOOT event for that loot
 function AddOn:LootClosed()
     self.lootOpen = false
 end
 
-function AddOn:EnterCombat()
+local UIOptionsOldCancel = InterfaceOptionsFrameCancel:GetScript("OnClick")
 
+function AddOn:EnterCombat()
+    InterfaceOptionsFrameCancel:SetScript("OnClick",
+                                          function() InterfaceOptionsFrameOkay:Click() end)
+    self.inCombat = true
+    if not self.db.profile.minimizeInCombat then return end
+    UI.MinimizeFrames()
 end
 
 function AddOn:LeaveCombat()
+    InterfaceOptionsFrameCancel:SetScript("OnClick", UIOptionsOldCancel)
+    self.inCombat = false
+    if not self.db.profile.minimizeInCombat then return end
+    UI.MaximizeFrames()
 end

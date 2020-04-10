@@ -5,9 +5,7 @@ local _, AddOn = ...
 AddOn.defaults = {
     profile = {
         logThreshold = AddOn.Libs.Logging.Level.Debug,
-        -- how many responses to show in the latest awarded items display
-        -- this should probably go away
-        moreInfoEntries = 4,
+        minimizeInCombat = false,
         minimap = {
           shown = true,
           locked = false,

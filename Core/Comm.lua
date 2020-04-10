@@ -32,7 +32,7 @@ function AddOn:SendAnnouncement(msg, channel)
     end
 end
 
--- scrubs passed value for transmission over the wire
+--- scrubs passed value for transmission over the wire
 -- specifically, entries that are modeled as classes via LibClass
 -- need to have their functions removed as not serializable
 -- when they are received, they will be reconstitued into the appropriate class
@@ -54,7 +54,7 @@ local function ScrubValue(value)
     end
 end
 
--- goes through passed arguments, scrubbing them for transmission over the wire
+--- goes through passed arguments, scrubbing them for transmission over the wire
 function AddOn.ScrubData(...)
     local scrubbed = Util.Tables.New()
     for i=1,select("#", ...) do
@@ -98,7 +98,7 @@ function AddOn:SendCommand(target, command, ...)
     end
 end
 
--- Sends a response.
+--- Sends a response.
 -- @paramsig session [, ...]
 -- link, ilvl, and equipLoc must be provided to send out gear information.
 -- @param target 		The target of response
@@ -124,17 +124,18 @@ function AddOn:SendResponse(target, session, response, note, roll, link, ilvl, e
             session,
             self.playerName,
             {
-                gear1 = g1 and ItemUtil:ItemLinkToItemString(g1) or nil,
-                gear2 = g2 and ItemUtil:ItemLinkToItemString(g2) or nil,
-                ilvl = sendAvgIlvl and self.playersData.ilvl or nil,
-                diff = diff,
-                note = note,
-                response = response,
-                roll = roll
+                 gear1    = g1 and ItemUtil:ItemLinkToItemString(g1) or nil,
+                 gear2    = g2 and ItemUtil:ItemLinkToItemString(g2) or nil,
+                 ilvl     = sendAvgIlvl and self.playersData.ilvl or nil,
+                 diff     = diff,
+                 note     = note,
+                 response = response,
+                 roll     = roll
             }
     )
 end
 
+---
 -- @param skip the index at which to start for sending acks
 function AddOn:SendLootAck(table, skip)
     Logging:Trace("SendLootAck()")

@@ -80,6 +80,7 @@ function R2D2:OnInitialize()
     self.handleLoot = false
     self.reconnectPending = false
     self.instanceName = ""
+    self.inCombat = false
     -- core add-on settings
     self.db = self.Libs.AceDB:New('R2D2_DB', R2D2.defaults)
     Logging:SetRootThreshold(self.db.profile.logThreshold)
@@ -89,7 +90,6 @@ end
 
 function R2D2:OnEnable()
     Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), tostring(self.version))
-    
     -- todo : remove this before publishing
     self.mode:Enable(R2D2.Constants.Modes.Develop)
     

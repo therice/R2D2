@@ -150,10 +150,4 @@ function LoggingUI:Toggle()
     else
         self.frame:Show()
     end
-    
-    --if loggingFrame:IsVisible() then
-    --    loggingFrame:Hide()
-    --else
-    --    loggingFrame:Show()
-    --end
 end

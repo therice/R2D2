@@ -96,12 +96,13 @@ function COpts.Select(name, order, descr, values, get, set, extra)
     return Extra(sel, extra)
 end
 
-function COpts.Toggle(name, order, descr, extra)
+function COpts.Toggle(name, order, descr, disabled, extra)
     toggle = {
         order = order or 1,
         type = 'toggle',
         name = name,
         desc = descr,
+        disabled = disabled,
     }
 
     return Extra(toggle, extra)
@@ -249,13 +250,30 @@ private.embeds["SetMultipleScripts"] = function(object, scripts)
     end
 end
 
+function UI.MinimizeFrames()
+    for _, frame in ipairs(frames) do
+        if frame:IsVisible() and not frame.combatMinimized then
+            frame.combatMinimized = true
+            frame:Minimize()
+        end
+    end
+end
 
--- Creates a standard frame with title, minimizing, positioning and scaling supported.
+function UI.MaximizeFrames()
+    for _, frame in ipairs(frames) do
+        if frame.combatMinimized then
+            frame.combatMinimized = false
+            frame:Maximize()
+        end
+    end
+end
+
+
+--- Creates a standard frame with title, minimizing, positioning and scaling supported.
 --		Adds Minimize(), Maximize() and IsMinimized() functions on the frame, and registers it for hide on combat.
 --		SetWidth/SetHeight called on frame will also be called on frame.content.
 --		Minimizing is done by double clicking the title. The returned frame and frame.title is NOT hidden.
 -- Only frame.content is minimized, so put children there for minimize support
-
 -- @paramsig name, module, title[, width, height]
 -- @param name Global name of the frame.
 -- @param module Name of the module (used for lib-window-1.1 config in DB).
@@ -424,7 +442,7 @@ function UI:HideTooltip()
     GameTooltip:Hide()
 end
 
--- Used to decorate LibDialog Popups
+--- Used to decorate LibDialog Popups
 function UI.DecoratePopup(frame)
     frame:SetFrameStrata("DIALOG")
     frame:SetBackdrop({
