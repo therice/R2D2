@@ -7,7 +7,6 @@ local SemanticVersion = AddOn.components.Models.SemanticVersion
 local Util = AddOn.Libs.Util
 local UI = AddOn.components.UI
 local Date = AddOn.components.Models.Date
-local DateInterval = AddOn.components.Models.DateInterval
 
 local VersionZero = SemanticVersion(0,0,0,0)
 local guildRanks, listOfNames, verTestCandidates, mostRecentVersion = {}, {}, {}, VersionZero

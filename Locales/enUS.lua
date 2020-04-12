@@ -94,6 +94,7 @@ L["gp_tooltips_help"] = "Provide a Gear Point (GP) value for items on tooltips. 
 L["g1"] = "g1"
 L["g2"] = "g2"
 L["in"] = "In"
+L["instance"] = "Instance"
 L["is_not_active_in_this_raid"] = "NOT active in this raid"
 L["item_added_to_award_later_list"] = "%s was added to the award later list"
 L["item_awarded_to"] = "Item was awarded to"

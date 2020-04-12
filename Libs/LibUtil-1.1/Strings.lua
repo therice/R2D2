@@ -32,6 +32,11 @@ function Self.EndsWith(str, str2)
     return type(str) == "string" and str:sub(-str2:len()) == str2
 end
 
+function Self.Equal(str1, str2)
+    if not Self.IsSet(str1) then return not Self.IsSet(str2) end
+    return str1 == str2
+end
+
 function Self.Wrap(str, before, after)
     if Self.IsEmpty(str) then
         return ""

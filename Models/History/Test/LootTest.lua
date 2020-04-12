@@ -2,7 +2,7 @@ local pl = require('pl.path')
 local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match("@(.*)$"))
 local Loot, Util
 
-describe("Loot History", function()
+describe("History - Loot Model", function()
     setup(function()
         loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
         R2D2:OnInitialize()

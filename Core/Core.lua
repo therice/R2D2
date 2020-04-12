@@ -11,6 +11,7 @@ local UI = AddOn.components.UI
 local relogged = true
 
 function AddOn:CallModule(module)
+    Logging:Debug("CallModule(%s)", module)
     if not self.enabled then return end
     self:EnableModule(module)
 end
@@ -41,6 +42,10 @@ end
 
 function AddOn:LootHistoryModule()
     return self:GetModule("LootHistory")
+end
+
+function AddOn:ModuleSettings(name)
+    return AddOn.db.profile.modules[name]
 end
 
 function AddOn:GetMasterLooter()
@@ -203,12 +208,12 @@ function AddOn:GetResponse(type, name)
 
     local function MasterLooterDbValue(path, attr)
         local mlDbValue = self:GetMasterLooterDbValue(path)
-        return Util.Tables.ContainsKey(mlDbValue, attr) and mlDbValue[attr] or nil
+        return mlDbValue and Util.Tables.ContainsKey(mlDbValue, attr) and mlDbValue[attr] or nil
     end
     
     local function DbValue(path, attr)
         local dbValue = ML:DbValue(path)
-        return Util.Tables.ContainsKey(dbValue, attr) and dbValue[attr] or nil
+        return dbValue and Util.Tables.ContainsKey(dbValue, attr) and dbValue[attr] or nil
     end
     
     local ResponseValue = Util.Functions.Dispatch(MasterLooterDbValue, DbValue)
@@ -336,10 +341,14 @@ function AddOn:ResetReconnectRequest()
     self.reconnectPending = false
 end
 
+function AddOn:MoreInfoEnabled(module)
+    local moduleSettings = AddOn.db.profile.modules[module]
+    return moduleSettings and moduleSettings.moreInfo or false
+end
+
 --@return tuple of (boolean, table) with 1st index being whether moreInfo is shown and 2nd being instance of LootStatistics
 function AddOn:MoreInfoSettings(module)
-    local moduleSettings = AddOn.db.profile.modules[module]
-    return moduleSettings and moduleSettings.moreInfo or false, self:LootHistoryModule():GetStatistics()
+    return AddOn:MoreInfoEnabled(module), self:LootHistoryModule():GetStatistics()
 end
 
 function AddOn:OnEvent(event, ...)

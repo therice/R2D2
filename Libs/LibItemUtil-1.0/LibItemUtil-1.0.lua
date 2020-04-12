@@ -229,6 +229,16 @@ end
 lib.ClassIdToDisplayName = tInvert(lib.ClassDisplayNameToId)
 lib.ClassIdToFileName = tInvert(lib.ClassTagNameToId)
 
+function lib:ClassTransitiveMapping(class)
+    if lib.ClassTagNameToId[class] ~= nil then
+        return lib.ClassIdToDisplayName[lib.ClassTagNameToId[class]]
+    elseif lib.ClassDisplayNameToId[class] ~= nil then
+        return lib.ClassIdToFileName[lib.ClassDisplayNameToId[class]]
+    else
+       error("Could not find transitive mapping for " .. class)
+    end
+end
+
 local EquipLocationToGearSlots = {
     INVTYPE_HEAD            = {"HeadSlot"},
     INVTYPE_NECK            = {"NeckSlot"},

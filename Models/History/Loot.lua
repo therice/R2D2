@@ -20,6 +20,8 @@ local ResponseOrigin = {
     AwardReason         = 2,
 }
 
+Loot.ResponseOrigin = ResponseOrigin
+
 function Loot:initialize(instant)
     History.initialize(self, instant)
     -- link to the awarded item
@@ -51,6 +53,7 @@ function Loot:initialize(instant)
     -- the response type code
     self.typeCode = nil
 end
+
 
 function Loot:IsCandidateResponse()
     return self.responseOrigin == ResponseOrigin.CandidateResponse

@@ -11,7 +11,8 @@ FrameClass.methods = {
 	"SetPushedTexture", "GetPushedTexture", "SetHighlightTexture", "GetHighlightTexture", "SetText", "GetScript",
 	"EnableMouse", "SetAllPoints", "SetBackdropColor", "SetBackdropBorderColor", "SetWidth", "SetHeight", "GetParent",
 	"GetFrameLevel", "SetFrameLevel", "CreateTexture", "SetFontString", "SetDisabledFontObject", "SetID", "SetToplevel",
-	"GetFont"
+	"GetFont", "SetWordWrap", "SetJustifyH", "SetMotionScriptsWhileDisabled", "SetDisabledTexture",
+	"SetAttribute", "SetScale", "GetObjectType"
 }
 
 TextureClass.methods = {
@@ -184,6 +185,34 @@ function FrameClass:SetDisabledFontObject(font)
 
 end
 
+function FrameClass:SetWordWrap(wrap)
+
+end
+
+function FrameClass:SetJustifyH(just)
+
+end
+
+function FrameClass:SetMotionScriptsWhileDisabled(enabled)
+
+end
+
+function FrameClass:SetDisabledTexture(texture)
+
+end
+
+function FrameClass:SetAttribute(k, v)
+
+end
+
+function FrameClass:SetScale(scale)
+
+end
+
+function FrameClass:GetObjectType()
+	return frames[self].type
+end
+
 function FrameClass:CreateTexture(name, texture, texturePath)
 	return CreateTexture(name, texture, texturePath)
 end
@@ -270,9 +299,11 @@ end
 function CreateFrame(kind, name, parent)
 	local frame,internal = FrameClass:New(name)
 	internal.parent = parent
+	internal.type = kind
 	frames[frame] = internal
 	if name then
 		_G[name] = frame
+		--print('CreateFrame() _G[' .. name .. ' ] set')
 	end
 	return frame
 end
@@ -283,6 +314,10 @@ function CreateTexture(name, texture, texturePath)
 	internal.texturePath = texturePath
 	internal.coord = {}
 	textures[tex] = internal
+	if name then
+		_G[name] = tex
+		-- print('CreateTexture() _G[' .. name .. ' ] set')
+	end
 	return tex
 end
 
@@ -352,6 +387,12 @@ function C_CreatureInfo.GetClassInfo(classID)
 	return nil
 end
 
+
+InterfaceOptionsFrameCancel = {}
+function InterfaceOptionsFrameCancel:GetScript(event)
+	return {}
+end
+
 function UnitName(unit)
 	if unit == "player" then
 		return "Gnomechomsky"
@@ -374,6 +415,10 @@ end
 
 function IsInGuild()
 	return 1
+end
+
+function IsInGroup()
+	return false
 end
 
 function GetGuildInfo(unit)
@@ -834,6 +879,12 @@ _G.GetItemSubClassInfo = function(classID, subClassID)
 	end
 end
 
+_G.Ambiguate = function(fullName, context)
+	return fullName
+end
+
+_G.RAID_CLASS_COLORS = {}
+
 -- https://github.com/Gethe/wow-ui-source/tree/classic
 _G.INVTYPE_HEAD = "Head"
 _G.INVTYPE_NECK = "Neck"
@@ -903,3 +954,5 @@ _G.TOOLTIP_DEFAULT_COLOR = {
 	g = 0,
 	b = 0,
 }
+
+_G.AUTO_LOOT_DEFAULT_TEXT = "Auto Loot"

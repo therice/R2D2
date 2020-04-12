@@ -134,20 +134,9 @@ function AddOn:GetItemTextWithCount(link, count)
     return link .. (count and count > 1 and (" x" .. count) or "")
 end
 
-function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, class)
-    local celldata = data and (data[realrow].cols and data[realrow].cols[column] or data[realrow][column])
-    local class = celldata and celldata.args and celldata.args[1] or class
-    if class then
-        frame:SetNormalTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
-        local coords = CLASS_ICON_TCOORDS[class]
-        frame:GetNormalTexture():SetTexCoord(unpack(coords))
-    else
-        frame:SetNormalTexture("Interface/ICONS/INV_Sigil_Thorim.png")
-    end
-end
-
 function AddOn.GetClassColor(class)
     if Util.Objects.IsEmpty(class) then error("No class specified") end
+    -- Logging:Trace("GetClassColor(%s)", tostring(class))
     
     local color = RAID_CLASS_COLORS[class:upper()]
     if not color then

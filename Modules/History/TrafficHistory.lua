@@ -21,10 +21,21 @@ TrafficHistory.defaults = {
     }
 }
 
-
 function TrafficHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB', TrafficHistory.defaults)
+end
+
+function TrafficHistory:OnEnable()
+    Logging:Debug("OnEnable(%s)", self:GetName())
+end
+
+function TrafficHistory:OnDisable()
+    Logging:Debug("OnDisable(%s)", self:GetName())
+end
+
+function TrafficHistory:EnableOnStartup()
+    return false
 end
 
 function TrafficHistory:GetHistory()

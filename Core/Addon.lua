@@ -45,6 +45,7 @@ function R2D2:OnInitialize()
         {cmd = "config", desc = L["chat_commands_config"]},
         {cmd = "test", desc = L["chat_commands_test"]},
         {cmd = "version", desc = L["chat_commands_version"]},
+        {cmd = "looth", desc = L["TBD"]}
         -- development intentionally not documented
     }
     -- the player class
@@ -97,7 +98,8 @@ function R2D2:OnEnable()
     self.mode:Enable(R2D2.Constants.Modes.Develop)
     
     for name, module in self:IterateModules() do
-        -- todo : fix this nonsense
+        Logging:Debug("OnEnable(%s) - Examining module (startup) '%s'", self:GetName(), name)
+        
         if module:EnableOnStartup() then
             Logging:Debug("OnEnable(%s) - Enabling module (startup) '%s'", self:GetName(), name)
             module:Enable()
@@ -108,7 +110,7 @@ function R2D2:OnEnable()
     self.playerName = self:UnitName(self.Constants.player)
     self.playerFaction = UnitFactionGroup(self.Constants.player)
 
-    Logging:Debug("OnEnable(%s)", self.playerFaction)
+    Logging:Debug("OnEnable(%s) : Faction '%s'", self:GetName(), self.playerFaction)
     -- register events
     for event, method in pairs(self.Events) do
         self:RegisterEvent(event, method)
@@ -151,10 +153,6 @@ end
 
 function R2D2:DevModeEnabled()
     return self.mode:Enabled(AddOn.Constants.Modes.Develop)
-end
-
-function R2D2:CallModule(module)
-    self:EnableModule(module)
 end
 
 function R2D2:SessionError(...)
@@ -217,7 +215,6 @@ function R2D2:Version(showOutOfDateClients)
     end
 end
 
-
 function R2D2:ChatCommand(msg)
     local args = Tables.New(self:GetArgs(msg,10))
     args[11] = nil
@@ -228,6 +225,8 @@ function R2D2:ChatCommand(msg)
         self:Help()
     elseif cmd == 'config' or cmd == "c" then
         self:Config()
+    elseif cmd == 'looth' or cmd == 'lh' then
+        self:CallModule("LootHistory")
     elseif cmd == 'test' or cmd == "t" then
         self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then

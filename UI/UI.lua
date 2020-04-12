@@ -149,7 +149,7 @@ function UI.ScrollingTableDoCellUpdate(fn)
         local rowdata = table:GetRow(realrow)
         local celldata = table:GetCell(rowdata, column)
     
-        local highlight = nil
+        local highlight
         if type(celldata) == "table" then
             highlight = celldata.highlight
         end
@@ -507,30 +507,6 @@ function UI.UpdateErrorTooltip(f, errors)
     tip:Show()
     tip:SetAnchorType("ANCHOR_LEFT", 0, -tip:GetHeight())
 end
-
---[[
-function CreateErrorDialog()
-    local f = UI:CreateFrame("R2D2_Error_Dialog", "ErrorDialog", L["R2D2 Errors"], 250, 250)
-    f.title:SetPoint("CENTER", f, "TOP", 0 ,-5)
-    
-    local close = UI:CreateButton("Close", f.content)
-    close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -13, 5)
-    close:SetScript("OnClick", function() f:Hide() end)
-    f.close = close
-    
-    return f
-end
-
-local ErrorDialog
--- @param errors an array of string errors to display
-function UI.ShowErrorDialog(frame, errors)
-    if not ErrorDialog then ErrorDialog = CreateErrorDialog() end
-    -- todo : adjust this
-    if frame then ErrorDialog:SetPoint("TOPLEFT", frame, "TOPRIGHT") end
-    
-    if not ErrorDialog:IsVisible() then ErrorDialog:Show() end
-end
---]]
 
 --[[
  Enable chain-calling for UI elements (for Ace3GUI)
