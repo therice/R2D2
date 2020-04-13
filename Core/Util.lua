@@ -135,8 +135,8 @@ function AddOn:GetItemTextWithCount(link, count)
 end
 
 function AddOn.GetClassColor(class)
-    if Util.Objects.IsEmpty(class) then error("No class specified") end
-    -- Logging:Trace("GetClassColor(%s)", tostring(class))
+    --Logging:Debug("GetClassColor(%s)", tostring(class))
+    -- if Util.Objects.IsEmpty(class) then error("No class specified") end
     
     local color = RAID_CLASS_COLORS[class:upper()]
     if not color then

@@ -234,6 +234,8 @@ function GP:OnEnable()
     )
 end
 
+-- @param awardReason the reason (string) that an item was awarded (e.g. ms_need)
+-- @return the award_scaling entry for the specified reason
 local function AwardReasonToKey(awardReason)
     if not awardReason then return end
     if not Objects.IsString(awardReason) then error("Award Reason must be a 'string' (the award_scaling name)") end
@@ -269,6 +271,7 @@ function GP:GetAwardScale(awardReason)
         return tonumber(award.scale)
     end
 end
+
 
 ---@param item any instance of Models.Item
 ---@param awardReason string the award reason key for award_scaling table (can be nil)

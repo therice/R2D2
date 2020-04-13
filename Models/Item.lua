@@ -139,12 +139,9 @@ function Item:GetGp(awardReason)
     
     local awardGp
     if awardReason then
-        local GP = AddOn:GearPointsModule()
-        if GP then
-            local awardScale = GP:GetAwardScale(awardReason)
-            if awardScale then
-                awardGp = math.floor(self.gp * awardScale)
-            end
+        local awardScale = AddOn:GearPointsModule():GetAwardScale(awardReason)
+        if awardScale then
+            awardGp = math.floor(self.gp * awardScale)
         end
     end
     
@@ -326,6 +323,18 @@ end
 
 function AllocateEntry:GetAwardData(session, candidate, reason)
     local cr = self.candidates[candidate]
+    
+    local awardReason, baseGp, awardGp = nil, nil, nil
+    -- if there was a reason provided, it will have the award scale key/reason
+    if reason and Util.Objects.IsTable(reason) then
+        awardReason = reason.award_scale
+    -- otherwise, get the award scale key/reason from response
+    else
+        awardReason = AddOn:GetResponse(self.typeCode or self.equipLoc, cr.response).award_scale
+    end
+    
+    baseGp, awardGp = self:GetGp(awardReason)
+    
     return {
         session     = session,
         winner		= candidate,
@@ -335,6 +344,9 @@ function AllocateEntry:GetAwardData(session, candidate, reason)
         gear1 		= cr.gear1,
         gear2		= cr.gear2,
         link 		= self.link,
+        baseGp      = baseGp,
+        awardGp     = awardGp,
+        awardScale  = AddOn:GearPointsModule():GetAwardScale(awardReason),
         isToken		= self.token,
         note		= cr.note,
         equipLoc	= self.equipLoc,

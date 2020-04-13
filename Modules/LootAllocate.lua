@@ -141,12 +141,17 @@ function LootAllocate:ReceiveLootTable(lt)
     self:Show()
 end
 
+-- @param session the session id
+-- @return the AllocateEntry for the specified session id
 function LootAllocate.GetLootTableEntry(session)
     --Logging:Debug("GetLootTableEntry(%d) : %d", session, #lootTable)
     if not Util.Objects.IsNumber(session) then session = tonumber(session) end
     return lootTable[session]
 end
 
+-- @param session the session id
+-- @param candidate the candidate name
+--@return the CandidateResponse for the specified session id and candidate name
 function LootAllocate.GetLootTableEntryResponse(session, candidate)
     return LootAllocate.GetLootTableEntry(session):GetCandidateResponse(candidate)
 end
@@ -496,24 +501,43 @@ end
 
 -- @param session the session id
 -- @param name the candidate name
--- param reason the reason for award
+-- @param reason the reason for award
+-- @return the data (table) for displaying an award pop-up
 function LootAllocate:GetAwardPopupData(session, name, reason)
     return LootAllocate.GetLootTableEntry(session):GetAwardData(session, name, reason)
 end
 
+-- @param session the session id
+-- @param isRoll is this for a roll
+-- @param noAutopass should auto-pass be disabled
+-- @return the data (table) for managing a re-roll request
 function LootAllocate:GetReRollData(session, isRoll, noAutopass)
     return LootAllocate.GetLootTableEntry(session):GetReRollData(session, isRoll, noAutopass)
 end
 
+-- @param the candidate name
+-- @return the class for the candidate
 function LootAllocate.GetCandidateClass(name)
     return LootAllocate:GetCandidateData(session, name, "class")
 end
 
-function LootAllocate.GetGpFromCandidateResponse(name)
+-- Please note, this is based upon what the candidate responded for an item or what the
+-- master looter altered their response to become. It will not reflect a reason for
+-- awarding an item which was not specified via one of those mechanisms (e.g. Award For - Free)
+--
+-- @param the candidates name
+-- @return tuple of the the LooTable entry for current session and user's response
+function LootAllocate.GetItemAndResponse(name)
     local entry = LootAllocate.GetLootTableEntry(session)
     local userResponse = LootAllocate.GetLootTableEntryResponse(session, name)
     local response = AddOn:GetResponse(entry.typeCode or entry.equipLoc, userResponse.response)
-    -- Logging:Debug("GetGpFromCandidateResponse(%s)", tostring(response.award_scale))
+    return entry, response
+end
+
+-- @param the candidate name
+-- @return the formatted/colored GP value(s) [baseGp, awardGp] based upon the candidate's response
+function LootAllocate.GetGpColoredTextFromCandidateResponse(name)
+    local entry, response = LootAllocate.GetItemAndResponse(name)
     return AddOn:GearPointsModule():GetGpTextColored(entry, response.award_scale)
 end
 
@@ -539,7 +563,7 @@ function LootAllocate:GetFrame()
                 elseif button == "LeftButton" and row then
                     AddOn.UpdateMoreInfo(self:GetName(), f, realrow, data,
                                          LootAllocate.GetCandidateClass,
-                                         LootAllocate.GetGpFromCandidateResponse
+                                         LootAllocate.GetGpColoredTextFromCandidateResponse
                     )
                     if IsAltKeyDown() then
                         local name = data[realrow].name
@@ -556,7 +580,7 @@ function LootAllocate:GetFrame()
                 if row then
                     AddOn.UpdateMoreInfo(self:GetName(), f, realrow, data,
                                          LootAllocate.GetCandidateClass,
-                                         LootAllocate.GetGpFromCandidateResponse)
+                                         LootAllocate.GetGpColoredTextFromCandidateResponse)
                 end
                 -- Return false to have the default OnEnter handler take care mouseover
                 return false
@@ -565,7 +589,8 @@ function LootAllocate:GetFrame()
         -- return to the actual selected player when we remove the mouse
         st:RegisterEvents({
             ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                AddOn.UpdateMoreInfo(self:GetName(), f, nil, nil, nil,
+                AddOn.UpdateMoreInfo(self:GetName(), f, nil, nil,
+                                     LootAllocate.GetCandidateClass,
                                      function(name)
                                          return AddOn:GearPointsModule():GetGpTextColored(LootAllocate.GetLootTableEntry(session), nil)
                                      end
@@ -895,6 +920,7 @@ do
                 text = L["award"],
                 notCheckable = true,
                 func = function(name)
+                    -- this calls back into MasterLooter Module
                     Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name))
                 end,
             },

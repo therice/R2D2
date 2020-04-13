@@ -7,6 +7,7 @@ local ItemUtil = AddOn.Libs.ItemUtil
 local Models = AddOn.components.Models
 local UI = AddOn.components.UI
 local COpts = UI.ConfigOptions
+local Traffic = Models.History.Traffic
 
 local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT = 10, 3
 
@@ -567,7 +568,7 @@ function ML:AddItem(item, bagged, lootSlot, owner, index)
     Logging:Trace("AddItem(%s)", item)
     -- todo : determine type code (as needed)
     index = index or nil
-    local entry = Models.ItemEntry:new(item, bagged, lootSlot, false, owner, false, "default")
+    local entry = Models.ItemEntry:new(item, bagged, lootSlot, false, owner or AddOn.bossName, false, "default")
 
     -- Need to insert entry regardless of fully populated (IsValid) as the
     -- session frame needs each of them to start and will update as entries are
@@ -1331,15 +1332,22 @@ function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data,
         callback(awarded, session, winner, status, data, ...)
     end
     if awarded then
-        -- todo : remove loot history record if present
-        AddOn:LootHistoryModule():CreateEntry(
+        local lhEntry = AddOn:LootHistoryModule():CreateEntry(
                 data.winner,
                 data.link,
                 data.responseId,
-                nil, -- boss
+                AddOn.bossName,
                 data.reason,
                 session,
                 data
+        )
+        
+        AddOn:TrafficHistoryModule():CreateFromLootHistory(
+            Traffic.ActionType.Add,
+            Traffic.SubjectType.Character,
+            Traffic.ResourceType.Gp,
+            lhEntry,
+            data
         )
     end
 end

@@ -129,15 +129,13 @@ function LootHistory:GetHistory()
 end
 
 function LootHistory:Show()
-    --moreInfoData = addon:GetLootDBStatistics()
     self.frame:Show()
 end
 
 --- Hide the LootHistory frame.
 function LootHistory:Hide()
     if self.frame then self.frame:Hide() end
-    if self.modreInfo then self.moreInfo:Hide() end
-    -- moreInfo = false
+    if self.moreInfo then self.moreInfo:Hide() end
 end
 
 function LootHistory:BuildData()
@@ -164,23 +162,25 @@ function LootHistory:BuildData()
         end
     end
     
-    Logging.Debug("%s", Objects.ToString(data, 3))
+    -- Logging.Debug("%s", Objects.ToString(data, 3))
     
     table.sort(data)
     self.frame.rows = {}
     local tsData, instanceData, row = {}, {}, 1
     for ts, names in pairs(data) do
-        Logging:Debug("pairs(data) -> %d = %d", ts, Tables.Count(names))
+        -- Logging:Debug("pairs(data) -> %d = %d", ts, Tables.Count(names))
         for name, entries in pairs(names) do
-            Logging:Debug("pairs(name) - > %s = %d", name, Tables.Count(entries))
+            -- Logging:Debug("pairs(name) - > %s = %d", name, Tables.Count(entries))
             for index, entry in pairs(entries) do
-                Logging:Debug("pairs(entries) -> %s = %s", tostring(index), type(entry))
+                -- Logging:Debug("pairs(entries) -> %s = %s", tostring(index), type(entry))
                 
                 if Objects.IsTable(entry) then
+                    --[[
                     Logging:Debug("pairs(entries) -> %s = %s",
                                   tostring(index),
                                   Objects.ToString(entry:toTable())
                     )
+                    --]]
                     
                     -- probably only need entry here, but ...
                     self.frame.rows[row] = {
@@ -542,7 +542,7 @@ function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realro
     local stats = self:GetStatistics():Get(entry.owner)
     stats:CalculateTotals()
     
-    Logging:Debug("%s => %s", entry.owner, Objects.ToString(stats))
+    -- Logging:Debug("%s => %s", entry.owner, Objects.ToString(stats))
     
     table.sort(stats.totals.responses,
                function(a, b)
@@ -754,7 +754,7 @@ function LootHistory:AddEntry(winner, entry)
     end
 end
 
-function LootHistory:CreateEntry(winner, link, responseId, boss, reason, session, candidateData)
+function LootHistory:CreateEntry(winner, link, responseId, boss, reason, session, awardData)
     local C = AddOn.Constants
     
     -- if in test mode and not development mode, return
@@ -765,13 +765,15 @@ function LootHistory:CreateEntry(winner, link, responseId, boss, reason, session
     local equipLoc = itemEntry and itemEntry.equipLoc or "default"
     local typeCode = itemEntry and itemEntry.typeCode
     local response = AddOn:GetResponse(typeCode or equipLoc, responseId)
+    --
     -- https://wow.gamepedia.com/API_GetInstanceInfo
     -- name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic,
     --  instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
+    --
     local instanceName, _, _, _, _, _, _, instanceId, groupSize = GetInstanceInfo()
     local candidate = ML:GetCandidate(winner)
     Logging:Debug("AddEntry() : %s, %s, %s, %s, %s, %s, %s",
-                  winner, link, responseId, tostring(boss), tostring(reason), session, Util.Objects.ToString(candidateData))
+                  winner, link, responseId, tostring(boss), tostring(reason), session, Util.Objects.ToString(awardData))
    
     local entry = Models.History.Loot()
     entry.item = link
@@ -784,11 +786,11 @@ function LootHistory:CreateEntry(winner, link, responseId, boss, reason, session
     entry.color = reason and reason.color or response.color
     entry.class = candidate.class
     entry.groupSize = groupSize
-    entry.note = candidateData and candidateData.note or nil
+    entry.note = awardData and awardData.note or nil
     entry.owner = itemEntry and itemEntry.owner or winner
     entry.typeCode = itemEntry and itemEntry.typeCode
     
-    AddOn:SendMessage(C.Messages.LootHistorySend, entry, winner, responseId, boss, reason, session, candidateData)
+    AddOn:SendMessage(C.Messages.LootHistorySend, entry, winner, responseId, boss, reason, session, awardData)
     -- todo : support settings for sending and tracking history
     -- todo : send to guild or group? group for now
     AddOn:SendCommand(C.group, C.Commands.LootHistoryAdd, winner, entry)

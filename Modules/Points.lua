@@ -10,6 +10,7 @@ local GuildStorage  = AddOn.Libs.GuildStorage
 local Dialog        = AddOn.Libs.Dialog
 local Models        = AddOn.components.Models
 local Traffic       = Models.History.Traffic
+local Objects       = Util.Objects
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 25, 10
 local DefaultScrollTableData = {}
@@ -192,6 +193,22 @@ function Points:DataChanged(event, state)
         end
     end
 end
+
+
+function Points:Adjust(data)
+    Logging:Debug("%s", Objects.ToString(data))
+    local entry = AddOn:TrafficHistoryModule():CreateEntry(
+            data.actionType,
+            data.subjectType,
+            {data.subject},
+            data.resourceType,
+            data.quantity,
+            data.description
+    )
+    Logging:Debug("%s", Objects.ToString(entry:toTable()))
+end
+
+
 
 function Points:Hide()
     if self.frame then
@@ -437,6 +454,8 @@ function Points:GetAdjustFrame()
             Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["name"]))
         else
             Util.Tables.Insert(data, 'subject', subject)
+            -- for now, always character from this interface so capture it as such
+            Util.Tables.Insert(data, 'subjectType', Traffic.SubjectType.Character)
         end
         
         local actionType = f.actionType:GetValue()
@@ -501,7 +520,7 @@ function Points.AdjustPointsOnShow(frame, data)
     UI.DecoratePopup(frame)
     
     local char = Get(data.subject)
-    local c = (AddOn.GetClassColor(char.class))
+    local c = AddOn.GetClassColor(char.class)
     local classDeco = UI.ColoredDecorator(c.r, c.g, c.b)
     -- Are you certain you want to %s %d %s %s %s?
     frame.text:SetText(
@@ -514,6 +533,16 @@ function Points.AdjustPointsOnShow(frame, data)
             )
     )
 end
+
+function Points.AwardPopupOnClickYes(frame, data, callback, ...)
+    Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
+    Points:Adjust(data)
+end
+
+function Points.AwardPopupOnClickNo(frame, data)
+    -- intentionally left blank
+end
+
 
 Points.RightClickEntries = {
     -- level 1
@@ -689,22 +718,4 @@ function Points.SetCellPr(rowFrame, cellFrame, data, cols, row, realrow, column,
     local pr = Get(name):GetPR()
     cellFrame.text:SetText(pr)
     data[realrow].cols[column].value = pr or 0
-end
-
-function Points.AfterCellUpdate(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
-    local rowdata = table:GetRow(realrow)
-    local celldata = table:GetCell(rowdata, column)
-    
-    local highlight = nil
-    if type(celldata) == "table" then
-        highlight = celldata.highlight
-    end
-    
-    if table.fSelect then
-        if table.selected == realrow then
-            table:SetHighLightColor(rowFrame, highlight or cols[column].highlight or rowdata.highlight or table:GetDefaultHighlight())
-        else
-            table:SetHighLightColor(rowFrame, table:GetDefaultHighlightBlank())
-        end
-    end
 end

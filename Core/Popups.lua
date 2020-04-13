@@ -99,10 +99,11 @@ Dialog:Register(AddOn.Constants.Popups.ConfirmAdjustPoints, {
     buttons = {
         {
             text = _G.YES,
-            on_click = function() end,
+            on_click = AddOn:PointsModule().AwardPopupOnClickYes,
         },
         {
             text = _G.NO,
+            on_click = AddOn:PointsModule().AwardPopupOnClickNo
         },
     },
     hide_on_escape = true,

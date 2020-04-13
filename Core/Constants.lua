@@ -45,6 +45,7 @@ AddOn.Constants = {
         Roll                    =   "Roll",
         Rolls                   =   "Rolls",
         StartHandleLoot         =   "StartHandleLoot",
+        TrafficHistoryAdd       =   "TrafficHistoryAdd",
         VersionCheck            =   "VersionCheck",
         VersionCheckReply       =   "VersionCheckReply",
     },
@@ -80,7 +81,8 @@ AddOn.Constants = {
         LootHistorySend         =   name .. "_LootHistorySend",
         MasterLooterAddItem     =   name .. "_MasterLooterAddItem",
         MasterLooterBuildDb     =   name .. "_MasterLooterBuildDb",
-        SessionChangedPost      =   name .. "_SessionChangedPost"
+        SessionChangedPost      =   name .. "_SessionChangedPost",
+        TrafficHistorySend      =   name .. "_TrafficHistorySend"
     },
 
     Modes = {

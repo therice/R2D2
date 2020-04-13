@@ -52,10 +52,27 @@ function Traffic:initialize(instant)
     self.subjects = {}
     -- the type of the resource, for specified subject, on which action was performed
     self.resourceType = nil
+    -- the value of the resource before the action
+    self.resourceBefore = nil
     -- the quantity of the performed action
     self.resourceQuantity = nil
     -- an optional description of traffic
     self.description = nil
+    -- an optional identifier for the loot history entry associated with this traffic entry
+    -- this will only be set for GP resource types and as a result of that loot
+    -- being awarded to this entry's subject
+    self.lootHistoryId = nil
+    
+    --[[
+    
+    There are additional (optional) attributes which may be set based upon origin of traffic
+    
+    E.G. #1 map, instance, and boss will be set for GP/EP traffic from an instance encounter
+    E.G. #2 item, response, and responseId will be set for GP traffic from an item award
+    
+    If a traffic entry is created from a user initiated action, such as manual award of GP/EP, then these
+    attributes won't be present
+    --]]
 end
 
 function Traffic:SetSubjects(type, ...)
@@ -65,9 +82,9 @@ function Traffic:SetSubjects(type, ...)
     
     self.subjectType = type
     if self.subjectType == ActionType.Character then
-        self.subjects = {...}
+        self.subjects = Tables.New(...)
     else
-        local subjects = {...}
+        local subjects = Tables.New(...)
         if Tables.Count(subjects) == 0 then
             if self.subjectType == SubjectType.Guild then
                 subjects = GuildStorage:GetMembers()
@@ -101,24 +118,26 @@ end
 function Traffic:SetResource(type, quantity)
     -- you don't have to specify a resource type if already set
     if Util.Objects.IsSet(type) then
-        if not Tables.ContainsValue(ResourceType, type) then
-            error("Invalid Resource Type specified")
-        end
+        if not Tables.ContainsValue(ResourceType, type) then error("Invalid Resource Type specified") end
         self.resourceType = type
     end
     
-    if not Util.Objects.IsNumber(quantity) then
-        error("Resource Quantity must be a number")
-    end
+    if not Util.Objects.IsNumber(quantity) then error("Resource Quantity must be a number") end
+    
     self.resourceQuantity = quantity
 end
 
-function EpTraffic:initialize(instant)
-    Traffic.initialize(self, instant)
-    self.resourceType = ResourceType.Ep
-end
-
-function GpTraffic:initialize(instant)
-    Traffic.initialize(self, instant)
-    self.resourceType = ResourceType.Gp
+function Traffic:Finalize()
+    -- this step only applicable for invidiual characters
+    if self.subjectType == SubjectType.Character and Tables.Count(self.subjects) == 1 then
+        if self.resourceType then
+            --Logging:Debug('Finalize(%s) : %s', self.subjects[1], AddOn.Ambiguate(self.subjects[1]))
+            local ep, gp, _ = AddOn:PointsModule().Get(self.subjects[1])
+            if self.resourceType == ResourceType.Ep then
+                self.resourceBefore = ep
+            elseif self.resourceType == ResourceType.Gp then
+                self.resourceBefore = gp
+            end
+        end
+    end
 end

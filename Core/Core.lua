@@ -28,6 +28,10 @@ function AddOn:PointsModule()
     return self:GetModule("Points")
 end
 
+function AddOn:LootModule()
+    return self:GetModule("Loot")
+end
+
 function AddOn:LootSessionModule()
     return self:GetModule("LootSession")
 end
@@ -43,6 +47,11 @@ end
 function AddOn:LootHistoryModule()
     return self:GetModule("LootHistory")
 end
+
+function AddOn:TrafficHistoryModule()
+    return self:GetModule("TrafficHistory")
+end
+
 
 function AddOn:ModuleSettings(name)
     return AddOn.db.profile.modules[name]
