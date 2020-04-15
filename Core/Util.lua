@@ -137,8 +137,8 @@ end
 function AddOn.GetClassColor(class)
     --Logging:Debug("GetClassColor(%s)", tostring(class))
     -- if Util.Objects.IsEmpty(class) then error("No class specified") end
-    
     local color = RAID_CLASS_COLORS[class:upper()]
+    --Logging:Debug("GetClassColor(%s) : %s", tostring(class), Util.Objects.ToString(color))
     if not color then
         -- if class not found, return epic color.
         return {r=1,g=1,b=1,a=1}
@@ -151,25 +151,58 @@ end
 function AddOn.GetClassColorRGB(class)
     local c = AddOn.GetClassColor(class)
     return UI.RGBToHex(c.r,c.g,c.b)
+end
 
+function AddOn:GetUnitClass(name)
+    local unitClass
+    
+    local candidate = self.candidates[name]
+    -- first, attempt to look at the candidates we're actively tracking
+    if candidate and candidate.class then
+        unitClass = candidate.class
+    else
+        -- next, attempt a UnitClass API call, which will not yield a result if target not in group/party
+        unitClass = select(2, UnitClass(Ambiguate(name, "short")))
+        if not unitClass then
+            -- finally, attemp to get class via the points (standings) module
+            local pointEntry = self:PointsModule().GetEntry(name)
+            if pointEntry then
+                unitClass = pointEntry.classTag
+            end
+        end
+    end
+    
+    return unitClass
 end
 
 function AddOn:GetUnitClassColoredName(name)
-    local candidate = self.candidates[name]
-
-    if candidate and candidate.class then
-        local c = AddOn.GetClassColor(candidate.class)
-        return UI.ColoredDecorator(c):decorate(self.Ambiguate(name))
+    
+    local unitClass = self:GetUnitClass(name)
+    if unitClass then
+        return UI.ColoredDecorator(
+            AddOn.GetClassColor(unitClass)
+        ):decorate(
+            self.Ambiguate(name)
+        )
     else
-        local englishClass = select(2, UnitClass(Ambiguate(name, "short")))
-        name = self:UnitName(name)
-        if not englishClass or not name then
-            return self.Ambiguate(name)
-        else
-            local color = RAID_CLASS_COLORS[englishClass].colorStr
-            return UI.ColoredDecorator(color):decorate(self.Ambiguate(name))
-        end
+        return self.Ambiguate(name)
     end
+    --
+    --local candidate = self.candidates[name]
+    --
+    --if candidate and candidate.class then
+    --    local c = AddOn.GetClassColor(candidate.class)
+    --    return UI.ColoredDecorator(c):decorate(self.Ambiguate(name))
+    --else
+    --    local englishClass = select(2, UnitClass(Ambiguate(name, "short")))
+    --    name = self:UnitName(name)
+    --    if not englishClass or not name then
+    --        return self.Ambiguate(name)
+    --    else
+    --        local color = RAID_CLASS_COLORS[englishClass].colorStr
+    --        return UI.ColoredDecorator(color):decorate(self.Ambiguate(name))
+    --    end
+    --end
 end
 
 -- @param link the item link for what we wish to compare against

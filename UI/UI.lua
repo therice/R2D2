@@ -219,7 +219,7 @@ function ColoredDecorator:initialize(r, g, b)
     Decorator.initialize(self)
     if Util.Objects.IsTable(r) then
         if r.colorStr then
-            self.hex =  r.colorStr
+            self.hex = r.colorStr
         else
             self.hex = UI.RGBToHex(unpack(r))
         end
@@ -365,6 +365,7 @@ function UI:CreateFrame(name, module, title, width, height)
     text:SetText(title)
     tf.text = text
     f.title = tf
+    f.title:SetPoint("CENTER", f, "TOP", 0,10)
 
     -- actual frame content
     local c = CreateFrame("Frame", "R2D2_UI_"..module.."_Content", f)

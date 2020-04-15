@@ -4,6 +4,7 @@ local Util = AddOn.Libs.Util
 local Date = AddOn.components.Models.Date
 local History = AddOn.components.Models.History.History
 local L = AddOn.components.Locale
+local UI = AddOn.components.UI
 
 local Loot = Class('Loot', History)
 local LootStatistics = Class('LootStatistics')
@@ -66,6 +67,10 @@ end
 function Loot:SetOrigin(fromAwardReason)
     local origin = (fromAwardReason and ResponseOrigin.AwardReason) or ResponseOrigin.CandidateResponse
     self.responseOrigin = origin
+end
+
+function Loot:FormattedResponse()
+    return  UI.ColoredDecorator(self.color):decorate(self.response)
 end
 
 -- Loot Statistics

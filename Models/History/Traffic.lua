@@ -5,15 +5,12 @@ local Tables = Util.Tables
 local Class = AddOn.Libs.Class
 local GuildStorage = AddOn.Libs.GuildStorage
 local History = AddOn.components.Models.History.History
+local UI = AddOn.components.UI
 
 
-local Traffic = Class('Traffic')
-local EpTraffic = Class('EpTraffic', Traffic)
-local GpTraffic = Class('GpTraffic', Traffic)
+local Traffic = Class('Traffic', History)
 
 AddOn.components.Models.History.Traffic = Traffic
-AddOn.components.Models.History.EpTraffic = EpTraffic
-AddOn.components.Models.History.GpTraffic = GpTraffic
 
 local ActionType = {
     Add      = 1,
@@ -36,6 +33,7 @@ Traffic.ActionType = ActionType
 Traffic.TypeIdToAction = tInvert(ActionType)
 
 Traffic.SubjectType = SubjectType
+Traffic.TypeIdToSubject = tInvert(SubjectType)
 
 Traffic.ResourceType = ResourceType
 Traffic.TypeIdToResource = tInvert(ResourceType)
@@ -105,6 +103,12 @@ function Traffic:SetSubjects(type, ...)
         
         self.subjects = subjects
     end
+    Logging:Debug("%s", Util.Objects.ToString(self.subjects))
+    Tables.Map(self.subjects, function(subject)
+        Logging:Debug("%s => %s", subject, tostring(AddOn:GetUnitClass(subject) or "UNKNOWN"))
+        return {subject, AddOn:GetUnitClass(subject)}
+    end)
+    Logging:Debug("%s", Util.Objects.ToString(self.subjects))
 end
 
 function Traffic:SetAction(type)
@@ -132,7 +136,7 @@ function Traffic:Finalize()
     if self.subjectType == SubjectType.Character and Tables.Count(self.subjects) == 1 then
         if self.resourceType then
             --Logging:Debug('Finalize(%s) : %s', self.subjects[1], AddOn.Ambiguate(self.subjects[1]))
-            local ep, gp, _ = AddOn:PointsModule().Get(self.subjects[1])
+            local ep, gp, _ = AddOn:PointsModule().Get(self.subjects[1][1])
             if self.resourceType == ResourceType.Ep then
                 self.resourceBefore = ep
             elseif self.resourceType == ResourceType.Gp then

@@ -14,7 +14,7 @@ local Objects       = Util.Objects
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 25, 10
 local DefaultScrollTableData = {}
-local Get
+local GetEntry
 local MenuFrame, FilterMenu
 local points = {}
 
@@ -33,7 +33,7 @@ function Points:OnInitialize()
             comparesort  = function(table, rowa, rowb, sortbycol)
                 return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
-                                return Get(row.name).class
+                                return GetEntry(row.name).class
                             end
                 )
             end,
@@ -65,7 +65,7 @@ function Points:OnInitialize()
             comparesort  = function(table, rowa, rowb, sortbycol)
                 return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
-                                return Get(row.name).rankIndex
+                                return GetEntry(row.name).rankIndex
                             end
                 )
             end,
@@ -81,7 +81,7 @@ function Points:OnInitialize()
             comparesort  = function(table, rowa, rowb, sortbycol)
                 return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
-                                return Get(row.name).ep
+                                return GetEntry(row.name).ep
                             end
                 )
             end,
@@ -97,7 +97,7 @@ function Points:OnInitialize()
             comparesort  = function(table, rowa, rowb, sortbycol)
                 return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
-                                return Get(row.name).gp
+                                return GetEntry(row.name).gp
                             end
                 )
             end,
@@ -113,7 +113,8 @@ function Points:OnInitialize()
             comparesort  = function(table, rowa, rowb, sortbycol)
                 return UI.Sort(table, rowa, rowb, sortbycol,
                             function(row)
-                                return Get(row.name):GetPR()
+                                local entry = GetEntry(row.name)
+                                return entry and entry:GetPR() or nil
                             end
                 )
             end,
@@ -140,11 +141,13 @@ end
 
 function Points:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
-    self.frame:SetParent(nil)
+    self:Hide()
+    if self.frame then self.frame:SetParent(nil) end
     self.frame = nil
-    self.adjustFrame:SetParent(nil)
+    if self.adjustFrame then self.adjustFrame:SetParent(nil) end
     self.adjustFrame = nul
     self.updateHandler:Dispose()
+    self.updateHandler = nil
 end
 
 function Points:EnableOnStartup()
@@ -155,28 +158,31 @@ function Points.Get(name)
     if points[name] then return points[name]:Get() end
 end
 
-function Add(name, entry)
+function AddEntry(name, entry)
     points[name] = entry
 end
 
-function Remove(name)
+function RemoveEntry(name)
     points[name] = nil
 end
 
-function Get(name)
+function GetEntry(name)
+    return Points.GetEntry(name)
+end
+
+function Points.GetEntry(name)
     return points[name]
 end
 
 -- todo : need to handle addition and removal of members to scrolling table
-
 function Points:MemberModified(event, name, note)
     -- don't need to remove, it overwrites
-    Add(name, Models.PointEntry:FromGuildMember(GuildStorage:GetMember(name)))
+    AddEntry(name, Models.PointEntry:FromGuildMember(GuildStorage:GetMember(name)))
     Logging:Trace("MemberModified(%s) : '%s'", name, note)
 end
 
 function Points:MemberDeleted(event, name)
-    Remove(name)
+    RemoveEntry(name)
     Logging:Trace("MemberDeleted(%s)", name)
 end
 
@@ -194,13 +200,12 @@ function Points:DataChanged(event, state)
     end
 end
 
-
 function Points:Adjust(data)
     Logging:Debug("%s", Objects.ToString(data))
     local entry = AddOn:TrafficHistoryModule():CreateEntry(
             data.actionType,
             data.subjectType,
-            {data.subject},
+            data.subject,
             data.resourceType,
             data.quantity,
             data.description
@@ -253,6 +258,7 @@ function Points:BuildScrollingTable()
     self.frame.st:SetData(rows)
 end
 
+-- todo : fix this stupid functoin
 function Points:Update(forceUpdate)
     Logging:Trace("Update(%s)", tostring(forceUpdate or false))
     if not forceUpdate and not self.updateHandler:Eligible() then return end
@@ -285,7 +291,7 @@ function Points:GetFrame()
                                   -- update more info
                                   elseif button == "LeftButton" and row then
                                       AddOn.UpdateMoreInfo(self:GetName(), f, realrow, data,
-                                                           function(name) return Get(name).class end
+                                                           function(name) return GetEntry(name).class end
                                       )
                                   end
                                   -- Return false to have the default OnClick handler take care of left clicks
@@ -297,7 +303,7 @@ function Points:GetFrame()
                               ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                                   if row then
                                       AddOn.UpdateMoreInfo(self:GetName(), f, realrow, data,
-                                                           function(name) return Get(name).class end
+                                                           function(name) return GetEntry(name).class end
                                       )
                                   end
                                   -- Return false to have the default OnEnter handler take care mouseover
@@ -308,7 +314,7 @@ function Points:GetFrame()
         st:RegisterEvents({
                               ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                                   AddOn.UpdateMoreInfo(self:GetName(), f, nil, nil,
-                                                       function(name) return Get(name).class end)
+                                                       function(name) return GetEntry(name).class end)
                                   return false
                               end
                           })
@@ -323,9 +329,14 @@ function Points:GetFrame()
     -- more info widgets
     AddOn.EmbedMoreInfoWidgets(self:GetName(), f)
     
+    local close = UI:CreateButton(_G.CLOSE, f.content)
+    close:SetPoint("RIGHT", f.moreInfoBtn, "LEFT", -10, 0)
+    close:SetScript("OnClick", function() self:Hide() end)
+    f.closeBtn = close
+    
     -- filter
     local filter = UI:CreateButton(_G.FILTER, f.content)
-    filter:SetPoint("TOPRIGHT", f, "TOPRIGHT", -40, -20)
+    filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     filter:SetScript("OnEnter", function() UI:CreateTooltip(L["deselect_responses"]) end)
     filter:SetScript("OnLeave", function() UI:HideTooltip() end)
@@ -340,7 +351,6 @@ function Points:GetAdjustFrame()
     local f = UI:CreateFrame("R2D2_Adjust_Points", "AdjustPoints", L["r2d2_adjust_points_frame"], 150, 275)
     f:SetWidth(225)
     f:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", -150)
-    f.title:SetPoint("CENTER", f, "TOP", 0 ,-5)
     
     local name = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     name:SetPoint("CENTER", f.content, "TOP", 0, -30)
@@ -496,7 +506,7 @@ end
 function Points:UpdateAdjustFrame(name, resource)
     if not self.adjustFrame then return end
     
-    local char = Get(name)
+    local char = GetEntry(name)
     local c = (AddOn.GetClassColor(char.class))
     
     --self.adjustFrame.name:SetText(AddOn.Ambiguate(name))
@@ -519,7 +529,7 @@ end
 function Points.AdjustPointsOnShow(frame, data)
     UI.DecoratePopup(frame)
     
-    local char = Get(data.subject)
+    local char = GetEntry(data.subject)
     local c = AddOn.GetClassColor(char.class)
     local classDeco = UI.ColoredDecorator(c.r, c.g, c.b)
     -- Are you certain you want to %s %d %s %s %s?
@@ -537,12 +547,12 @@ end
 function Points.AwardPopupOnClickYes(frame, data, callback, ...)
     Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
     Points:Adjust(data)
+    if Points.adjustFrame then Points.adjustFrame:Hide() end
 end
 
 function Points.AwardPopupOnClickNo(frame, data)
     -- intentionally left blank
 end
-
 
 Points.RightClickEntries = {
     -- level 1
@@ -644,7 +654,7 @@ function Points.FilterFunc(table, row)
     
     local ModuleFilters = Module.filters
     local name = row.name
-    local member = Get(name)
+    local member = GetEntry(name)
     
     -- Logging:Debug("FilterFunc : %s", Util.Objects.ToString(ModuleFilters))
     
@@ -680,13 +690,13 @@ end
 
 function Points.SetCellClass(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    AddOn.SetCellClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, Get(name).classTag)
-    data[realrow].cols[column].value = Get(name).class or ""
+    AddOn.SetCellClassIcon(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, GetEntry(name).classTag)
+    data[realrow].cols[column].value = GetEntry(name).class or ""
 end
 
 function Points.SetCellName(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local c = AddOn.GetClassColor(Get(name).class)
+    local c = AddOn.GetClassColor(GetEntry(name).class)
     cellFrame.text:SetText(AddOn.Ambiguate(name))
     cellFrame.text:SetTextColor(c.r, c.g, c.b, c.a)
     data[realrow].cols[column].value = name or ""
@@ -694,28 +704,28 @@ end
 
 function Points.SetCellRank(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local rank =  Get(name).rank
+    local rank =  GetEntry(name).rank
     cellFrame.text:SetText(rank)
     data[realrow].cols[column].value = rank or ""
 end
 
 function Points.SetCellEp(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local ep = Get(name).ep
+    local ep = GetEntry(name).ep
     cellFrame.text:SetText(ep)
     data[realrow].cols[column].value = ep or 0
 end
 
 function Points.SetCellGp(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local gp = Get(name).gp
+    local gp = GetEntry(name).gp
     cellFrame.text:SetText(gp)
     data[realrow].cols[column].value = gp or 0
 end
 
 function Points.SetCellPr(rowFrame, cellFrame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
-    local pr = Get(name):GetPR()
+    local pr = GetEntry(name):GetPR()
     cellFrame.text:SetText(pr)
     data[realrow].cols[column].value = pr or 0
 end

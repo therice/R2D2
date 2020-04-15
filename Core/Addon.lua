@@ -45,7 +45,8 @@ function R2D2:OnInitialize()
         {cmd = "config", desc = L["chat_commands_config"]},
         {cmd = "test", desc = L["chat_commands_test"]},
         {cmd = "version", desc = L["chat_commands_version"]},
-        {cmd = "looth", desc = L["TBD"]}
+        {cmd = "looth", desc = L["TBD"]},
+        {cmd = "traffich", desc = L["TBD"]},
         -- development intentionally not documented
     }
     -- the player class
@@ -227,6 +228,8 @@ function R2D2:ChatCommand(msg)
         self:Config()
     elseif cmd == 'looth' or cmd == 'lh' then
         self:CallModule("LootHistory")
+    elseif cmd == 'traffich' or cmd == 'th' then
+        self:CallModule("TrafficHistory")
     elseif cmd == 'test' or cmd == "t" then
         self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then

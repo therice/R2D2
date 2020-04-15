@@ -12,14 +12,14 @@ local Strings       = Util.Strings
 local ST            = AddOn.Libs.ScrollingTable
 
 LootHistory.options = {
-    name = 'Loot History',
-    desc = 'Loot History Description',
+    name = L['loot_history'],
+    desc = L['loot_history_desc'],
     ignore_enable_disable = true,
     args = {
         openHistory = {
             order = 5,
-            name = "Open Loot History",
-            desc = "Desc",
+            name = L['open_loot_history'],
+            desc = L['open_loot_history_desc'],
             type = "execute",
             func = function()
                 AddOn:CallModule("LootHistory")
@@ -56,14 +56,14 @@ function LootHistory:OnInitialize()
         },
         -- 3 timestamp
         {
-            name = L["Time"],
+            name = L['date'],
             width = 125,
             sort = 2,
             defaultsort = 2,
         },
         -- instance
         {
-            name = L["instance"],
+            name = L['instance'],
             width = 125,
             sort = 2,
             defaultsort = 2,
@@ -75,7 +75,7 @@ function LootHistory:OnInitialize()
         },
         -- 6 item string
         {
-            name = L["Item"],
+            name = L['item'],
             width = 250,
             comparesort = self.ItemSort,
             defaultsort = 1,
@@ -83,7 +83,7 @@ function LootHistory:OnInitialize()
         },
         -- 7 response
         {
-            name = L["Reason"],
+            name = L['reason'],
             width = 220,
             comparesort = self.ResponseSort,
             defaultsort = 1,
@@ -287,7 +287,7 @@ function LootHistory.SetCellDelete(rowFrame, frame, data, cols, row, realrow, co
     if not frame.created then
         frame:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
         frame:SetScript("OnEnter", function()
-            UI:CreateTooltip("Double click to delete this entry")
+            UI:CreateTooltip(L['double_click_to_delete_this_entry'])
         end)
         frame:SetScript("OnLeave", function() UI:HideTooltip() end)
         frame.created = true
@@ -359,7 +359,6 @@ function LootHistory:Update()
     end
 end
 
-
 function LootHistory:GetFrame()
     if self.frame then return end
     local f = UI:CreateFrame("R2D2_LootHistory", "LootHistory",  L["r2d2_loot_history_frame"], 250, 480)
@@ -385,7 +384,7 @@ function LootHistory:GetFrame()
     f.date = ST:CreateST(
             {
                 {
-                    name = L["Date"],
+                    name = L["date"],
                     width = 70,
                     sort = 2,
                 }
@@ -486,7 +485,7 @@ function LootHistory:GetFrame()
             self.moreInfo:Hide()
         end
     end)
-    moreInfoBtn:SetScript("OnEnter", function() UI:CreateTooltip(L["Click to expand/collapse more info"]) end)
+    moreInfoBtn:SetScript("OnEnter", function() UI:CreateTooltip(L["click_more_info"]) end)
     moreInfoBtn:SetScript("OnLeave", function() UI:HideTooltip() end)
     f.moreInfoBtn = moreInfoBtn
     
@@ -501,7 +500,7 @@ function LootHistory:GetFrame()
     MSA_DropDownMenu_Initialize(filter, self.FilterMenu)
     f.filter:SetSize(125,25)
     
-    local clear = UI:CreateButton(L["Clear Selection"], f.content)
+    local clear = UI:CreateButton(L["clear_selection"], f.content)
     clear:SetPoint("RIGHT", f.filter, "LEFT", -10, 0)
     clear:SetScript("OnClick", function()
         selectedDate, selectedInstance, selectedName = nil, nil, nil
@@ -529,25 +528,24 @@ function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realro
     
     tip:AddLine(AddOn.Ambiguate(entry.owner), color.r, color.g, color.b)
     tip:AddLine("")
-    tip:AddDoubleLine(L["Time"]..":", entry:FormattedTimestamp() or _G.UNKNOWN, 1,1,1, 1,1,1)
-    tip:AddDoubleLine(L["Loot won:"], entry.item or _G.UNKNOWN, 1,1,1, 1,1,1)
-    tip:AddDoubleLine(L["Dropped by:"], entry.boss or _G.UNKNOWN, 1,1,1, 0.862745, 0.0784314, 0.235294)
+    tip:AddDoubleLine(L["date"] .. ":", entry:FormattedTimestamp() or _G.UNKNOWN, 1,1,1, 1,1,1)
+    tip:AddDoubleLine(L["loot_won"] .. ":", entry.item or _G.UNKNOWN, 1,1,1, 1,1,1)
+    tip:AddDoubleLine(L["dropped_by"] .. ":", entry.boss or _G.UNKNOWN, 1,1,1, 0.862745, 0.0784314, 0.235294)
     tip:AddDoubleLine(_G.FROM, entry.instance or _G.UNKNOWN, 1,1,1, 0.823529, 0.411765, 0.117647)
     if entry.note then
-        tip:AddDoubleLine(_G.LABEL_NOTE..":", entry.note, 1,1,1, 1,1,1)
+        tip:AddDoubleLine(_G.LABEL_NOTE .. ":", entry.note, 1,1,1, 1,1,1)
     end
     tip:AddLine(" ")
-    tip:AddLine(L["Total awards"])
+    tip:AddLine(L["total_awards"])
     
     local stats = self:GetStatistics():Get(entry.owner)
     stats:CalculateTotals()
-    
     -- Logging:Debug("%s => %s", entry.owner, Objects.ToString(stats))
     
     table.sort(stats.totals.responses,
                function(a, b)
                    local responseId1, responseId2 = a[4], b[4]
-                   return Objects.IsNumber(responseId1 )and Objects.IsNumber(responseId2) and responseId1 < responseId2 or false
+                   return Objects.IsNumber(responseId1) and Objects.IsNumber(responseId2) and responseId1 < responseId2 or false
                end
     )
     for _, v in pairs(stats.totals.responses) do
@@ -555,13 +553,11 @@ function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realro
         if v[3] then r,g,b = unpack(v[3],1,3) end
         tip:AddDoubleLine(v[1], v[2], r or 1, g or 1, b or 1, 1,1,1)
     end
-    tip:AddDoubleLine(L["Number of raids received loot from:"], stats.totals.raids.count, 1,1,1, 1,1,1)
-    tip:AddDoubleLine(L["Total items won:"], stats.totals.count, 1,1,1, 0,1,0)
+    tip:AddDoubleLine(L["number_of_raids_from which_loot_was_received"] .. ":", stats.totals.raids.count, 1,1,1, 1,1,1)
+    tip:AddDoubleLine(L["total_items_won"] .. ":", stats.totals.count, 1,1,1, 0,1,0)
     tip:AddLine(" ")
     
-    
     tip:SetScale(self.frame:GetScale() * 0.65)
-    
     if moreInfo then
         tip:Show()
     else
@@ -623,7 +619,7 @@ function LootHistory.FilterMenu(menu, level)
         for k in pairs(data) do
             if Util.Objects.IsString(k) then
                 if k == "STATUS" then
-                    info.text = L["Status texts"]
+                    info.text = L["status_texts"]
                     info.colorCode = "|cffde34e2"
                 else
                     info.text = AddOn:GetResponse("",k).text
