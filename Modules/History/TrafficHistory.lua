@@ -1,16 +1,18 @@
 local _, AddOn = ...
-local TrafficHistory= AddOn:NewModule("TrafficHistory", "AceEvent-3.0", "AceTimer-3.0")
-local Logging       = AddOn.Libs.Logging
-local Util          = AddOn.Libs.Util
-local Objects       = Util.Objects
-local Tables        = Util.Tables
-local Strings       = Util.Strings
-local UI            = AddOn.components.UI
-local L             = AddOn.components.Locale
-local Models        = AddOn.components.Models
-local Traffic       = Models.History.Traffic
-local CDB           = Models.CompressedDb
-local ST            = AddOn.Libs.ScrollingTable
+local TrafficHistory = AddOn:NewModule("TrafficHistory", "AceEvent-3.0", "AceTimer-3.0")
+local Logging = AddOn.Libs.Logging
+local Util = AddOn.Libs.Util
+local Objects = Util.Objects
+local Tables = Util.Tables
+local Strings = Util.Strings
+local UI = AddOn.components.UI
+local L = AddOn.components.Locale
+local Models = AddOn.components.Models
+local Traffic = Models.History.Traffic
+local CDB = Models.CompressedDb
+local ST = AddOn.Libs.ScrollingTable
+local ItemUtil = AddOn.Libs.ItemUtil
+
 
 TrafficHistory.options = {
     name = 'Traffic History',
@@ -37,6 +39,7 @@ TrafficHistory.defaults = {
 
 local ROW_HEIGHT, NUM_ROWS = 20, 15
 local SubjectTypesForDisplay, ActionTypesForDisplay, ResourceTypesForDisplay = {}, {}, {}
+local FilterMenu
 local selectedDate, selectedName, selectedAction, selectedResource
 
 function TrafficHistory:OnInitialize()
@@ -95,6 +98,11 @@ function TrafficHistory:OnInitialize()
             name = L["description"],
             width = 250,
         },
+        -- delete icon
+        {
+            name = "",
+            width = ROW_HEIGHT
+        },
     }
     
     for key, value in pairs(Traffic.SubjectType) do
@@ -123,8 +131,11 @@ function TrafficHistory:OnInitialize()
                 }
         )
     end
+    
     self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB', TrafficHistory.defaults)
     self.history = CDB(self.db.factionrealm)
+    FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.TrafficHistoryFilter, UIParent)
+    MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
 end
 
 function TrafficHistory:OnEnable()
@@ -184,6 +195,7 @@ function TrafficHistory:BuildData()
                 {value = entry.resourceBefore},
                 {DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellResourceAfter)},
                 {value = entry.description},
+                {DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellDelete)},
             }
         }
     
@@ -300,7 +312,7 @@ function TrafficHistory.SetCellResourceAfter(rowFrame, frame, data, cols, row, r
         elseif entry.actionType == Traffic.ActionType.Subtract then
             value = value - entry.resourceQuantity
         elseif entry.actionType == Traffic.ActionType.Reset then
-            value = 0 -- this is probably wrong and needs to be the min value
+            value = 0 -- todo : this is probably wrong and needs to be the min value
         end
     else
         value = nil
@@ -308,6 +320,40 @@ function TrafficHistory.SetCellResourceAfter(rowFrame, frame, data, cols, row, r
     
     data[realrow].cols[column].value = value
     frame.text:SetText(value)
+end
+
+function TrafficHistory.SetCellDelete(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
+    
+    if not frame.created then
+        frame:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
+        frame:SetScript("OnEnter", function()
+            UI:CreateTooltip(L['double_click_to_delete_this_entry'])
+        end)
+        frame:SetScript("OnLeave", function() UI:HideTooltip() end)
+        frame.created = true
+    end
+    
+    frame:SetScript("OnClick", function()
+        local num = data[realrow].num
+        if frame.lastClick and GetTime() - frame.lastClick <= 0.5 then
+            frame.lastClick = nil
+            Logging:Debug("TrafficHistory : Deleting %s", tostring(num))
+            local history = TrafficHistory:GetHistory()
+            
+            history:del(num)
+            tremove(data, realrow)
+            
+            for _, v in pairs(data) do
+                if v.num >= num then
+                    v.num = v.num - 1
+                end
+            end
+            
+            table:SortData()
+        else
+            frame.lastClick = GetTime()
+        end
+    end)
 end
 
 local function IsFiltering()
@@ -359,9 +405,6 @@ function TrafficHistory:GetFrame()
                                       else
                                           selectedDate = nil
                                       end
-                                      
-                                      -- Logging:Debug("%s", Objects.ToString(selectedDate))
-                                      
                                       self:Update()
                                   end
                                   return false
@@ -388,7 +431,6 @@ function TrafficHistory:GetFrame()
                                   if button == "LeftButton" and row then
                                       local rowName = data[realrow][column].name
                                       selectedName = selectedName ~= rowName and rowName or nil
-                                      -- Logging:Debug("%s", tostring(selectedName))
                                       self:Update()
                                   end
                                   return false
@@ -411,7 +453,6 @@ function TrafficHistory:GetFrame()
                                   if button == "LeftButton" and row then
                                       local rowName = data[realrow][column].name
                                       selectedAction = selectedAction ~= rowName and rowName or nil
-                                      -- Logging:Debug("%s", tostring(selectedAction))
                                       self:Update()
                                   end
                                   return false
@@ -434,7 +475,6 @@ function TrafficHistory:GetFrame()
                                     if button == "LeftButton" and row then
                                         local rowName = data[realrow][column].name
                                         selectedResource = selectedResource ~= rowName and rowName or nil
-                                        -- Logging:Debug("%s", tostring(selectedResource))
                                         self:Update()
                                     end
                                     return false
@@ -449,9 +489,10 @@ function TrafficHistory:GetFrame()
     
     local filter = UI:CreateButton(_G.FILTER, f.content)
     filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+    filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     f.filter = filter
+    MSA_DropDownMenu_Initialize(filter, self.FilterMenu)
     f.filter:SetSize(125,25)
-    
     
     local clear = UI:CreateButton(L["clear_selection"], f.content)
     clear:SetPoint("RIGHT", f.filter, "LEFT", -10, 0)
@@ -472,8 +513,6 @@ end
 
 local function SelectionFilter(entry)
     -- Logging:Debug("SelectionFilter() : %s", Objects.ToString(entry, 3))
-    
-    
     local display = true
     
     if Tables.IsSet(selectedDate) then
@@ -484,23 +523,32 @@ local function SelectionFilter(entry)
         local subjectType = entry.subjectType
         if subjectType == Traffic.SubjectType.Character then
             display = Strings.Equal(selectedName, entry.subjects[1][1])
-        -- todo : other subjects
+        elseif subjectType == Traffic.SubjectType.Guild then
+            display = Strings.Equal(selectedName, _G.GUILD)
+        elseif subjectType == Traffic.SubjectType.Raid then
+            display = Strings.Equal(selectedName, _G.GROUP)
         end
     end
-    --
-    --if Tables.IsSet(selectedDate) then
-    --    display = Tables.ContainsValue(selectedDate, date)
-    --end
-    --
-    --if display and Strings.IsSet(selectedInstance) then
-    --    display = Strings.Equal(selectedInstance, instance)
-    --end
-    --
-    --if display and Strings.IsSet(selectedName) then
-    --    display = Strings.Equal(selectedName, name)
-    --end
+    
+    if display and Strings.IsSet(selectedAction) then
+        display = entry.actionType == Traffic.ActionType[selectedAction]
+    end
+    
+    if display and Strings.IsSet(selectedResource) then
+        -- boooo, shouldn't have to screw around with a string to get value
+        display = entry.resourceType == Traffic.ResourceType[Strings.UcFirst(Strings.Lower(selectedResource))]
+    end
     
     return display
+end
+
+local function ClassFilter(class)
+    class = ItemUtil:ClassTransitiveMapping(class)
+    local ModuleFilters = AddOn:ModuleSettings(TrafficHistory:GetName()).filters
+    Logging:Trace("ClassFilter(%s)", class)
+    
+    if ModuleFilters then return ModuleFilters.class[class] end
+    return true
 end
 
 function TrafficHistory.FilterFunc(table, row)
@@ -508,17 +556,64 @@ function TrafficHistory.FilterFunc(table, row)
     Logging:Trace("Applying Selection Filter(s)")
     local selectionFilter = SelectionFilter(entry)
     
-    ---- determine if module filters need respected
-    --local moduleFilters = AddOn:ModuleSettings(LootHistory:GetName()).filters
-    --if not moduleFilters then return selectionFilter end
-    --
-    --Logging:Trace("Applying Class Filter(s)")
-    --local classFilter = ClassFilter(entry.class)
-    --
-    --Logging:Trace("Applying Response Filter(s)")
-    --local responseFilter = ResponseFilter(entry.responseId, entry:IsAwardReason())
+    -- determine if module filters need respected
+    local moduleFilters = AddOn:ModuleSettings(TrafficHistory:GetName()).filters
+    if not moduleFilters then return selectionFilter end
     
-    return selectionFilter --and classFilter and responseFilter
+    local classFilter = true
+    if entry.subjectType == Traffic.SubjectType.Character then
+        classFilter = ClassFilter(entry.subjects[1][2])
+    end
+    
+    return selectionFilter and classFilter
+end
+
+function TrafficHistory.FilterMenu(menu, level)
+    local info, value = nil, _G.MSA_DROPDOWNMENU_MENU_VALUE
+    local ModuleFilters = AddOn:ModuleSettings(TrafficHistory:GetName()).filters
+    
+    if level == 1 then
+        info = MSA_DropDownMenu_CreateInfo()
+        info.text = _G.CLASS
+        info.isTitle = false
+        info.hasArrow = true
+        info.notCheckable = true
+        info.disabled = false
+        info.value = "CLASS"
+        MSA_DropDownMenu_AddButton(info, level)
+    elseif level == 2 then
+        if value == "CLASS" then
+            -- these will be a table of sorted display class names
+            local data = Util(ItemUtil.ClassDisplayNameToId):Keys()
+                            :Filter(AddOn.FilterClassesByFactionFn):Sort():Copy()()
+            
+            for _, class in pairs(data) do
+                info = MSA_DropDownMenu_CreateInfo()
+                info.text = class
+                info.colorCode = "|cff" .. AddOn.GetClassColorRGB(class)
+                info.keepShownOnClick = true
+                info.func = function()
+                    ModuleFilters.class[class] = not ModuleFilters.class[class]
+                    TrafficHistory:Update(true)
+                end
+                info.checked = ModuleFilters.class[class]
+                MSA_DropDownMenu_AddButton(info, level)
+            end
+        
+            info = MSA_DropDownMenu_CreateInfo()
+            info.text = "Deselect All"
+            info.notCheckable = true
+            info.keepShownOnClick = true
+            info.func = function()
+                for _, k in pairs(data) do
+                    ModuleFilters.class[k] = not ModuleFilters.class[k]
+                    MSA_DropDownMenu_SetSelectedName(FilterMenu, ItemUtil.ClassIdToDisplayName[k], false)
+                    TrafficHistory:Update()
+                end
+            end
+            MSA_DropDownMenu_AddButton(info, level)
+        end
+    end
 end
 
 -- @param actionType see Models.History.Traffic.ActionType

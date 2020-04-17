@@ -1,16 +1,16 @@
 local _, AddOn = ...
-local LootHistory   = AddOn:NewModule("LootHistory", "AceEvent-3.0", "AceTimer-3.0")
-local Logging       = AddOn.Libs.Logging
-local Util          = AddOn.Libs.Util
-local ItemUtil      = AddOn.Libs.ItemUtil
-local L             = AddOn.components.Locale
-local Models        = AddOn.components.Models
-local CDB           = Models.CompressedDb
-local UI            = AddOn.components.UI
-local Tables        = Util.Tables
-local Objects       = Util.Objects
-local Strings       = Util.Strings
-local ST            = AddOn.Libs.ScrollingTable
+local LootHistory = AddOn:NewModule("LootHistory", "AceEvent-3.0", "AceTimer-3.0")
+local Logging = AddOn.Libs.Logging
+local Util = AddOn.Libs.Util
+local ItemUtil = AddOn.Libs.ItemUtil
+local L = AddOn.components.Locale
+local Models = AddOn.components.Models
+local CDB = Models.CompressedDb
+local UI = AddOn.components.UI
+local Tables = Util.Tables
+local Objects = Util.Objects
+local Strings = Util.Strings
+local ST = AddOn.Libs.ScrollingTable
 
 LootHistory.options = {
     name = L['loot_history'],
@@ -99,8 +99,8 @@ function LootHistory:OnInitialize()
     self.db = AddOn.Libs.AceDB:New('R2D2_LootDB', LootHistory.defaults)
     self.history = CDB(self.db.factionrealm)
     
-    MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.AllocateRightClick, UIParent)
-    FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.AllocateFilter, UIParent)
+    MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.LootHistoryRightClick, UIParent)
+    FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.LootHistoryFilter, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
     self.moreInfo = CreateFrame( "GameTooltip", "R2D2_" .. self:GetName() .. "_MoreInfo", nil, "GameTooltipTemplate" )

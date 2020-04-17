@@ -75,8 +75,8 @@ function Points:OnInitialize()
             sortnext     = 4,
         },
     }
-    MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.AllocateRightClick, UIParent)
-    FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.AllocateFilter, UIParent)
+    MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.PointsRightClick, UIParent)
+    FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.PointsFilter, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
     -- register callbacks with LibGuildStorage for events in which we are interested
