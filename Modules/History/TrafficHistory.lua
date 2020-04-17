@@ -9,6 +9,7 @@ local UI            = AddOn.components.UI
 local L             = AddOn.components.Locale
 local Models        = AddOn.components.Models
 local Traffic       = Models.History.Traffic
+local CDB           = Models.CompressedDb
 local ST            = AddOn.Libs.ScrollingTable
 
 TrafficHistory.options = {
@@ -41,7 +42,6 @@ local selectedDate, selectedName, selectedAction, selectedResource
 function TrafficHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     local C = AddOn.Constants
-    self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB', TrafficHistory.defaults)
     self.scrollCols = {
         -- actor
         {
@@ -123,6 +123,8 @@ function TrafficHistory:OnInitialize()
                 }
         )
     end
+    self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB', TrafficHistory.defaults)
+    self.history = CDB(self.db.factionrealm)
 end
 
 function TrafficHistory:OnEnable()
@@ -135,8 +137,6 @@ end
 function TrafficHistory:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
     self:Hide()
-    if self.frame then self.frame:SetParent(nil) end
-    self.frame = nil
 end
 
 function TrafficHistory:EnableOnStartup()
@@ -144,11 +144,11 @@ function TrafficHistory:EnableOnStartup()
 end
 
 function TrafficHistory:GetHistory()
-    return self.db.factionrealm
+    return self.history
 end
 
 function TrafficHistory:AddEntry(entry)
-    tinsert(self:GetHistory(), entry:toTable())
+    self:GetHistory():insert(entry:toTable())
 end
 
 function TrafficHistory:Show()
@@ -163,7 +163,8 @@ function TrafficHistory:BuildData()
     self.frame.rows = {}
     
     local tsData, nameData = {}, {}
-    for row, entryTable in pairs(self:GetHistory()) do
+    local c_pairs = CDB.static.pairs
+    for row, entryTable in c_pairs(self:GetHistory()) do
         local entry = Models.History.Traffic():reconstitute(entryTable)
         
         self.frame.rows[row] = {
@@ -230,7 +231,7 @@ function TrafficHistory.SetCellSubjectIcon(rowFrame, frame, data, cols, row, rea
         end
         AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectClass)
     else
-        SetSubjectIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectType)
+        TrafficHistory.SetSubjectIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectType)
     end
 end
 
@@ -262,10 +263,10 @@ function TrafficHistory.SetSubject(rowFrame, frame, data, cols, row, realrow, co
     local subjectType = subjectType or data[realrow][column].args[1]
     if subjectType == Traffic.SubjectType.Guild then
         frame.text:SetText(_G.GUILD)
-        frame.text:SetTextColor(GetItemQualityColor(2))
+        frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Traffic.SubjectType.Guild):GetRGB())
     elseif subjectType == Traffic.SubjectType.Raid then
         frame.text:SetText(_G.GROUP)
-        frame.text:SetTextColor(GetItemQualityColor(5))
+        frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Traffic.SubjectType.Raid):GetRGB())
     end
 end
 
@@ -277,13 +278,7 @@ function TrafficHistory.SetAction(rowFrame, frame, data, cols, row, realrow, col
     local actionType = actionType or data[realrow][column].args[1]
     
     frame.text:SetText(Traffic.TypeIdToAction[actionType])
-    if actionType == Traffic.ActionType.Add then
-        frame.text:SetTextColor(0, 1, 0.59, 1)
-    elseif actionType == Traffic.ActionType.Subtract then
-        frame.text:SetTextColor(0.96, 0.55, 0.73, 1)
-    elseif actionType == Traffic.ActionType.Reset then
-        frame.text:SetTextColor(1, 0.96, 0.41, 1)
-    end
+    frame.text:SetTextColor(AddOn.GetActionTypeColor(actionType):GetRGB())
 end
 
 function TrafficHistory.SetCellResource(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
@@ -293,22 +288,22 @@ end
 function TrafficHistory.SetResource(rowFrame, frame, data, cols, row, realrow, column, fShow, table, resourceType)
     local resourceType = resourceType or data[realrow][column].args[1]
     frame.text:SetText(Traffic.TypeIdToResource[resourceType]:upper())
-    if resourceType == Traffic.ResourceType.Ep then
-        frame.text:SetTextColor(GetItemQualityColor(6))
-    elseif resourceType == Traffic.ResourceType.Gp then
-        frame.text:SetTextColor(GetItemQualityColor(5))
-    end
+    frame.text:SetTextColor(AddOn.GetResourceTypeColor(resourceType):GetRGB())
 end
 
 function TrafficHistory.SetCellResourceAfter(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local entry = data[realrow].entry
     local value = entry.resourceBefore
-    if entry.actionType == Traffic.ActionType.Add then
-        value = value + entry.resourceQuantity
-    elseif entry.actionType == Traffic.ActionType.Subtract then
-        value = value - entry.resourceQuantity
-    elseif entry.actionType == Traffic.ActionType.Reset then
-        value = 0 -- this is probably wrong and needs to be the min value
+    if value then
+        if entry.actionType == Traffic.ActionType.Add then
+            value = value + entry.resourceQuantity
+        elseif entry.actionType == Traffic.ActionType.Subtract then
+            value = value - entry.resourceQuantity
+        elseif entry.actionType == Traffic.ActionType.Reset then
+            value = 0 -- this is probably wrong and needs to be the min value
+        end
+    else
+        value = nil
     end
     
     data[realrow].cols[column].value = value
@@ -335,7 +330,7 @@ function TrafficHistory:Update()
 end
 
 function TrafficHistory:GetFrame()
-    if self.frame then return end
+    if self.frame then return self.frame end
     local f = UI:CreateFrame("R2D2_TrafficHistory", "TrafficHistory",  L["r2d2_traffic_history_frame"], 250, 480)
     local st = ST:CreateST(self.scrollCols, NUM_ROWS, ROW_HEIGHT, { ["r"] = 1.0, ["g"] = 0.9, ["b"] = 0.0, ["a"] = 0.5 }, f.content)
     st.frame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
@@ -476,9 +471,8 @@ function TrafficHistory:GetFrame()
 end
 
 local function SelectionFilter(entry)
-    Logging:Debug("SelectionFilter() : %s", Objects.ToString(entry, 3))
-    --Logging:Trace("FilterByNameAndDate() : %s, %s, %s, %s",
-    --              tostring(name), tostring(date), tostring(action), tostring(resource))
+    -- Logging:Debug("SelectionFilter() : %s", Objects.ToString(entry, 3))
+    
     
     local display = true
     

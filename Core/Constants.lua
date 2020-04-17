@@ -19,6 +19,10 @@ AddOn.Constants = {
         Whisper     =   "WHISPER",
     },
 
+    Colors = {
+    
+    },
+    
     Commands = {
         Awarded                 =   "Awarded",
         Bagged                  =   "Bagged",

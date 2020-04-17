@@ -49,6 +49,8 @@ do
 
     R2D2:AddLib('Util', 'LibUtil-1.1')
     R2D2:AddLib('Class', 'LibClass-1.0')
+    R2D2:AddLib('Compress', 'LibCompress')
+    R2D2:AddLib('Base64', 'LibBase64-1.0')
     R2D2:AddLib('AceAddon', AceAddon, AceAddonMinor)
     R2D2:AddLib('AceLocale', 'AceLocale-3.0')
     R2D2:AddLib('AceDB', 'AceDB-3.0')

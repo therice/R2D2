@@ -780,9 +780,10 @@ _G.strsplit = function(delimiter, str, max)
 
 	return unpack(record)
 end
-
 string.split = _G.strsplit
-
+_G.strsub = string.sub
+_G.strbyte = string.byte
+_G.strchar = string.char
 
 -- https://wowwiki.fandom.com/wiki/API_GetItemInfo
 -- https://wowwiki.fandom.com/wiki/ItemString
@@ -846,6 +847,8 @@ local function ItemInfo(item)
 
 	return 0, {}
 end
+
+_G.sort = table.sort
 
 -- todo : GetItemInfo and GetItemInfoInstant only support number params at moment
 _G.GetItemInfo = function(item)
@@ -956,3 +959,17 @@ _G.TOOLTIP_DEFAULT_COLOR = {
 }
 
 _G.AUTO_LOOT_DEFAULT_TEXT = "Auto Loot"
+_G.ITEM_QUALITY_COLORS = {
+	{color=1},
+	{color=2},
+	{color=3},
+	{color=4},
+	{color=5},
+	{color=6},
+	{color=7},
+}
+
+_G.CreateColor = function(r, g, b, a)
+	return {r=r, g=g, b=b, a=a}
+end
+

@@ -103,7 +103,6 @@ function GuildStorageEntry:HasPendingOfficerNote()
     return self.pendingOfficerNote ~= nil
 end
 
-
 function SetState(value)
     if state == value then return end
     
@@ -124,9 +123,8 @@ function lib:IsStateCurrent()
     return state == States.Current
 end
 
--- @return table a copy of current guild members table
 function lib:GetMembers()
-    return Util(cache):Copy()()
+    return cache
 end
 
 function lib:GetMember(name)
@@ -250,7 +248,6 @@ local function OnUpdate()
         if name then
             local entry = lib:GetMember(name)
             -- Logging:Debug("BEFORE(%s) = %s", name, Util.Objects.ToString(entry))
-            
             if not entry then
                 entry = GuildStorageEntry(name, class, classTag, rank, rankIndex, officerNote)
                 cache[name] = entry

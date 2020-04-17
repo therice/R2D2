@@ -794,7 +794,7 @@ end
 
 -- Rotate by l (l>0: left, l<0: right)
 ---@param t table
----@param l integer
+---@param l number
 function Self.Rotate(t, l)
     l = l or 1
     for i=1, math.abs(l) do
@@ -849,7 +849,7 @@ end
 
 -- Convert the table into tuples of n
 ---@param t table
----@param n integer
+---@param n number
 function Self.Tuple(t, n)
     local u, n, r = Self.New(), n or 2
     for i,v in pairs(t) do

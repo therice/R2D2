@@ -1,11 +1,11 @@
 local _, AddOn = ...
 local Logging = AddOn.Libs.Logging
 local Util = AddOn.Libs.Util
+local Objects = Util.Objects
 local Tables = Util.Tables
 local Class = AddOn.Libs.Class
 local GuildStorage = AddOn.Libs.GuildStorage
 local History = AddOn.components.Models.History.History
-local UI = AddOn.components.UI
 
 
 local Traffic = Class('Traffic', History)
@@ -77,16 +77,18 @@ function Traffic:SetSubjects(type, ...)
     if not Tables.ContainsValue(SubjectType, type) then
         error("Invalid Subject Type specified")
     end
+    Logging:Debug("SetSubjects(%s)", tostring(type))
     
     self.subjectType = type
     if self.subjectType == ActionType.Character then
         self.subjects = Tables.New(...)
     else
         local subjects = Tables.New(...)
+        -- Logging:Debug("SetSubjects() : current subject count is %d, %s", Tables.Count(subjects), Objects.ToString(subjects))
         if Tables.Count(subjects) == 0 then
             if self.subjectType == SubjectType.Guild then
-                subjects = GuildStorage:GetMembers()
-                for name, _ in pairs(subjects) do
+                for name, _ in pairs(GuildStorage:GetMembers()) do
+                    Logging:Debug("Adding %s", name)
                     Tables.Push(subjects, name)
                 end
             elseif self.subjectType == SubjectType.Raid then
@@ -103,12 +105,13 @@ function Traffic:SetSubjects(type, ...)
         
         self.subjects = subjects
     end
-    Logging:Debug("%s", Util.Objects.ToString(self.subjects))
+    
+    --Logging:Debug("%s", Util.Objects.ToString(self.subjects))
     Tables.Map(self.subjects, function(subject)
-        Logging:Debug("%s => %s", subject, tostring(AddOn:GetUnitClass(subject) or "UNKNOWN"))
+        -- Logging:Debug("%s => %s", subject, tostring(AddOn:GetUnitClass(subject) or "UNKNOWN"))
         return {subject, AddOn:GetUnitClass(subject)}
     end)
-    Logging:Debug("%s", Util.Objects.ToString(self.subjects))
+    --Logging:Debug("%s", Util.Objects.ToString(self.subjects))
 end
 
 function Traffic:SetAction(type)
@@ -132,7 +135,7 @@ function Traffic:SetResource(type, quantity)
 end
 
 function Traffic:Finalize()
-    -- this step only applicable for invidiual characters
+    -- this step only applicable for individual characters
     if self.subjectType == SubjectType.Character and Tables.Count(self.subjects) == 1 then
         if self.resourceType then
             --Logging:Debug('Finalize(%s) : %s', self.subjects[1], AddOn.Ambiguate(self.subjects[1]))

@@ -2,6 +2,7 @@
     <Script file="Namespace.lua"/>
     <Script file="Date.lua"/>
     <Script file="SemanticVersion.lua"/>
+    <Script file="Db.lua"/>
     <Script file="Guild.lua"/>
     <Script file="Item.lua"/>
     <Script file="Candidate.lua"/>

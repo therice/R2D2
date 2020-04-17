@@ -70,6 +70,8 @@ function AddOn:SendCommand(target, command, ...)
 
     -- send all data as a table, and let receiver unpack it
     -- before sending, we scrub to insure it can be serialized
+    --
+    -- todo : compress and encode
     local toSend = self:Serialize(command, self.ScrubData(...))
     local prefix = C.name
 

@@ -28,7 +28,7 @@ function AddOn:UnitIsUnit(unit1, unit2)
     end
     -- v2.3.3 There's problems comparing non-ascii characters of different cases using UnitIsUnit()
     -- I.e. UnitIsUnit("Potdisc", "potdisc") works, but UnitIsUnit("Æver", "æver") doesn't.
-    -- Since I can't find a way to ensure consistant returns from UnitName(), just lowercase units here
+    -- Since I can't find a way to ensure consistent returns from UnitName(), just lowercase units here
     -- before passing them.
     return UnitIsUnit(unit1:lower(), unit2:lower())
 end
@@ -138,7 +138,7 @@ function AddOn.GetClassColor(class)
     --Logging:Debug("GetClassColor(%s)", tostring(class))
     -- if Util.Objects.IsEmpty(class) then error("No class specified") end
     local color = RAID_CLASS_COLORS[class:upper()]
-    --Logging:Debug("GetClassColor(%s) : %s", tostring(class), Util.Objects.ToString(color))
+    -- Logging:Debug("GetClassColor(%s) : %s", tostring(class), Util.Objects.ToString(color))
     if not color then
         -- if class not found, return epic color.
         return {r=1,g=1,b=1,a=1}
@@ -162,12 +162,15 @@ function AddOn:GetUnitClass(name)
         unitClass = candidate.class
     else
         -- next, attempt a UnitClass API call, which will not yield a result if target not in group/party
+        -- Logging:Debug("Looking up %s", tostring(name))
         unitClass = select(2, UnitClass(Ambiguate(name, "short")))
+        -- Logging:Debug("Looked up %s => %s", name, tostring(unitClass))
         if not unitClass then
-            -- finally, attemp to get class via the points (standings) module
+            -- finally, attempt to get class via the points (standings) module
             local pointEntry = self:PointsModule().GetEntry(name)
             if pointEntry then
                 unitClass = pointEntry.classTag
+                -- Logging:Debug("Looked up via PointsModule %s => %s", name, tostring(unitClass))
             end
         end
     end
@@ -176,7 +179,6 @@ function AddOn:GetUnitClass(name)
 end
 
 function AddOn:GetUnitClassColoredName(name)
-    
     local unitClass = self:GetUnitClass(name)
     if unitClass then
         return UI.ColoredDecorator(
@@ -187,22 +189,6 @@ function AddOn:GetUnitClassColoredName(name)
     else
         return self.Ambiguate(name)
     end
-    --
-    --local candidate = self.candidates[name]
-    --
-    --if candidate and candidate.class then
-    --    local c = AddOn.GetClassColor(candidate.class)
-    --    return UI.ColoredDecorator(c):decorate(self.Ambiguate(name))
-    --else
-    --    local englishClass = select(2, UnitClass(Ambiguate(name, "short")))
-    --    name = self:UnitName(name)
-    --    if not englishClass or not name then
-    --        return self.Ambiguate(name)
-    --    else
-    --        local color = RAID_CLASS_COLORS[englishClass].colorStr
-    --        return UI.ColoredDecorator(color):decorate(self.Ambiguate(name))
-    --    end
-    --end
 end
 
 -- @param link the item link for what we wish to compare against
@@ -327,7 +313,7 @@ AddOn.BlacklistedItemClasses = {
     [5]  = { -- Reagents
         all = true
     },
-    [7]  = { -- Tradeskills
+    [7]  = { -- Trade-skills
         all = true
     },
     [15] = { -- Misc

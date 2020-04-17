@@ -5,6 +5,7 @@ local Util          = AddOn.Libs.Util
 local ItemUtil      = AddOn.Libs.ItemUtil
 local L             = AddOn.components.Locale
 local Models        = AddOn.components.Models
+local CDB           = Models.CompressedDb
 local UI            = AddOn.components.UI
 local Tables        = Util.Tables
 local Objects       = Util.Objects
@@ -96,6 +97,8 @@ function LootHistory:OnInitialize()
         },
     }
     self.db = AddOn.Libs.AceDB:New('R2D2_LootDB', LootHistory.defaults)
+    self.history = CDB(self.db.factionrealm)
+    
     MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.AllocateRightClick, UIParent)
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.AllocateFilter, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
@@ -114,8 +117,6 @@ end
 function LootHistory:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
     self:Hide()
-    if self.frame then self.frame:SetParent(nil) end
-    self.frame = nil
     moreInfo = false
 end
 
@@ -125,7 +126,7 @@ end
 
 function LootHistory:GetHistory()
     Logging:Trace("GetHistory()")
-    return self.db.factionrealm
+    return self.history
 end
 
 function LootHistory:Show()
@@ -134,14 +135,16 @@ end
 
 --- Hide the LootHistory frame.
 function LootHistory:Hide()
-    if self.frame then self.frame:Hide() end
     if self.moreInfo then self.moreInfo:Hide() end
+    if self.frame then self.frame:Hide() end
 end
 
 function LootHistory:BuildData()
     local data = {}
     
-    for name, entries in pairs(self:GetHistory()) do
+    local c_pairs = CDB.static.pairs
+    
+    for name, entries in c_pairs(self:GetHistory()) do
         for index, entryTable in pairs(entries) do
             local entry = Models.History.Loot():reconstitute(entryTable)
             local ts = entry.timestamp
@@ -300,7 +303,7 @@ function LootHistory.SetCellDelete(rowFrame, frame, data, cols, row, realrow, co
             Logging:Debug("LootHistory : Deleting %s, %s", tostring(name), tostring(num))
             local history = LootHistory:GetHistory()
             
-            tremove(history[name], num)
+            history:del(name, num)
             tremove(data, realrow)
     
             for _, v in pairs(data) do
@@ -312,9 +315,11 @@ function LootHistory.SetCellDelete(rowFrame, frame, data, cols, row, realrow, co
             end
     
             table:SortData()
-            if #history[name] == 0 then
+            
+            local charHistory = history:get(name)
+            if #charHistory == 0 then
                 Logging:Debug("Last LootHistory entry deleted, removing %s", name)
-                history[name] = nil
+                history:del(name)
             end
         else
             frame.lastClick = GetTime()
@@ -360,7 +365,7 @@ function LootHistory:Update()
 end
 
 function LootHistory:GetFrame()
-    if self.frame then return end
+    if self.frame then return self.frame end
     local f = UI:CreateFrame("R2D2_LootHistory", "LootHistory",  L["r2d2_loot_history_frame"], 250, 480)
     local st = ST:CreateST(self.scrollCols, NUM_ROWS, ROW_HEIGHT, { ["r"] = 1.0, ["g"] = 0.9, ["b"] = 0.0, ["a"] = 0.5 }, f.content)
     st.frame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
@@ -743,10 +748,11 @@ end
 
 function LootHistory:AddEntry(winner, entry)
     local history = self:GetHistory()
-    if history[winner] then
-        tinsert(history[winner], entry:toTable())
+    local winnerHistory = history:get(winner)
+    if winnerHistory then
+        history:insert(entry:toTable(), winner)
     else
-        history[winner] = { entry:toTable() }
+        history:put(winner, { entry:toTable() })
     end
 end
 
@@ -799,7 +805,8 @@ function LootHistory:GetStatistics()
             function()
                 local stats = Models.History.LootStatistics()
                 
-                for name, data in pairs(self:GetHistory()) do
+                local c_pairs = CDB.static.pairs
+                for name, data in c_pairs(self:GetHistory()) do
                     local statsEntry
                     
                     for i = #data, 1, -1 do

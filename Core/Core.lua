@@ -52,7 +52,6 @@ function AddOn:TrafficHistoryModule()
     return self:GetModule("TrafficHistory")
 end
 
-
 function AddOn:ModuleSettings(name)
     return AddOn.db.profile.modules[name]
 end

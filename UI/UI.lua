@@ -199,7 +199,6 @@ function UI.Sort(table, rowa, rowb, sortbycol, valueFn)
     end
 end
 
-
 function UI.RGBToHex(r,g,b)
     return string.format("%02x%02x%02x", 255*r, 255*g, 255*b)
 end
@@ -217,9 +216,10 @@ AddOn.components.UI.ColoredDecorator = ColoredDecorator
 
 function ColoredDecorator:initialize(r, g, b)
     Decorator.initialize(self)
+    -- Logging:Debug("%s", Util.Objects.ToString(r))
     if Util.Objects.IsTable(r) then
-        if r.colorStr then
-            self.hex = r.colorStr
+        if r.GetRGB then
+            self.hex = UI.RGBToHex(r:GetRGB())
         else
             self.hex = UI.RGBToHex(unpack(r))
         end

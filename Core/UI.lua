@@ -4,6 +4,7 @@ local L         = AddOn.components.Locale
 local Util      = AddOn.Libs.Util
 local UI        = AddOn.components.UI
 local Class     = AddOn.Libs.Class
+local Models    = AddOn.components.Models
 
 --@param module the module name (for determining settings associated with more info)
 --@param f the frame to which to add widgets
@@ -56,6 +57,8 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
         name = selection and f.st:GetRow(selection).name or nil
     end
     
+    -- Logging:Debug("UpdateMoreInfo(%s, %s)", tostring(name), tostring(moreInfo))
+    
     -- if there is a GP display value, update it to reflect candidates response
     if f.gp and gpSupplier and Util.Objects.IsFunction(gpSupplier) then
         local gpText = gpSupplier(name)
@@ -67,11 +70,14 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
     end
     
     local color = AddOn.GetClassColor(classSupplier and classSupplier(name) or "")
+    -- Logging:Debug("UpdateMoreInfo : %s", Util.Objects.ToString(color))
     local tip = f.moreInfo
+    -- Logging:Debug("MoreInfo = %s", tostring(tip))
     tip:SetOwner(f, "ANCHOR_RIGHT")
     tip:AddLine(AddOn.Ambiguate(name), color.r, color.g, color.b)
     
     if lootStats and lootStats:Get(name) then
+        -- Logging:Debug("UpdateMoreInfo(%s) : Adding Loot Stats", tostring(name))
         local charEntry = lootStats:Get(name)
         local charStats = charEntry:GetTotals()
         
@@ -90,6 +96,7 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
         tip:AddDoubleLine(L["Number of raids received loot from:"], charStats.raids.count, 1, 1, 1, 1, 1, 1)
         tip:AddDoubleLine(L["Total items received:"], charStats.count, 0, 1, 1, 0, 1, 1)
     else
+        --Logging:Debug("UpdateMoreInfo(%s) : No Loot Stats entries", tostring(name))
         tip:AddLine(L["no_entries_in_loot_history"])
     end
     
@@ -149,4 +156,36 @@ function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, colum
     else
         frame:SetNormalTexture("Interface/ICONS/INV_Sigil_Thorim.png")
     end
+end
+
+AddOn.Constants.Colors.SubjectTypes = {
+    [Models.History.Traffic.SubjectType.Character] = _G.ITEM_QUALITY_COLORS[1].color,
+    [Models.History.Traffic.SubjectType.Guild]     = _G.ITEM_QUALITY_COLORS[2].color,
+    [Models.History.Traffic.SubjectType.Raid]      = _G.ITEM_QUALITY_COLORS[5].color,
+}
+
+function AddOn.GetSubjectTypeColor(subjectType)
+    if Util.Objects.IsString(subjectType) then subjectType = Models.History.Traffic.SubjectType[subjectType] end
+    return AddOn.Constants.Colors.SubjectTypes[subjectType]
+end
+
+AddOn.Constants.Colors.ActionTypes = {
+    [Models.History.Traffic.ActionType.Add]      = CreateColor(0, 1, 0.59, 1),
+    [Models.History.Traffic.ActionType.Subtract] = CreateColor(0.96, 0.55, 0.73, 1),
+    [Models.History.Traffic.ActionType.Reset]    = CreateColor(1, 0.96, 0.41, 1),
+}
+
+function AddOn.GetActionTypeColor(actionTYpe)
+    if Util.Objects.IsString(actionTYpe) then actionTYpe = Models.History.Traffic.ActionType[actionTYpe] end
+    return AddOn.Constants.Colors.ActionTypes[actionTYpe]
+end
+
+AddOn.Constants.Colors.ResourceTypes = {
+    [Models.History.Traffic.ResourceType.Ep] = _G.ITEM_QUALITY_COLORS[6].color,
+    [Models.History.Traffic.ResourceType.Gp] = _G.ITEM_QUALITY_COLORS[5].color,
+}
+
+function AddOn.GetResourceTypeColor(resourceType)
+    if Util.Objects.IsString(resourceType) then resourceType = Models.History.Traffic.ResourceType[resourceType] end
+    return AddOn.Constants.Colors.ResourceTypes[resourceType]
 end
