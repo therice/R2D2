@@ -18,6 +18,7 @@ DisplayName.OffHWeapon  = L["%s %s"]:format(_G.INVTYPE_WEAPONOFFHAND, _G.WEAPON)
 GP.defaults = {
     profile = {
         enabled = true,
+        -- this is the minimum value for GP
         gp_min = 1,
         formula = {
             gp_base             = 4.8,

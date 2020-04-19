@@ -6,6 +6,7 @@ local ItemUtil = AddOn.Libs.ItemUtil
 local L = AddOn.components.Locale
 local Dialog = AddOn.Libs.Dialog
 local UI = AddOn.components.UI
+local Models = AddOn.components.Models
 
 -- keep track of whether we need to re-request data due to a reload
 local relogged = true
@@ -22,6 +23,10 @@ end
 
 function AddOn:GearPointsModule()
     return self:GetModule("GearPoints")
+end
+
+function AddOn:EffortPointsModule()
+    return self:GetModule("EffortPoints")
 end
 
 function AddOn:PointsModule()
@@ -302,7 +307,6 @@ function AddOn:PrepareLootTable(lootTable)
     )
 end
 
-
 function AddOn:Timer(type, ...)
     Logging:Trace("Timer(%s)", type)
     local C = AddOn.Constants
@@ -386,10 +390,19 @@ function AddOn:OnEvent(event, ...)
         self:UpdatePlayersData()
         relogged = false
     elseif event == E.EncounterStart then
+        -- https://wow.gamepedia.com/ENCOUNTER_START
+        -- ENCOUNTER_START: encounterID, "encounterName", difficultyID, groupSize
+        self.encounter = Models.Encounter(...)
         wipe(self.lootStatus)
         self:UpdatePlayersData()
     elseif event == E.EncounterEnd then
-        self.lastEncounterID, self.bossName = ...
+        -- https://wow.gamepedia.com/ENCOUNTER_END
+        -- ENCOUNTER_END: encounterID, "encounterName", difficultyID, groupSize, success
+        self.encounter = Models.Encounter(...)
+        -- if master looter, need to check for EP
+        if AddOn.isMasterLooter then
+            self:EffortPointsModule():OnEncounterEnd(self.encounter)
+        end
     -- Fired when loot is removed from a corpse
     elseif event == E.LootSlotCleared then
         local slot = ...

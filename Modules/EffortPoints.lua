@@ -1,29 +1,34 @@
 local _, AddOn = ...
-local EP        = AddOn:NewModule("EffortPoints", "AceHook-3.0", "AceEvent-3.0")
+local EP = AddOn:NewModule("EffortPoints", "AceHook-3.0", "AceEvent-3.0")
 local Encounter = AddOn.Libs.Encounter
-local L         = AddOn.components.Locale
-local Logging   = AddOn.components.Logging
-local Util      = AddOn.Libs.Util
-local Tables    = Util.Tables
-local Objects   = Util.Objects
-local Strings   = Util.Strings
-local COpts     = AddOn.components.UI.ConfigOptions
+local L = AddOn.components.Locale
+local Logging = AddOn.components.Logging
+local Util = AddOn.Libs.Util
+local Tables = Util.Tables
+local Objects = Util.Objects
+local Strings = Util.Strings
+local COpts = AddOn.components.UI.ConfigOptions
+local Award = AddOn.components.Models.History.Award
+local Dialog = AddOn.Libs.Dialog
 
 EP.defaults = {
     profile = {
         enabled = true,
+        -- this is the minimum amount of EP needed to qualify for awards
         ep_min = 1,
         raid = {
             -- should EP be auto-awarded for kills
-            auto_award_victory = false,
+            auto_award_victory = true,
+            -- should EP be awarded for defeats
+            award_defeat       = false,
             -- should EP be auto-awarded for wipes
-            auto_award_defeat = false,
+            auto_award_defeat  = false,
             -- the percent of kil EP to award on defeat
-            auto_award_defeat_pct = 0.25,
+            award_defeat_pct   = 0.25,
             -- EP values by creature
             -- These are represented as strings instead of numbers in order to facilitate
             -- easy access by path when reading/writing values
-            creatures = {
+            creatures          = {
                 -- Lucifron
                 ['12118'] = 10,
                 -- Magmadar
@@ -89,8 +94,9 @@ EP.options = {
                     args = {
                         -- function COpts.Range(name, order, min, max, step, extra)
                         ['raid.auto_award_victory'] = COpts.Toggle(L['auto_award_victory'], 0, L['auto_award_victory_desc']),
-                        ['raid.auto_award_defeat'] = COpts.Toggle(L['auto_award_defeat'], 1, L['auto_award_defeat_desc']),
-                        ['raid.auto_award_defeat_pct'] = COpts.Range(L['auto_award_defeat_pct'], 2, 0, 1, 0.01, {isPercent=true, desc= L['auto_award_defeat_ptc_desc']}),
+                        ['raid.award_defeat'] = COpts.Toggle(L['award_defeat'], 1, L['award_defeat_desc']),
+                        ['raid.auto_award_defeat'] = COpts.Toggle(L['auto_award_defeat'], 2, L['auto_award_defeat_desc']),
+                        ['raid.award_defeat_pct'] = COpts.Range(L['award_defeat_pct'], 3, 0, 1, 0.01, {isPercent=true, desc= L['award_defeat_pct_desc']}),
                     }
                 }
             }
@@ -147,7 +153,7 @@ do
     for _, key in Objects.Each(Tables.Sort(Tables.Keys(creature_ep))) do
         -- arguments that map to the map name (under which creatures will be attached)
         local map_args = Tables.New()
-        -- iterate through all the creatrues in the map
+        -- iterate through all the creatures in the map
         for _, c in Objects.Each(creature_ep[key]) do
             local creature_args = Tables.New()
             -- the key is of format 'creature.id', which will then be used for
@@ -176,4 +182,49 @@ end
 
 function EP:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
+end
+
+function EP:OnEncounterEnd(encounter)
+    -- (1) lookup associated EP for encounter
+    -- (2) scale based upon victory/defeat
+    -- (3) award to current members of raid
+    -- (4) award to anyone on standby (bench), scaled by standby percentage
+    
+    -- basic settings for awarding EP based upon encounter
+    local autoAwardVictory =  self.db.profile.raid.auto_award_victory
+    local awardDefeat =  self.db.profile.raid.award_defeat
+    local autoAwardDefeat = self.db.profile.raid.auto_award_defeat
+    
+    local creatureId = Encounter:GetEncounterCreatureId(encounter.id)
+    if creatureId then
+        local creatureEp = self.db.profile.raid.creatures[tostring(creatureId)]
+        -- have EP and either victory or defeat with awarding of defeat EP
+        if creatureEp and (encounter.success or (not encounter.success and awardDefeat)) then
+            creatureEp = tonumber(creatureEp)
+            -- if defeat, scale EP based upon defeat percentage
+            if not encounter.success then
+                creatureEp = math.floor(creatureEp * self.db.profile.raid.award_defeat_pct)
+            end
+            
+            local award = Award()
+            -- implictly to group/raid
+            award:SetSubjects(Award.SubjectType.Raid)
+            award:SetAction(Award.ActionType.Add)
+            award:SetResource(Award.ResourceType.Ep, creatureEp)
+            award.description = format(
+                    encounter.success and L["award_n_ep_for_boss_victory"] or L["award_n_ep_for_boss_defeat"],
+                    creatureEp, encounter.name
+            )
+    
+            if (encounter.success and autoAwardVictory) or (not encounter.success and autoAwardDefeat) then
+                AddOn:PointsModule():Adjust(award)
+            else
+                Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, award)
+            end
+        else
+            Logging:Warn("OnEncounterEnd(%s) : No EP value found for Creature Id %d", encounter:toTable(), creatureId)
+        end
+    else
+        Logging:Warn("OnEncounterEnd(%s) : No Creature Id found for Encounter", encounter:toTable())
+    end
 end

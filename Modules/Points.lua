@@ -9,6 +9,7 @@ local ItemUtil = AddOn.Libs.ItemUtil
 local GuildStorage = AddOn.Libs.GuildStorage
 local Dialog = AddOn.Libs.Dialog
 local Models = AddOn.components.Models
+local Award = Models.History.Award
 local Traffic = Models.History.Traffic
 local Objects = Util.Objects
 local Strings = Util.Strings
@@ -153,17 +154,64 @@ function Points:DataChanged(event, state)
     end
 end
 
-function Points:Adjust(data)
-    Logging:Debug("%s", Objects.ToString(data))
-    local entry = AddOn:TrafficHistoryModule():CreateEntry(
-            data.actionType,
-            data.subjectType,
-            data.subject,
-            data.resourceType,
-            data.quantity,
-            data.description
-    )
+function Points:Adjust(award)
+    Logging:Debug("%s", Objects.ToString(award))
+    
+    local function apply(target, action, type, amount)
+        -- if a subtract operation flip sign on amount (they are always in positive values)
+        if action == Award.ActionType.Subtract then amount = -amount end
+        -- if a reset, set flat value based upon resource type
+        if action == Award.ActionType.Reset then
+            amount = type == Award.ResourceType.Gp and AddOn:GearPointsModule().db.profile.gp_min or 0
+        end
+        
+        local function add(to, amt) return to + amt end
+        local function reset(_, _) return amount end
+        local oper =
+                action == Award.ActionType.Add and add or
+                action == Award.ActionType.Subtract and add or
+                action == Award.ActionType.Reset and reset or
+                nil -- intentional to find missing cases
+   
+        local function ep(amt) target.ep = oper(target.ep, amt) end
+        local function gp(amt) target.gp = oper(target.gp, amt) end
+        local target =
+                type == Award.ResourceType.Ep and ep or
+                type == Award.ResourceType.Gp and gp or
+                nil -- intentional to find missing cases
+    
+        target(award.resourceQuantity)
+    end
+    
+    -- just one traffic history entry per award, regardless of number of subjects
+    -- to which it applied
+    --
+    -- todo : if we want to record history after adjustment then needs to be refactored to grab 'before' quantity
+    -- todo : could pass in the actual update to be peformed before sending
+    local entry = AddOn:TrafficHistoryModule():CreateFromAward(award)
     Logging:Debug("%s", Objects.ToString(entry:toTable()))
+    
+    -- subject is a tuple of (name, class)
+    for _, subject in pairs(award.subjects) do
+        local target = GetEntry(subject[1])
+        if target then
+            apply(target, award.actionType, award.resourceType, award.resourceQuantity)
+            -- don't apply to actual officer notes in test mode
+            -- it will also fail if we cannot edit officer notes
+            if (not AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) and CanEditOfficerNote() then
+                -- todo : don't forget to uncomment actual persistenct in LibGuildStorage-1.3.lua
+                -- todo : we probably need to see if this is successful, otherwise could be lost
+                GuildStorage:SetOfficeNote(subject, target:ToNote())
+            end
+        else
+            Logging:Warn("Could not locate %s for applying %s. Possibly not in guild?", subject[1], Objects.ToString(award:toTable()))
+        end
+    end
+    
+    -- we just adjust something for someone, so rebuild the data if needed
+    if self.frame and self.frame:IsVisible() then
+        self:BuildData()
+    end
 end
 
 function Points:Hide()
@@ -410,12 +458,12 @@ function Points:GetAdjustFrame()
     adjust:SetPoint("RIGHT", f.close, "LEFT", -25)
     adjust:SetScript("OnClick",
                      function()
-                        local data, validationErrors = f.Validate()
+                        local award, validationErrors = f.Validate()
                         if Util.Tables.Count(validationErrors) ~= 0 then
                             UI.UpdateErrorTooltip(f, validationErrors)
                         else
                             f.errorTooltip:Hide()
-                            Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, data)
+                            Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, award)
                         end
                     end
     )
@@ -425,19 +473,17 @@ function Points:GetAdjustFrame()
     
     function f.Validate()
         local validationErrors = {}
-        local data = {}
+        local award = Award()
         
         local subject = f.name:GetText()
         if Util.Strings.IsEmpty(subject) then
             Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["name"]))
         else
-            Util.Tables.Insert(data, 'subjectType', f.subjectType)
-            if f.subjectType == Traffic.SubjectType.Character then
-                Util.Tables.Insert(data, 'subject', subject)
+            local subjectType = tonumber(f.subjectType)
+            if subjectType== Traffic.SubjectType.Character then
+                award:SetSubjects(subjectType, subject)
             else
-                -- don't include the subject to on creation they will be discovered
-                -- Util.Tables.Insert(data, 'subject', {})
-                Util.Tables.Insert(data, 'subjectOrigin', subject)
+                award:SetSubjects(subjectType)
             end
         end
         
@@ -445,31 +491,32 @@ function Points:GetAdjustFrame()
         if Util.Objects.IsEmpty(actionType) or not Util.Objects.IsNumber(actionType) then
             Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["action_type"]))
         else
-            Util.Tables.Insert(data, 'actionType', tonumber(actionType))
+            award:SetAction(tonumber(actionType))
         end
     
+        local setResource = true
         local resourceType = f.resourceType:GetValue()
         if Util.Objects.IsEmpty(resourceType) or not Util.Objects.IsNumber(resourceType) then
             Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["resource_type"]))
-        else
-            Util.Tables.Insert(data, 'resourceType', tonumber(resourceType))
+            setResource = false
         end
         
         local quantity = f.quantity:GetText()
         if Util.Objects.IsEmpty(quantity) or not Util.Strings.IsNumber(quantity) then
             Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["quantity"]))
-        else
-            Util.Tables.Insert(data, 'quantity', tonumber(quantity))
+            setResource = false
         end
+    
+        if setResource then award:SetResource(tonumber(resourceType), tonumber(quantity)) end
         
         local description = f.desc:GetText()
         if Util.Strings.IsEmpty(description) then
             Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["description"]))
         else
-            Util.Tables.Insert(data, 'description', description)
+            award.description = description
         end
         
-        return data, validationErrors
+        return award, validationErrors
     end
     
     self.adjustFrame = f
@@ -506,36 +553,37 @@ function Points:UpdateAdjustFrame(subjectType, name, resource)
 end
 
 
-function Points.AdjustPointsOnShow(frame, data)
+function Points.AdjustPointsOnShow(frame, award)
     UI.DecoratePopup(frame)
     
     local decoratedText
-    if data.subjectType == Traffic.SubjectType.Character then
-        local c = AddOn.GetClassColor(GetEntry(data.subject).class)
-        decoratedText = UI.ColoredDecorator(c.r, c.g, c.b):decorate(data.subject)
+    if award.subjectType == Traffic.SubjectType.Character then
+        local subject = award.subjects[1]
+        local c = AddOn.GetClassColor(subject[2])
+        decoratedText = UI.ColoredDecorator(c.r, c.g, c.b):decorate(subject[1])
     else
-        decoratedText = UI.ColoredDecorator(AddOn.GetSubjectTypeColor(data.subjectType)):decorate("the " .. data.subjectOrigin)
+        decoratedText = UI.ColoredDecorator(AddOn.GetSubjectTypeColor(award.subjectType)):decorate("the " .. award:GetSubjectOriginText())
     end
     
     -- Are you certain you want to %s %d %s %s %s?
     frame.text:SetText(
             format(L["confirm_adjust_player_points"],
-                   Traffic.TypeIdToAction[data.actionType]:lower(),
-                   data.quantity,
-                   Traffic.TypeIdToResource[data.resourceType]:upper(),
-                   data.actionType == Traffic.ActionType.Add and "to" or "from",
+                   Traffic.TypeIdToAction[award.actionType]:lower(),
+                   award.resourceQuantity,
+                   Traffic.TypeIdToResource[award.resourceType]:upper(),
+                   award.actionType == Traffic.ActionType.Add and "to" or "from",
                    decoratedText
             )
     )
 end
 
-function Points.AwardPopupOnClickYes(frame, data, callback, ...)
-    Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
-    Points:Adjust(data)
+function Points.AwardPopupOnClickYes(frame, award, callback, ...)
+    Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(award:toTable(), 3))
+    Points:Adjust(award)
     if Points.adjustFrame then Points.adjustFrame:Hide() end
 end
 
-function Points.AwardPopupOnClickNo(frame, data)
+function Points.AwardPopupOnClickNo(frame, award)
     -- intentionally left blank
 end
 
@@ -680,11 +728,11 @@ function Points.FilterMenu(menu, level)
         MSA_DropDownMenu_AddButton(info, level)
         
         -- these will be a table of sorted display class names
-        local data = Util(ItemUtil.ClassDisplayNameToId):Keys()
-                        :Filter(AddOn.FilterClassesByFactionFn):Sort():Copy()()
+        local classes = Util(ItemUtil.ClassDisplayNameToId):Keys()
+                            :Filter(AddOn.FilterClassesByFactionFn):Sort():Copy()()
         
         info = MSA_DropDownMenu_CreateInfo()
-        for _, class in pairs(data) do
+        for _, class in pairs(classes) do
             info.text = class
             info.colorCode = "|cff" .. AddOn.GetClassColorRGB(class)
             info.keepShownOnClick = true

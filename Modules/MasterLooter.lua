@@ -568,7 +568,7 @@ function ML:AddItem(item, bagged, lootSlot, owner, index)
     Logging:Trace("AddItem(%s)", item)
     -- todo : determine type code (as needed)
     index = index or nil
-    local entry = Models.ItemEntry:new(item, bagged, lootSlot, false, owner or AddOn.bossName, false, "default")
+    local entry = Models.ItemEntry:new(item, bagged, lootSlot, false, owner or AddOn.encounter.name, false, "default")
 
     -- Need to insert entry regardless of fully populated (IsValid) as the
     -- session frame needs each of them to start and will update as entries are
@@ -1245,7 +1245,6 @@ function ML:LootOpened()
                     local quality = item.quality
                     -- todo : alt-click looting (maybe)
                     -- todo : auto-awarding of items (probably not)
-                    
                     -- check if we are allowed to loot item
                     if link and self:CanWeLootItem(link, quality) and quantity > 0 then
                         self:AddItem(link, false, i)
@@ -1336,7 +1335,7 @@ function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data,
                 data.winner,
                 data.link,
                 data.responseId,
-                AddOn.bossName,
+                AddOn.encounter.name,
                 data.reason,
                 session,
                 data

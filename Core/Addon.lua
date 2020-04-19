@@ -1,13 +1,14 @@
 local name, AddOn = ...
 local R2D2 = AddOn
 
-local L            = AddOn.components.Locale
-local Logging      = AddOn.components.Logging
-local Util         = AddOn.Libs.Util
-local Strings      = Util.Strings
-local Tables       = Util.Tables
-local Class        = AddOn.Libs.Class
+local L = AddOn.components.Locale
+local Logging = AddOn.components.Logging
+local Util = AddOn.Libs.Util
+local Strings = Util.Strings
+local Tables = Util.Tables
+local Class = AddOn.Libs.Class
 local GuildStorage = AddOn.Libs.GuildStorage
+local Models = AddOn.components.Models
 
 local Mode = Class('Mode')
 AddOn.Mode = Mode
@@ -40,7 +41,7 @@ function R2D2:OnInitialize()
     Logging:SetRootThreshold(Logging.Level.Debug)
     Logging:Debug("OnInitialize(%s)", self:GetName())
     -- convert to a semantic version
-    self.version = R2D2.components.Models.SemanticVersion:new(self.version)
+    self.version = Models.SemanticVersion:new(self.version)
     self.chatCmdHelp = {
         {cmd = "config", desc = L["chat_commands_config"]},
         {cmd = "test", desc = L["chat_commands_test"]},
@@ -84,6 +85,7 @@ function R2D2:OnInitialize()
     self.reconnectPending = false
     self.instanceName = ""
     self.inCombat = false
+    self.encounter = Models.Encounter.None
     -- have we completed our initial version check (for being out of date)
     self.versionCheckComplete = false
     -- core add-on settings

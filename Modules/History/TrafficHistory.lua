@@ -8,6 +8,7 @@ local Strings = Util.Strings
 local UI = AddOn.components.UI
 local L = AddOn.components.Locale
 local Models = AddOn.components.Models
+local Award = Models.History.Award
 local Traffic = Models.History.Traffic
 local CDB = Models.CompressedDb
 local ST = AddOn.Libs.ScrollingTable
@@ -623,6 +624,7 @@ end
 -- @param resourceQuantity the quantity for specified resource type
 -- @param desc the description for entry
 -- @param beforeSend an optional function to invoke with created entry prior to sending out (via message and command)
+--[[
 function TrafficHistory:CreateEntry(actionType, subjectType, subjects, resourceType, resourceQuantity, desc, beforeSend)
     local C = AddOn.Constants
     if (AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) then return end
@@ -644,12 +646,31 @@ function TrafficHistory:CreateEntry(actionType, subjectType, subjects, resourceT
     AddOn:SendCommand(C.guild, C.Commands.TrafficHistoryAdd, entry)
     return entry
 end
+--]]
+
+function TrafficHistory:CreateFromAward(award, beforeSend)
+    local C = AddOn.Constants
+    if (AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) then return end
+    local entry = Traffic(award.timestamp, award)
+    entry.actor = AddOn.playerName
+    entry.actorClass = AddOn.playerClass
+    entry:Finalize()
+    
+    -- if there was a function specified for callback before sending, invoke it now with the entry
+    if beforeSend and Objects.IsFunction(beforeSend) then beforeSend(entry) end
+    
+    AddOn:SendMessage(C.Messages.TrafficHistorySend, entry)
+    -- todo : support settings for sending and tracking history
+    -- todo : send to guild or group? guild for now
+    AddOn:SendCommand(C.guild, C.Commands.TrafficHistoryAdd, entry)
+    return entry
+end
 
 -- @param actionType see Models.History.Traffic.ActionType
 -- @param subjectType see Models.History.Traffic.SubjectType
 -- @param resourceType see Models.History.Traffic.ResourceType
 -- @param lootHistoryEntry the loot history entry associated with traffic entry
--- @param awardData the award popup data (see LootAllocate.GetAwardPopupData
+-- @param awardData the award popup data (see LootAllocate.GetAwardPopupData)
 -- @param desc the description for entry
 function TrafficHistory:CreateFromLootHistory(actionType, subjectType, resourceType, lootHistoryEntry, awardData)
     local baseGp, awardGp = awardData.baseGp, awardData.awardGp
@@ -669,13 +690,11 @@ function TrafficHistory:CreateFromLootHistory(actionType, subjectType, resourceT
         entry.ownerClass = awardData.class
     end
     
-    return self:CreateEntry(
-            actionType,
-            subjectType,
-            {lootHistoryEntry.owner},
-            resourceType,
-            awardGp and awardGp or baseGp,
-            format(L["awarded_item_for_reason"], lootHistoryEntry.item, lootHistoryEntry:FormattedResponse()),
-            BeforeSend
-    )
+    local award = Award(lootHistoryEntry.timestamp)
+    award:SetSubjects(subjectType, lootHistoryEntry.owner)
+    award:SetAction(actionType)
+    award:SetResource(resourceType, awardGp and awardGp or baseGp)
+    award.description = format(L["awarded_item_for_reason"], lootHistoryEntry.item, lootHistoryEntry:FormattedResponse())
+    
+    return self:CreateFromAward(award, BeforeSend)
 end

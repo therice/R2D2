@@ -349,8 +349,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 local TH = self:TrafficHistoryModule()
                 TH:AddEntry(entry)
                 if TH:IsEnabled() then
-                    -- todo : refresh it
-                    -- todo : refresh Points display if open
+                    TH:BuildData()
                 end
             end
         end

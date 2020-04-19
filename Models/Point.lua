@@ -7,24 +7,32 @@ local PointEntry = Class('PointEntry', GuildMember)
 
 AddOn.components.Models.PointEntry = PointEntry
 
+local function MinimumGp()
+    return AddOn:GearPointsModule().db.profile.gp_min
+end
+
+local function NormalizeGp(gp)
+    return math.max(gp, MinimumGp())
+end
+
 local function DecodeNode(note)
     if Util.Objects.IsSet(note) then
         local ep, gp = string.match(note, "^(%d+),(%d+)$")
         if ep and gp then
-            return tonumber(ep), tonumber(gp)
+            return tonumber(ep), NormalizeGp(gp)
         end
     end
-    return 0, 0
+    return 0, MinimumGp()
 end
 
 local function EncodeNote(ep, gp)
-    return string.format("%d,%d", math.max(ep, 0), math.max(gp, 0))
+    return string.format("%d,%d", math.max(ep, 0), NormalizeGp(gp))
 end
 
 function PointEntry:initialize(name, class, rank, rankIndex, ep, gp)
     GuildMember.initialize(self, name, class, rank, rankIndex)
     self.ep = ep
-    self.gp = gp
+    self.gp = NormalizeGp(gp)
 end
 
 function PointEntry:FromGuildMember(member)
@@ -33,7 +41,7 @@ function PointEntry:FromGuildMember(member)
 end
 
 function PointEntry:GetPR()
-    return Util.Numbers.Round(self.ep / math.max(self.gp, 1), 2)
+    return Util.Numbers.Round(self.ep / NormalizeGp(self.gp), 2)
 end
 
 function PointEntry:Get()

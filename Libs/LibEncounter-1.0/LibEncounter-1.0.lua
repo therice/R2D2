@@ -28,48 +28,53 @@ lib.Encounters = {
 }
 
 
-function lib:GetCreatureMapId(creature_id)
+function lib:GetCreatureMapId(creatureId)
     local encounters = Util(lib.Encounters)
         :CopyFilter(
             function(v, i)
-                return v.creature_id == creature_id
+                return v.creature_id == creatureId
             end
     )()
 
     if Util.Tables.Count(encounters) == 0 then
-        error(("No encounters found for creature id=%s"):format(creature_id))
+        error(("No encounters found for creature id=%s"):format(creatureId))
     end
 
     if Util.Tables.Count(encounters) > 1 then
-        error(("Multiple encounters found for creature id=%s"):format(creature_id))
+        error(("Multiple encounters found for creature id=%s"):format(creatureId))
     end
 
     return Util.Tables.First(encounters).map_id
 end
 
-function lib:GetCreatureName(creature_id)
-    local creature_name
+function lib:GetCreatureName(creatureId)
+    local creatureName
     --  map id to the creature, then look up from localization
-    local creature = lib.Creatures[creature_id]
-    if creature then
-        creature_name = LB[creature.name]
-    end
+    local creature = lib.Creatures[creatureId]
+    if creature then creatureName = LB[creature.name] end
 
-    return creature_name
+    return creatureName
 end
 
-function lib:GetMapName(map_id)
-    local map_name
+function lib:GetMapName(mapId)
+    local mapName
     --  map id to the map's name key, then look up from localization
-    local map = lib.Maps[map_id]
-    if map then
-        map_name = LZ[map.name]
-    end
+    local map = lib.Maps[mapId]
+    if map then mapName = LZ[map.name] end
 
-    return map_name
+    return mapName
 end
 
-function lib:GetCreatureDetail(creature_id)
-    local map_id = self:GetCreatureMapId(creature_id)
-    return self:GetCreatureName(creature_id), self:GetMapName(map_id)
+function lib:GetCreatureDetail(creatureId)
+    local map_id = self:GetCreatureMapId(creatureId)
+    return self:GetCreatureName(creatureId), self:GetMapName(map_id)
+end
+
+function lib:GetEncounterCreatureId(encounterId)
+    local encounter = lib.Encounters[encounterId]
+    local creatureId
+    
+    if encounter then creatureId = encounter.creature_id end
+    
+    return creatureId
 end

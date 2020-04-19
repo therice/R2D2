@@ -1,10 +1,8 @@
 local _, AddOn = ...
-local Util      = AddOn.Libs.Util
-local Class     = AddOn.Libs.Class
-local ItemUtil  = AddOn.Libs.ItemUtil
-local GP        = AddOn.Libs.GearPoints
-local Logging   = AddOn.Libs.Logging
-local UI        = AddOn.components.UI
+local Util = AddOn.Libs.Util
+local Class = AddOn.Libs.Class
+local ItemUtil = AddOn.Libs.ItemUtil
+local GP = AddOn.Libs.GearPoints
 
 local Item = Class('Item')
 local ItemEntry = Class('ItemEntry', Item)
