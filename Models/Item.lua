@@ -6,12 +6,15 @@ local GP = AddOn.Libs.GearPoints
 
 local Item = Class('Item')
 local ItemEntry = Class('ItemEntry', Item)
+local ItemAward = Class('ItemAward')
 local LootEntry = Class('LootEntry', ItemEntry)
 local AllocateEntry = Class('AllocateEntry', ItemEntry)
 
 AddOn.components.Models.Item = Item
 AddOn.components.Models.ItemEntry = ItemEntry
+AddOn.components.Models.ItemAward = ItemAward
 AddOn.components.Models.LootEntry = LootEntry
+AddOn.components.Models.AllocateEntry = AllocateEntry
 
 --
 -- Item
@@ -319,38 +322,8 @@ function AllocateEntry:initialize(itemEntry)
     )
 end
 
-function AllocateEntry:GetAwardData(session, candidate, reason)
-    local cr = self.candidates[candidate]
-    
-    local awardReason, baseGp, awardGp = nil, nil, nil
-    -- if there was a reason provided, it will have the award scale key/reason
-    if reason and Util.Objects.IsTable(reason) then
-        awardReason = reason.award_scale
-    -- otherwise, get the award scale key/reason from response
-    else
-        awardReason = AddOn:GetResponse(self.typeCode or self.equipLoc, cr.response).award_scale
-    end
-    
-    baseGp, awardGp = self:GetGp(awardReason)
-    
-    return {
-        session     = session,
-        winner		= candidate,
-        class       = cr.class,
-        responseId	= cr.response,
-        reason		= reason,
-        gear1 		= cr.gear1,
-        gear2		= cr.gear2,
-        link 		= self.link,
-        baseGp      = baseGp,
-        awardGp     = awardGp,
-        awardScale  = AddOn:GearPointsModule():GetAwardScale(awardReason),
-        isToken		= self.token,
-        note		= cr.note,
-        equipLoc	= self.equipLoc,
-        texture 	= self.texture,
-        typeCode 	= self.typeCode,
-    }
+function AllocateEntry:GetItemAward(session, candidate, reason)
+    return ItemAward(self, session, candidate, reason)
 end
 
 function AllocateEntry:GetReRollData(session, isRoll, noAutopass)
@@ -373,5 +346,69 @@ function AllocateEntry:GetCandidateResponse(name)
 end
 
 function AllocateEntry:AddCandidateResponse(name, class, rank)
-    self.candidates[name] = AddOn.components.Models.CandidateResponse:new(name, class, rank)
+    self.candidates[name] =
+        AddOn.components.Models.CandidateResponse:new(name, class, rank)
+end
+
+--
+-- ItemAward
+--
+-- Contains the data necessary for attempting an item award. It doesn't infer anything about whether the award
+-- was successful
+--
+
+function ItemAward:initialize(allocation, session, candidate, reason)
+    if not allocation or not AllocateEntry.isInstanceOf(allocation, AllocateEntry) then
+        error("The specified 'allocation' instance was not of type AllocateEntry : " .. type(allocation))
+    end
+
+    -- CandidateResponse instance
+    local cr = allocation.candidates[candidate]
+    local awardReason, baseGp, awardGp = nil, nil, nil
+    -- if there was a reason provided, it will have the award scale key/reason
+    if reason and Util.Objects.IsTable(reason) then
+        awardReason = reason.award_scale
+    -- otherwise, get the award scale key/reason from response
+    else
+        awardReason = AddOn:GetResponse(self.typeCode or self.equipLoc, cr.response).award_scale
+    end
+    
+    baseGp, awardGp = allocation:GetGp(awardReason)
+
+    self.session = session
+    self.winner = candidate
+    self.class = cr.class
+    self.responseId = cr.response
+    self.reason = reason
+    self.gear1 = cr.gear1
+    self.gear2 = cr.gear2
+    self.link = allocation.link
+    self.baseGp = baseGp
+    self.awardGp = awardGp
+    self.awardReason = awardReason
+    self.awardScale = AddOn:GearPointsModule():GetAwardScale(awardReason)
+    self.isToken = allocation.token
+    self.note = cr.note
+    self.equipLoc = allocation.equipLoc
+    self.typeCode = allocation.typeCode
+    self.texture = allocation.texture
+    -- normalized response based upon combination of response / reason
+    -- this is super unpleasant and should be consolidated into one set of attributes
+    -- which is set consistently and used consistently
+    self.normalizedResponse = {
+        id    = nil,
+        text  = nil,
+        color = nil
+    }
+end
+
+function ItemAward:NormalizedResponse()
+    if not self.normalizedResponse.id then
+        local response = AddOn:GetResponse(self.typeCode or self.equipLoc, self.responseId)
+        self.normalizedResponse.id = self.reason and self.reason.sort - 400 or self.responseId
+        self.normalizedResponse.text = self.reason and self.reason.text or response.text
+        self.normalizedResponse.color = self.reason and self.reason.color or response.color
+    end
+    
+    return self.normalizedResponse
 end

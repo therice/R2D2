@@ -8,7 +8,7 @@ local Strings = Util.Strings
 local UI = AddOn.components.UI
 local L = AddOn.components.Locale
 local Models = AddOn.components.Models
-local Award = Models.History.Award
+local Award = Models.Award
 local Traffic = Models.History.Traffic
 local CDB = Models.CompressedDb
 local ST = AddOn.Libs.ScrollingTable
@@ -106,8 +106,8 @@ function TrafficHistory:OnInitialize()
         },
     }
     
-    for key, value in pairs(Traffic.SubjectType) do
-        if value ~= Traffic.SubjectType.Character then
+    for key, value in pairs(Award.SubjectType) do
+        if value ~= Award.SubjectType.Character then
             SubjectTypesForDisplay[key] = {
                 {DoCellUpdate =  UI.ScrollingTableDoCellUpdate(TrafficHistory.SetSubjectIcon), args = { value }},
                 {value = key, name = key, DoCellUpdate =  UI.ScrollingTableDoCellUpdate(TrafficHistory.SetSubject), args = { value }}
@@ -115,7 +115,7 @@ function TrafficHistory:OnInitialize()
         end
     end
     
-    for key, value in pairs(Traffic.ActionType) do
+    for key, value in pairs(Award.ActionType) do
         Tables.Push(
             ActionTypesForDisplay,
             {
@@ -124,7 +124,7 @@ function TrafficHistory:OnInitialize()
         )
     end
     
-    for key, value in pairs(Traffic.ResourceType) do
+    for key, value in pairs(Award.ResourceType) do
         Tables.Push(
                 ResourceTypesForDisplay,
                 {
@@ -134,6 +134,7 @@ function TrafficHistory:OnInitialize()
     end
     
     self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB', TrafficHistory.defaults)
+    -- todo : this needs an additional qualifier (possibly guild or player), as it groups everything into one table
     self.history = CDB(self.db.factionrealm)
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.TrafficHistoryFilter, UIParent)
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
@@ -209,7 +210,7 @@ function TrafficHistory:BuildData()
         Tables.Push(tsData[fmtDate].timestamps, entry.timestamp)
         
         -- Add all the individual character's to name data
-        if entry.subjectType == Traffic.SubjectType.Character then
+        if entry.subjectType == Award.SubjectType.Character then
             local subject = entry.subjects[1]
             if not Tables.ContainsKey(nameData, subject[1]) then
                 local subjectName = subject[1]
@@ -237,7 +238,7 @@ function TrafficHistory.SetCellSubjectIcon(rowFrame, frame, data, cols, row, rea
     local subjectType = entry.subjectType
     
     -- single character, so will be only one entry in subjects
-    if subjectType == Traffic.SubjectType.Character then
+    if subjectType == Award.SubjectType.Character then
         local subjectEntry, subjectClass = entry.subjects[1], nil
         if subjectEntry and Tables.Count(subjectEntry) == 2 then
             subjectClass = subjectEntry[2]
@@ -251,10 +252,10 @@ end
 function TrafficHistory.SetSubjectIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectType)
     local subjectType = subjectType or data[realrow][column].args[1]
     -- https://wow.gamepedia.com/API_Texture_SetTexCoord
-    if subjectType == Traffic.SubjectType.Guild then
+    if subjectType == Award.SubjectType.Guild then
         frame:SetNormalTexture(134157)
         frame:GetNormalTexture():SetTexCoord(0,1,0,1)
-    elseif subjectType == Traffic.SubjectType.Raid then
+    elseif subjectType == Award.SubjectType.Raid then
         frame:SetNormalTexture(134156)
         frame:GetNormalTexture():SetTexCoord(0,1,0,1)
     end
@@ -264,7 +265,7 @@ function TrafficHistory.SetCellSubject(rowFrame, frame, data, cols, row, realrow
     local entry = data[realrow].entry
     local subjectType = entry.subjectType
     -- single character, so will be only one entry in subjects
-    if subjectType == Traffic.SubjectType.Character then
+    if subjectType == Award.SubjectType.Character then
         frame.text:SetText(AddOn.Ambiguate(entry.subjects[1][1]))
         frame.text:SetTextColor(AddOn.GetClassColor(entry.subjects[1][2]):GetRGB())
     else
@@ -274,12 +275,12 @@ end
 
 function TrafficHistory.SetSubject(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectType)
     local subjectType = subjectType or data[realrow][column].args[1]
-    if subjectType == Traffic.SubjectType.Guild then
+    if subjectType == Award.SubjectType.Guild then
         frame.text:SetText(_G.GUILD)
-        frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Traffic.SubjectType.Guild):GetRGB())
-    elseif subjectType == Traffic.SubjectType.Raid then
+        frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Award.SubjectType.Guild):GetRGB())
+    elseif subjectType == Award.SubjectType.Raid then
         frame.text:SetText(_G.GROUP)
-        frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Traffic.SubjectType.Raid):GetRGB())
+        frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Award.SubjectType.Raid):GetRGB())
     end
 end
 
@@ -290,7 +291,7 @@ end
 function TrafficHistory.SetAction(rowFrame, frame, data, cols, row, realrow, column, fShow, table, actionType)
     local actionType = actionType or data[realrow][column].args[1]
     
-    frame.text:SetText(Traffic.TypeIdToAction[actionType])
+    frame.text:SetText(Award.TypeIdToAction[actionType])
     frame.text:SetTextColor(AddOn.GetActionTypeColor(actionType):GetRGB())
 end
 
@@ -300,7 +301,7 @@ end
 
 function TrafficHistory.SetResource(rowFrame, frame, data, cols, row, realrow, column, fShow, table, resourceType)
     local resourceType = resourceType or data[realrow][column].args[1]
-    frame.text:SetText(Traffic.TypeIdToResource[resourceType]:upper())
+    frame.text:SetText(Award.TypeIdToResource[resourceType]:upper())
     frame.text:SetTextColor(AddOn.GetResourceTypeColor(resourceType):GetRGB())
 end
 
@@ -308,11 +309,11 @@ function TrafficHistory.SetCellResourceAfter(rowFrame, frame, data, cols, row, r
     local entry = data[realrow].entry
     local value = entry.resourceBefore
     if value then
-        if entry.actionType == Traffic.ActionType.Add then
+        if entry.actionType == Award.ActionType.Add then
             value = value + entry.resourceQuantity
-        elseif entry.actionType == Traffic.ActionType.Subtract then
+        elseif entry.actionType == Award.ActionType.Subtract then
             value = value - entry.resourceQuantity
-        elseif entry.actionType == Traffic.ActionType.Reset then
+        elseif entry.actionType == Award.ActionType.Reset then
             value = 0 -- todo : this is probably wrong and needs to be the min value
         end
     else
@@ -522,22 +523,22 @@ local function SelectionFilter(entry)
     
     if display and Strings.IsSet(selectedName) then
         local subjectType = entry.subjectType
-        if subjectType == Traffic.SubjectType.Character then
+        if subjectType == Award.SubjectType.Character then
             display = Strings.Equal(selectedName, entry.subjects[1][1])
-        elseif subjectType == Traffic.SubjectType.Guild then
+        elseif subjectType == Award.SubjectType.Guild then
             display = Strings.Equal(selectedName, _G.GUILD)
-        elseif subjectType == Traffic.SubjectType.Raid then
+        elseif subjectType == Award.SubjectType.Raid then
             display = Strings.Equal(selectedName, _G.GROUP)
         end
     end
     
     if display and Strings.IsSet(selectedAction) then
-        display = entry.actionType == Traffic.ActionType[selectedAction]
+        display = entry.actionType == Award.ActionType[selectedAction]
     end
     
     if display and Strings.IsSet(selectedResource) then
         -- boooo, shouldn't have to screw around with a string to get value
-        display = entry.resourceType == Traffic.ResourceType[Strings.UcFirst(Strings.Lower(selectedResource))]
+        display = entry.resourceType == Award.ResourceType[Strings.UcFirst(Strings.Lower(selectedResource))]
     end
     
     return display
@@ -562,7 +563,7 @@ function TrafficHistory.FilterFunc(table, row)
     if not moduleFilters then return selectionFilter end
     
     local classFilter = true
-    if entry.subjectType == Traffic.SubjectType.Character then
+    if entry.subjectType == Award.SubjectType.Character then
         classFilter = ClassFilter(entry.subjects[1][2])
     end
     
@@ -617,10 +618,10 @@ function TrafficHistory.FilterMenu(menu, level)
     end
 end
 
--- @param actionType see Models.History.Traffic.ActionType
--- @param subjectType see Models.History.Traffic.SubjectType
+-- @param actionType see Models.Award.ActionType
+-- @param subjectType see Models.Award.SubjectType
 -- @param subjects the subject names for specified subject type (e.g. characters)
--- @param resourceType see Models.History.Traffic.ResourceType
+-- @param resourceType see Models.Award.ResourceType
 -- @param resourceQuantity the quantity for specified resource type
 -- @param desc the description for entry
 -- @param beforeSend an optional function to invoke with created entry prior to sending out (via message and command)
@@ -648,30 +649,52 @@ function TrafficHistory:CreateEntry(actionType, subjectType, subjects, resourceT
 end
 --]]
 
-function TrafficHistory:CreateFromAward(award, beforeSend)
-    local C = AddOn.Constants
+function TrafficHistory:CreateFromAward(award, lhEntry)
     if (AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) then return end
+    
+    local C = AddOn.Constants
     local entry = Traffic(award.timestamp, award)
     entry.actor = AddOn.playerName
     entry.actorClass = AddOn.playerClass
     entry:Finalize()
     
-    -- if there was a function specified for callback before sending, invoke it now with the entry
-    if beforeSend and Objects.IsFunction(beforeSend) then beforeSend(entry) end
+    -- if we have a loot history entry associated with traffic (awards)
+    if lhEntry then
+        -- copy over attributes to traffic entry which are relevant
+        -- could ignore them and rely upon loot history for later retrieval, but there's no guarantee
+        -- the loot and traffic histories are not pruned independently
+        entry.lootHistoryId = lhEntry.id
+        entry.item = lhEntry.item
+        entry.mapId = lhEntry.mapId
+        entry.instance = lhEntry.instance
+        entry.boss = lhEntry.boss
+        entry.response = lhEntry.response
+        entry.responseId = lhEntry.responseId
+        entry.typeCode = lhEntry.typeCode
+    end
     
-    AddOn:SendMessage(C.Messages.TrafficHistorySend, entry)
+    if award.item then
+        entry.baseGp = award.item.baseGp
+        entry.awardScale = award.item.awardScale
+    end
+    
+    -- if there was a function specified for callback before sending, invoke it now with the entry
+    -- if beforeSend and Objects.IsFunction(beforeSend) then beforeSend(entry) end
+    
+    AddOn:SendMessage(C.Messages.TrafficHistorySend, entry, award)
     -- todo : support settings for sending and tracking history
     -- todo : send to guild or group? guild for now
     AddOn:SendCommand(C.guild, C.Commands.TrafficHistoryAdd, entry)
     return entry
 end
 
--- @param actionType see Models.History.Traffic.ActionType
--- @param subjectType see Models.History.Traffic.SubjectType
--- @param resourceType see Models.History.Traffic.ResourceType
+-- @param actionType see Models.Award.ActionType
+-- @param subjectType see Models.Award.SubjectType
+-- @param resourceType see Models.Award.ResourceType
 -- @param lootHistoryEntry the loot history entry associated with traffic entry
 -- @param awardData the award popup data (see LootAllocate.GetAwardPopupData)
 -- @param desc the description for entry
+--[[
 function TrafficHistory:CreateFromLootHistory(actionType, subjectType, resourceType, lootHistoryEntry, awardData)
     local baseGp, awardGp = awardData.baseGp, awardData.awardGp
     
@@ -698,3 +721,4 @@ function TrafficHistory:CreateFromLootHistory(actionType, subjectType, resourceT
     
     return self:CreateFromAward(award, BeforeSend)
 end
+--]]

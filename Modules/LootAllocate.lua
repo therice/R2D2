@@ -502,9 +502,9 @@ end
 -- @param session the session id
 -- @param name the candidate name
 -- @param reason the reason for award
--- @return the data (table) for displaying an award pop-up
+-- @return the data (ItemAward) for displaying an award pop-up
 function LootAllocate:GetAwardPopupData(session, name, reason)
-    return LootAllocate.GetLootTableEntry(session):GetAwardData(session, name, reason)
+    return LootAllocate.GetLootTableEntry(session):GetItemAward(session, name, reason)
 end
 
 -- @param session the session id

@@ -752,50 +752,43 @@ function LootHistory:AddEntry(winner, entry)
     if winnerHistory then
         history:insert(entry:toTable(), winner)
     else
-        history:put(winner, { entry:toTable() })
+        history:put(winner, {entry:toTable()})
     end
 end
 
-function LootHistory:CreateEntry(winner, link, responseId, boss, reason, session, awardData)
-    local C = AddOn.Constants
-    
+function LootHistory:CreateFromAward(award)
     -- if in test mode and not development mode, return
     if (AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) then return end
+    if not award.item then error("Award has not associated item") end
+    local C = AddOn.Constants
     
-    local ML = AddOn:MasterLooterModule()
-    local itemEntry = ML:GetItem(session)
-    local equipLoc = itemEntry and itemEntry.equipLoc or "default"
-    local typeCode = itemEntry and itemEntry.typeCode
-    local response = AddOn:GetResponse(typeCode or equipLoc, responseId)
     --
     -- https://wow.gamepedia.com/API_GetInstanceInfo
     -- name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty, isDynamic,
     --  instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
     --
     local instanceName, _, _, _, _, _, _, instanceId, groupSize = GetInstanceInfo()
-    local candidate = ML:GetCandidate(winner)
-    Logging:Debug("AddEntry() : %s, %s, %s, %s, %s, %s, %s",
-                  winner, link, responseId, tostring(boss), tostring(reason), session, Util.Objects.ToString(awardData))
-   
+    
     local entry = Models.History.Loot()
-    entry.item = link
+    entry.item = award.item.link
+    entry.owner = award.item.winner
+    entry.class = award.item.class
     entry.instance = instanceName
     entry.mapId = instanceId
-    entry.boss = boss or _G.UNKNOWN
-    entry:SetOrigin(reason and true or false)
-    entry.response = reason and reason.text or response.text
-    entry.responseId = reason and reason.sort - 400 or responseId
-    entry.color = reason and reason.color or response.color
-    entry.class = candidate.class
+    entry.boss = AddOn.encounter.name
     entry.groupSize = groupSize
-    entry.note = awardData and awardData.note or nil
-    entry.owner = itemEntry and itemEntry.owner or winner
-    entry.typeCode = itemEntry and itemEntry.typeCode
+    entry.note = award.item.note
+    entry.typeCode = award.item.typeCode
+    local response = award.item:NormalizedResponse()
+    entry.responseId = response.id
+    entry.response = response.text
+    entry.color = response.color
+    entry:SetOrigin(award.item.reason and true or false)
     
-    AddOn:SendMessage(C.Messages.LootHistorySend, entry, winner, responseId, boss, reason, session, awardData)
+    AddOn:SendMessage(C.Messages.LootHistorySend, entry, award)
     -- todo : support settings for sending and tracking history
     -- todo : send to guild or group? group for now
-    AddOn:SendCommand(C.group, C.Commands.LootHistoryAdd, winner, entry)
+    AddOn:SendCommand(C.group, C.Commands.LootHistoryAdd, entry.owner, entry)
     return entry
 end
 

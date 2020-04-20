@@ -70,7 +70,7 @@ function Loot:SetOrigin(fromAwardReason)
 end
 
 function Loot:FormattedResponse()
-    return  UI.ColoredDecorator(self.color):decorate(self.response)
+    return UI.ColoredDecorator(self.color):decorate(self.response)
 end
 
 -- Loot Statistics

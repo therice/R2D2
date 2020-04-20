@@ -159,33 +159,33 @@ function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, colum
 end
 
 AddOn.Constants.Colors.SubjectTypes = {
-    [Models.History.Traffic.SubjectType.Character] = _G.ITEM_QUALITY_COLORS[1].color,
-    [Models.History.Traffic.SubjectType.Guild]     = _G.ITEM_QUALITY_COLORS[2].color,
-    [Models.History.Traffic.SubjectType.Raid]      = _G.ITEM_QUALITY_COLORS[5].color,
+    [Models.Award.SubjectType.Character] = _G.ITEM_QUALITY_COLORS[1].color,
+    [Models.Award.SubjectType.Guild]     = _G.ITEM_QUALITY_COLORS[2].color,
+    [Models.Award.SubjectType.Raid]      = _G.ITEM_QUALITY_COLORS[5].color,
 }
 
 function AddOn.GetSubjectTypeColor(subjectType)
-    if Util.Objects.IsString(subjectType) then subjectType = Models.History.Traffic.SubjectType[subjectType] end
+    if Util.Objects.IsString(subjectType) then subjectType = Models.Award.SubjectType[subjectType] end
     return AddOn.Constants.Colors.SubjectTypes[subjectType]
 end
 
 AddOn.Constants.Colors.ActionTypes = {
-    [Models.History.Traffic.ActionType.Add]      = CreateColor(0, 1, 0.59, 1),
-    [Models.History.Traffic.ActionType.Subtract] = CreateColor(0.96, 0.55, 0.73, 1),
-    [Models.History.Traffic.ActionType.Reset]    = CreateColor(1, 0.96, 0.41, 1),
+    [Models.Award.ActionType.Add]      = CreateColor(0, 1, 0.59, 1),
+    [Models.Award.ActionType.Subtract] = CreateColor(0.96, 0.55, 0.73, 1),
+    [Models.Award.ActionType.Reset]    = CreateColor(1, 0.96, 0.41, 1),
 }
 
 function AddOn.GetActionTypeColor(actionTYpe)
-    if Util.Objects.IsString(actionTYpe) then actionTYpe = Models.History.Traffic.ActionType[actionTYpe] end
+    if Util.Objects.IsString(actionTYpe) then actionTYpe = Models.Award.ActionType[actionTYpe] end
     return AddOn.Constants.Colors.ActionTypes[actionTYpe]
 end
 
 AddOn.Constants.Colors.ResourceTypes = {
-    [Models.History.Traffic.ResourceType.Ep] = _G.ITEM_QUALITY_COLORS[6].color,
-    [Models.History.Traffic.ResourceType.Gp] = _G.ITEM_QUALITY_COLORS[5].color,
+    [Models.Award.ResourceType.Ep] = _G.ITEM_QUALITY_COLORS[6].color,
+    [Models.Award.ResourceType.Gp] = _G.ITEM_QUALITY_COLORS[5].color,
 }
 
 function AddOn.GetResourceTypeColor(resourceType)
-    if Util.Objects.IsString(resourceType) then resourceType = Models.History.Traffic.ResourceType[resourceType] end
+    if Util.Objects.IsString(resourceType) then resourceType = Models.Award.ResourceType[resourceType] end
     return AddOn.Constants.Colors.ResourceTypes[resourceType]
 end

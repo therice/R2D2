@@ -1314,7 +1314,7 @@ function ML:Test(items)
 end
 
 -- Award popup control functions
--- data contains: session, winner, responseId, reason, gear1, gear2, isTierRoll, isRelicRoll, link, isToken
+-- data is an instance of ItemAward
 function ML.AwardPopupOnShow(frame, data)
     UI.DecoratePopup(frame)
     local awardTo =  AddOn.Ambiguate(data.winner)
@@ -1325,38 +1325,23 @@ function ML.AwardPopupOnShow(frame, data)
 end
 
 function ML.AwardPopupOnClickYesCallback(awarded, session, winner, status, data, callback, ...)
-    Logging:Debug("AwardPopupOnClickYesCallback(%s, %d, %s, %s)", tostring(awarded), session, winner, status)
-    Logging:Debug("AwardPopupOnClickYesCallback(%d) : %s", session, Util.Objects.ToString(data))
+    -- Logging:Debug("AwardPopupOnClickYesCallback(%s, %d, %s, %s)", tostring(awarded), session, winner, status)
+    -- Logging:Debug("AwardPopupOnClickYesCallback(%d) : %s", session, Util.Objects.ToString(data))
     if callback and Util.Objects.IsFunction(callback) then
         callback(awarded, session, winner, status, data, ...)
     end
+    
     if awarded then
-        local lhEntry = AddOn:LootHistoryModule():CreateEntry(
-                data.winner,
-                data.link,
-                data.responseId,
-                AddOn.encounter.name,
-                data.reason,
-                session,
-                data
-        )
-        
-        AddOn:TrafficHistoryModule():CreateFromLootHistory(
-            Traffic.ActionType.Add,
-            Traffic.SubjectType.Character,
-            Traffic.ResourceType.Gp,
-            lhEntry,
-            data
-        )
+        AddOn:GearPointsModule():OnAwardItem(data)
     end
 end
 
 function ML.AwardPopupOnClickYes(frame, data, callback, ...)
-    Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
+    -- Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
     ML:Award(
         data.session,
         data.winner,
-        data.responseId and AddOn:GetResponse(data.typeCode or data.equipLoc, data.responseId).text,
+        data.responseText,
         data.reason,
         ML.AwardPopupOnClickYesCallback,
         data,

@@ -1,13 +1,14 @@
 local _, AddOn = ...
-local GP        = AddOn:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
-local L         = AddOn.components.Locale
-local Logging   = AddOn.components.Logging
-local Util      = AddOn.Libs.Util
-local Tables    = Util.Tables
-local Objects   = Util.Objects
-local COpts     = AddOn.components.UI.ConfigOptions
-local LibGP     = AddOn.Libs.GearPoints
-local UI        = AddOn.components.UI
+local GP = AddOn:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
+local L = AddOn.components.Locale
+local Logging = AddOn.components.Logging
+local Util = AddOn.Libs.Util
+local Tables = Util.Tables
+local Objects = Util.Objects
+local COpts = AddOn.components.UI.ConfigOptions
+local LibGP = AddOn.Libs.GearPoints
+local UI = AddOn.components.UI
+local Award = AddOn.components.Models.Award
 
 local DisplayName = {}
 DisplayName.OneHWeapon  = L["%s %s"]:format(_G.INVTYPE_WEAPON, _G.WEAPON)
@@ -285,4 +286,27 @@ function GP:GetGpTextColored(item, awardReason)
         text = awardGp .. "(" .. text .. ")"
     end
     return text
+end
+
+
+-- @param itemAward instance as generated via LootAllocate:GetAwardPopupData (which is of type ItemAward)
+function GP:OnAwardItem(itemAward)
+    if not itemAward then error('No item award provided') end
+    
+    Logging:Debug("OnAwardItem : %s", Objects.ToString(itemAward, 3))
+    local award = Award()
+    award:SetSubjects(Award.SubjectType.Character, itemAward.winner)
+    award:SetAction(Award.ActionType.Add)
+    award:SetResource(Award.ResourceType.Gp, itemAward.awardGp and itemAward.awardGp or itemAward.baseGp)
+    
+    -- set a description on award based upon response
+    local response = itemAward:NormalizedResponse()
+    award.description = format(L["awarded_item_for_reason"], itemAward.link,
+                                UI.ColoredDecorator(response.color):decorate(response.text))
+    
+    -- set reference to item for award, which will be used for any history
+    award.item = itemAward
+    
+    -- confirmation is already done at this point, no need to prompt again
+    AddOn:PointsModule():Adjust(award)
 end

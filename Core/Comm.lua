@@ -333,6 +333,8 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
             -- todo : check if history is enabled
             elseif command == C.Commands.LootHistoryAdd then
                 local winner, data = unpack(data)
+                Logging:Debug("%s, %s", tostring(winner), Objects.ToString(data))
+                
                 local entry = Models.History.Loot():reconstitute(data)
                 local _, _, _, _, _, itemTypeId, itemSubTypeId = GetItemInfoInstant(entry.item)
                 entry.itemTypeId = itemTypeId

@@ -9,8 +9,7 @@ local ItemUtil = AddOn.Libs.ItemUtil
 local GuildStorage = AddOn.Libs.GuildStorage
 local Dialog = AddOn.Libs.Dialog
 local Models = AddOn.components.Models
-local Award = Models.History.Award
-local Traffic = Models.History.Traffic
+local Award = Models.Award
 local Objects = Util.Objects
 local Strings = Util.Strings
 local Class = AddOn.Libs.Class
@@ -155,8 +154,9 @@ function Points:DataChanged(event, state)
 end
 
 function Points:Adjust(award)
-    Logging:Debug("%s", Objects.ToString(award))
+    -- Logging:Debug("%s", Objects.ToString(award:toTable()))
     
+    -- local function for forming operation on target
     local function apply(target, action, type, amount)
         -- if a subtract operation flip sign on amount (they are always in positive values)
         if action == Award.ActionType.Subtract then amount = -amount end
@@ -180,16 +180,21 @@ function Points:Adjust(award)
                 type == Award.ResourceType.Gp and gp or
                 nil -- intentional to find missing cases
     
-        target(award.resourceQuantity)
+        target(amount)
+    end
+    
+    -- todo : if we want to record history entries after point adjustment then needs to be refactored to grab 'before' quantity
+    -- todo : could pass in the actual update to be performed before sending
+    
+    -- if the award is for GP and there is an associated item that was awarded, create it first
+    local lhEntry
+    if award.resourceType == Award.ResourceType.Gp and award.item then
+        lhEntry = AddOn:LootHistoryModule():CreateFromAward(award)
     end
     
     -- just one traffic history entry per award, regardless of number of subjects
     -- to which it applied
-    --
-    -- todo : if we want to record history after adjustment then needs to be refactored to grab 'before' quantity
-    -- todo : could pass in the actual update to be peformed before sending
-    local entry = AddOn:TrafficHistoryModule():CreateFromAward(award)
-    Logging:Debug("%s", Objects.ToString(entry:toTable()))
+    AddOn:TrafficHistoryModule():CreateFromAward(award, lhEntry)
     
     -- subject is a tuple of (name, class)
     for _, subject in pairs(award.subjects) do
@@ -269,7 +274,7 @@ end
 
 -- todo : fix this stupid functoin
 function Points:Update(forceUpdate)
-    Logging:Debug("Update(%s)", tostring(forceUpdate or false))
+    -- Logging:Debug("Update(%s)", tostring(forceUpdate or false))
     -- if module isn't enabled, no need to perform update
     if not self:IsEnabled() then return end
     if not self.frame then return end
@@ -376,14 +381,14 @@ function Points:GetAdjustFrame()
     rtLabel:SetText(L["resource_type"])
     f.rtLabel = rtLabel
     
-    f.subjectType = Traffic.SubjectType.Character
+    f.subjectType = Award.SubjectType.Character
     
     local resourceType =
         UI('Dropdown')
             .SetPoint("CENTER", f.name, "BOTTOM", 0, -35)
             .SetParent(f)()
     local values = {}
-    for k, v in pairs(Traffic.TypeIdToResource) do
+    for k, v in pairs(Award.TypeIdToResource) do
         values[k] = v:upper()
     end
     resourceType:SetList(values)
@@ -399,7 +404,7 @@ function Points:GetAdjustFrame()
             .SetPoint("TOPLEFT", f.resourceType.frame, "BOTTOMLEFT", 0, -20)
             .SetParent(f)()
     values = {}
-    for k, v in pairs(Traffic.TypeIdToAction) do
+    for k, v in pairs(Award.TypeIdToAction) do
         values[k] = v
     end
     actionType:SetList(values)
@@ -480,7 +485,7 @@ function Points:GetAdjustFrame()
             Util.Tables.Push(validationErrors, format(L["x_unspecified_or_incorrect_type"], L["name"]))
         else
             local subjectType = tonumber(f.subjectType)
-            if subjectType== Traffic.SubjectType.Character then
+            if subjectType== Award.SubjectType.Character then
                 award:SetSubjects(subjectType, subject)
             else
                 award:SetSubjects(subjectType)
@@ -528,7 +533,7 @@ function Points:UpdateAdjustFrame(subjectType, name, resource)
     
     local c
     
-    if subjectType == Traffic.SubjectType.Character then
+    if subjectType == Award.SubjectType.Character then
         c = AddOn.GetClassColor(GetEntry(name).class)
     else
         c = AddOn.GetSubjectTypeColor(subjectType)
@@ -541,7 +546,7 @@ function Points:UpdateAdjustFrame(subjectType, name, resource)
     self.adjustFrame.name:SetTextColor(c.r, c.g, c.b, c.a)
     
     self.adjustFrame.resourceType:SetValue(resource)
-    self.adjustFrame.resourceType:SetText(Traffic.TypeIdToResource[resource]:upper())
+    self.adjustFrame.resourceType:SetText(Award.TypeIdToResource[resource]:upper())
     
     self.adjustFrame.actionType:SetValue(nil)
     self.adjustFrame.actionType:SetText(nil)
@@ -557,7 +562,7 @@ function Points.AdjustPointsOnShow(frame, award)
     UI.DecoratePopup(frame)
     
     local decoratedText
-    if award.subjectType == Traffic.SubjectType.Character then
+    if award.subjectType == Award.SubjectType.Character then
         local subject = award.subjects[1]
         local c = AddOn.GetClassColor(subject[2])
         decoratedText = UI.ColoredDecorator(c.r, c.g, c.b):decorate(subject[1])
@@ -568,17 +573,18 @@ function Points.AdjustPointsOnShow(frame, award)
     -- Are you certain you want to %s %d %s %s %s?
     frame.text:SetText(
             format(L["confirm_adjust_player_points"],
-                   Traffic.TypeIdToAction[award.actionType]:lower(),
+                   Award.TypeIdToAction[award.actionType]:lower(),
                    award.resourceQuantity,
-                   Traffic.TypeIdToResource[award.resourceType]:upper(),
-                   award.actionType == Traffic.ActionType.Add and "to" or "from",
+                   Award.TypeIdToResource[award.resourceType]:upper(),
+                   award.actionType == Award.ActionType.Add and "to" or "from",
                    decoratedText
             )
     )
 end
 
-function Points.AwardPopupOnClickYes(frame, award, callback, ...)
-    Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(award:toTable(), 3))
+-- @param award instance of Award
+function Points.AwardPopupOnClickYes(frame, award, ...)
+    -- Logging:Debug("AwardPopupOnClickYes() : %s", Util.Objects.ToString(award:toTable(), 3))
     Points:Adjust(award)
     if Points.adjustFrame then Points.adjustFrame:Hide() end
 end
@@ -650,9 +656,9 @@ end
 -- intentionally a no-op
 function StaticAdjustLevel:SetText(text)  end
 
-local SubjectAdjustLevel = DynamicAdjustLevel('SUBJECT', Traffic.SubjectType.Character)
-local GuildAdjustLevel = StaticAdjustLevel('GUILD', _G.GUILD, Traffic.SubjectType.Guild)
-local GroupAdjustLevel = StaticAdjustLevel('GROUP', _G.GROUP, Traffic.SubjectType.Raid)
+local SubjectAdjustLevel = DynamicAdjustLevel('SUBJECT', Award.SubjectType.Character)
+local GuildAdjustLevel = StaticAdjustLevel('GUILD', _G.GUILD, Award.SubjectType.Guild)
+local GroupAdjustLevel = StaticAdjustLevel('GROUP', _G.GROUP, Award.SubjectType.Raid)
 
 local AdjustLevels = {
     [SubjectAdjustLevel.category] = SubjectAdjustLevel,
@@ -687,21 +693,21 @@ Points.RightClickEntries = {
          -- 1 EP
         {
             text = function()
-                return UI.ColoredDecorator(AddOn.GetResourceTypeColor(Traffic.ResourceType.Ep)):decorate(L["ep_abbrev"])
+                return UI.ColoredDecorator(AddOn.GetResourceTypeColor(Award.ResourceType.Ep)):decorate(L["ep_abbrev"])
             end,
             notCheckable = true,
             func = function(_)
-                GetAdjustLevel():ChildAction(Traffic.ResourceType.Ep)
+                GetAdjustLevel():ChildAction(Award.ResourceType.Ep)
             end,
         },
         -- 2 GP
         {
             text = function()
-                return UI.ColoredDecorator(AddOn.GetResourceTypeColor(Traffic.ResourceType.Gp)):decorate(L["gp_abbrev"])
+                return UI.ColoredDecorator(AddOn.GetResourceTypeColor(Award.ResourceType.Gp)):decorate(L["gp_abbrev"])
             end,
             notCheckable = true,
             func = function(_)
-                GetAdjustLevel():ChildAction(Traffic.ResourceType.Gp)
+                GetAdjustLevel():ChildAction(Award.ResourceType.Gp)
             end,
         },
         -- 3 Rescale
