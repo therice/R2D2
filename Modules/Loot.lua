@@ -66,7 +66,8 @@ function Loot:AddItem(offset, k, item)
         )
     --]]
     -- Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
-    self.items[offset + k] = item:ToLootEntry()
+    
+    self.items[offset + k] = item:ToLootEntry(AddOn:GetMasterLooterDbValue('timeout'))
 end
 
 function Loot:CheckDuplicates(size, offset)
@@ -290,9 +291,9 @@ do
             end
 
             -- todo : implement timeouts via settings
-            local showTimeout = false
-            if showTimeout then
-                entry.timeoutBar:SetMinMaxValues(0, 60)
+            
+            if AddOn:GetMasterLooterDbValue('timeout') then
+                entry.timeoutBar:SetMinMaxValues(0, AddOn:GetMasterLooterDbValue('timeout') or AddOn:MasterLooterModule():DbValue('timeout'))
                 entry.timeoutBar:Show()
             else
                 entry.timeoutBar:Hide()
@@ -454,7 +455,10 @@ do
             entry.timeoutBar:SetSize(entry.frame:GetWidth(), 6)
             entry.timeoutBar:SetPoint("BOTTOMLEFT", 9,3)
             entry.timeoutBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
-            entry.timeoutBar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
+            --entry.timeoutBar:SetStatusBarColor(0.1, 0, 0.6, 0.8)
+            --entry.timeoutBar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
+            -- entry.timeoutBar:SetStatusBarColor(1, 0.96, 0.41, 1)
+            entry.timeoutBar:SetStatusBarColor(0.00, 1.00, 0.59, 1)
             entry.timeoutBar:SetMinMaxValues(0, 60)
             entry.timeoutBar:SetScript("OnUpdate", function(this, elapsed)
                 --Timeout!

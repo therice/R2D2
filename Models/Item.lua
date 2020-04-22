@@ -254,8 +254,8 @@ function ItemEntry:ToRow(session, cols)
     return row
 end
 
-function ItemEntry:ToLootEntry()
-    return LootEntry:new(self)
+function ItemEntry:ToLootEntry(timeout)
+    return LootEntry:new(self, timeout)
 end
 
 function ItemEntry:ToAllocateEntry()
@@ -288,13 +288,13 @@ end
 -- Extends ItemEntry with support for additional attributes required to present the
 -- entry to candidates for stating interest (need, greed, etc.)
 --
-function LootEntry:initialize(itemEntry)
+function LootEntry:initialize(itemEntry, timeout)
     CreateItemEntry(self, itemEntry,
             function()
                 self.rolled = false
                 self.note = nil
                 self.sessions = itemEntry.session and { itemEntry.session } or {}
-                self.timeLeft = 60
+                self.timeLeft = timeout and timeout or false
             end
     )
 end
@@ -400,6 +400,10 @@ function ItemAward:initialize(allocation, session, candidate, reason)
         text  = nil,
         color = nil
     }
+end
+
+function ItemAward:GetGp()
+    return self.awardGp and self.awardGp or self.baseGp
 end
 
 function ItemAward:NormalizedResponse()

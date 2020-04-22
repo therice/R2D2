@@ -232,7 +232,6 @@ function ColoredDecorator:decorate(...)
     return "|cff" .. self.hex .. ColoredDecorator.super:decorate(...) .. "|r"
 end
 
-
 -- UI native elements (no library/wrappers)
 local frames = {}
 local private = { elements = {}, num = {}, embeds = {}}

@@ -297,7 +297,7 @@ function GP:OnAwardItem(itemAward)
     local award = Award()
     award:SetSubjects(Award.SubjectType.Character, itemAward.winner)
     award:SetAction(Award.ActionType.Add)
-    award:SetResource(Award.ResourceType.Gp, itemAward.awardGp and itemAward.awardGp or itemAward.baseGp)
+    award:SetResource(Award.ResourceType.Gp, itemAward:GetGp())
     
     -- set a description on award based upon response
     local response = itemAward:NormalizedResponse()

@@ -7,10 +7,9 @@ local ItemUtil = AddOn.Libs.ItemUtil
 local Models = AddOn.components.Models
 local UI = AddOn.components.UI
 local COpts = UI.ConfigOptions
-local Traffic = Models.History.Traffic
-
 local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT = 10, 3
 
+-- these are the defaults for DB
 ML.defaults = {
     profile = {
         -- various types of usage for add-on
@@ -32,6 +31,16 @@ ML.defaults = {
         autoLootNonEquipable = true,
         -- automatically add all BOE items from loot to session frame
         autoLootBoe = true,
+        -- how long does a candidate have to respond
+        timeout = 60,
+        -- are whispers supported for candidate responses
+        acceptWhispers = true,
+        -- are awards announced via  specified channel
+        announceAwards = true,
+        -- where awards are announced, channel + message
+        awardText =  {
+            { channel = "group", text = "&p was awarded &i for &r"}
+        },
         buttons = {
             -- dynamically constructed in the do/end loop below
             -- example data left behind for illustration
@@ -48,7 +57,7 @@ ML.defaults = {
         responses = {
             default = {
                 AWARDED         =   { color = {1,1,1,1},		sort = 0.1,	text = L["awarded"], },
-                NOTANNOUNCED    =   { color = {1,0,1,1},		sort = 501,	text = L["not_accounced"], },
+                NOTANNOUNCED    =   { color = {1,0,1,1},		sort = 501,	text = L["not_annouced"], },
                 ANNOUNCED		=   { color = {1,0,1,1},		sort = 502,	text = L["announced_awaiting_answer"], },
                 WAIT			=   { color = {1,1,0,1},		sort = 503,	text = L["candidate_selecting_response"], },
                 TIMEOUT			=   { color = {1,0,0,1},		sort = 504,	text = L["candidate_no_response_in_time"], },
@@ -72,6 +81,7 @@ ML.defaults = {
     }
 }
 
+-- these are the options displayed in configuration UI
 ML.options = {
     name = L['ml'],
     type = 'group',
@@ -161,16 +171,16 @@ ML.options = {
         announcements = {
             order = 2,
             type = 'group',
-            name = 'Announcements',
+            name = L["announcements"],
             args = {
                 description = COpts.Description('TODO : Incomplete'),
                 awards = {
                     order = 1,
-                    name = "Awards",
+                    name = L["awards"],
                     type = 'group',
                     inline = true,
                     args = {
-                    
+                        announceAwards = COpts.Toggle(L["announce_awards"], 1, L["announce_awards_desc"], false, {width='full'}),
                     }
                 },
                 considerations = {
@@ -187,25 +197,44 @@ ML.options = {
         responses = {
             order = 3,
             type = 'group',
-            name = 'Responses',
+            name = L["responses"],
             args = {
-                description = COpts.Description('TODO : Incomplete'),
                 timeout = {
                     order = 1,
-                    name = "Timeout",
+                    name = L["timeout"],
                     type = 'group',
                     inline = true,
                     args = {
-        
+                        enable = {
+                            order = 1,
+                            name = L["timeout_enable"],
+                            desc = L["timeout_enable_desc"],
+                            type = "toggle",
+                            set = function()
+                                if ML.db.profile.timeout then
+                                    ML.db.profile.timeout = false
+                                else
+                                    ML.db.profile.timeout = ML.defaults.profile.timeout
+                                end
+                            end,
+                            get = function()
+                                return ML.db.profile.timeout
+                            end
+                        },
+                        timeout = COpts.Range(L["timeout_duration"], 2, 0, 200, 5, {
+                            disabled = function() return not ML.db.profile.timeout end,
+                            desc = L["timeout_duration_desc"]
+                        })
                     }
                 },
                 whisperResponses = {
                     order = 2,
-                    name = "Responses From Whisper",
+                    name = L["responses_from_chat"],
                     type = 'group',
                     inline = true,
                     args = {
-        
+                        acceptWhispers = COpts.Toggle(L['accept_whispers'], 1, L['accept_whispers_desc']),
+                        desc = COpts.Description(L["responses_from_chat_desc"], nil, 2)
                     }
                 }
             }
@@ -239,6 +268,23 @@ do
         -- presented to the player
         Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award], award_scale=award})
         index = index + 1
+    end
+    
+    -- setup the whisper keys for various responses
+    for i = 1, DefaultButtons.numButtons do
+        local button = DefaultButtons[i]
+        ML.options.args.responses.args.whisperResponses.args["whisperkey_" .. i] = {
+            order = i + 3,
+            name = button.text,
+            desc = format(L["whisperkey_for_x"], button.text),
+            type = "input",
+            width = "double",
+            get = function() return ML.db.profile.buttons.default[i].whisperKey end,
+            set = function(k, v) ML.db.profile.buttons.default[i].whisperKey = tostring(v) end,
+            hidden = function()
+                return not ML.db.profile.acceptWhispers or ML.db.profile.buttons.default.numButtons < i
+            end,
+        }
     end
 end
 
@@ -402,6 +448,7 @@ function ML:BuildDb()
         buttons     =   changedButtons,
         responses   =   changedResponses,
         outOfRaid   =   db.outOfRaid,
+        timeout     =   db.timeout,
     }
 
     --[[
@@ -771,7 +818,7 @@ local function AwardSuccess(session, winner, status, callback, ...)
     return true
 end
 
-local function RegisterAndAnnounceAward(session, winner, response, reason)
+local function RegisterAndAnnounceAward(session, winner, response, reason, itemAward)
     local C, self = AddOn.Constants, ML
     local itemEntry = self:GetItem(session)
     local previousWinner = itemEntry.awarded
@@ -779,11 +826,12 @@ local function RegisterAndAnnounceAward(session, winner, response, reason)
     
     AddOn:SendCommand(C.group, C.Commands.Awarded, session, winner, itemEntry.owner)
     
+    -- AnnounceAward(name, link, response, roll, session, changeAward, owner)
     self:AnnounceAward(winner, itemEntry.link, reason and reason.text or response,
                        AddOn:LootAllocateModule():GetCandidateData(session, winner, "roll"),
-                       session, previousWinner)
+                       session, previousWinner, nil, itemAward)
     
-    if self:HasAllItemsBeenAwarded() then
+    if self:HaveAllItemsBeenAwarded() then
         AddOn:Print(L["all_items_have_been_awarded"])
         self:ScheduleTimer("EndSession", 1)
     end
@@ -799,7 +847,7 @@ local function RegisterAndAnnounceBagged(session)
     Logging:Warn("RegisterAndAnnounceBagged(%d) : Bagging an item, but support lacking for awarding later", session)
     
     -- todo : put item into storage
-    -- todo: all of this is superfolous without that
+    -- todo: all of this is superfluous without that
     
     if itemEntry.lootSlot and self.running then
         self:AnnounceAward(L["loot_master"], itemEntry.link, L["store_in_bag_award_later"], nil, session)
@@ -826,6 +874,8 @@ end
 function ML:Award(session, winner, response, reason, callback, ...)
     Logging:Debug("Award(%s) : %s, %s, %s", tostring(session), tostring(winner), tostring(response), Util.Objects.ToString(reason))
     local args = {...}
+    -- data is passed through in position #1
+    local itemAward = args[1]
     
     if not self.lootTable or #self.lootTable == 0 then
         if self.oldLootTable and #self.oldLootTable > 0 then
@@ -863,7 +913,7 @@ function ML:Award(session, winner, response, reason, callback, ...)
     
     -- already awarded, change to whom it was awarded
     if itemEntry.awarded then
-        RegisterAndAnnounceAward(session, winner, response, reason)
+        RegisterAndAnnounceAward(session, winner, response, reason, itemAward)
         if not itemEntry.lootSlot and not itemEntry.bagged then
             AwardSuccess(session, winner, AddOn:TestModeEnabled() and ML.AwardReasons.Neutral.TestMode or  ML.AwardReasons.Success.ManuallyAdded, callback, ...)
         elseif itemEntry.bagged then
@@ -878,7 +928,7 @@ function ML:Award(session, winner, response, reason, callback, ...)
     if not itemEntry.lootSlot and not itemEntry.bagged then
         if winner then
             AwardSuccess(session, winner, AddOn:TestModeEnabled() and  ML.AwardReasons.Neutral.TestMode or  ML.AwardReasons.Success.ManuallyAdded, callback, ...)
-            RegisterAndAnnounceAward(session, winner, response, reason)
+            RegisterAndAnnounceAward(session, winner, response, reason, itemAward)
             return true
         else
             if AddOn:TestModeEnabled() then
@@ -895,7 +945,7 @@ function ML:Award(session, winner, response, reason, callback, ...)
     
     -- awarding item from bag
     if itemEntry.bagged then
-        RegisterAndAnnounceAward(session, winner, response, reason)
+        RegisterAndAnnounceAward(session, winner, response, reason, itemAward)
         AwardSuccess(session, winner, ML.AwardReasons.Success.Indirect, callback, ...)
         return true
     end
@@ -924,7 +974,7 @@ function ML:Award(session, winner, response, reason, callback, ...)
                     winner,
                     function(awarded, cause)
                         if awarded then
-                            RegisterAndAnnounceAward(session, winner, response, reason)
+                            RegisterAndAnnounceAward(session, winner, response, reason, itemAward)
                             AwardSuccess(session, winner, ML.AwardReasons.Success.Normal, callback, unpack(args))
                             return true
                         else
@@ -1074,6 +1124,10 @@ ML.AwardStrings = {
     ["&m"] = function(...)
         return AddOn:LootAllocateModule():GetCandidateData(select(5,...), select(1,...), "note") or "<none>"
     end,
+    ["&g"] = function(...)
+        local gp = select(7, ...)
+        return gp and tostring(gp) or "N/A"
+    end,
 }
 
 ML.AwardStringsDesc = {
@@ -1086,18 +1140,28 @@ ML.AwardStringsDesc = {
     L["announce_&t_desc"],
     L["announce_&o_desc"],
     L["announce_&m_desc"],
+    L["announce_&g_desc"],
 }
 
 local AwardTexts = {
-    { channel = "group", text = "&p was awarded &i for &r"}
+    { channel = "group", text = "&p was awarded &i for &r (&g GP)"}
 }
 
-function ML:AnnounceAward(name, link, response, roll, session, changeAward, owner)
+function ML:AnnounceAward(name, link, response, roll, session, changeAward, owner, itemAward)
     -- todo : should we suppress announcements via configuration?
+    
+    local gp = itemAward and itemAward:GetGp() or nil
+    -- pretty up some texts (if able to
+    if itemAward then
+        local r = itemAward:NormalizedResponse()
+        response = UI.ColoredDecorator(r.color):decorate(response)
+        name = UI.ColoredDecorator(AddOn.GetClassColor(itemAward.class)):decorate(name)
+    end
+    
     for _, awardText in pairs(AwardTexts) do
         local message = awardText.text
         for text, func in pairs(self.AwardStrings) do
-            message = gsub(message, text, escapePatternSymbols(tostring(func(name, link, response, roll, session, owner))))
+            message = gsub(message, text, escapePatternSymbols(tostring(func(name, link, response, roll, session, owner, gp))))
         end
         if changeAward then
             message = "(" .. L["change_award"] .. ") " .. message
@@ -1133,10 +1197,9 @@ function ML:StartSession()
 
     self.running = true
     self:AnnounceItems(self.lootTable)
-    -- todo : do we need to emit help messages here?
 end
 
-function ML:HasAllItemsBeenAwarded()
+function ML:HaveAllItemsBeenAwarded()
     local moreItems = true
     for i = 1, #self.lootTable do
         if not self.lootTable[i].awarded then
@@ -1163,17 +1226,102 @@ end
 function ML:OnEvent(event, ...)
     Logging:Debug("OnEvent(%s)", event)
     
-    if event == AddOn.Constants.Events.ChatMessageWhisper and AddOn.isMasterLooter then -- and self.db.acceptWhispers
+    if event == AddOn.Constants.Events.ChatMessageWhisper and AddOn.isMasterLooter and self:DbValue('acceptWhispers') then
         local msg, sender = ...
-        if msg == 'r2d2help' then
-            -- todo : send help
-        elseif self.running then
-            -- todo : extract items from message
+        if msg == '!help' then
+            self:SendWhisperHelp(sender)
+        elseif msg == '!items' then
+            self:SendWhisperItems(sender)
+        elseif Util.Strings.StartsWith(msg, "!item") and self.running then
+            self:GetItemsFromMessage(gsub(msg, "!item", ""):trim(), sender)
+        elseif Util.Strings.StartsWith(msg, "!standby") and self.running then
+        
         end
     elseif event == AddOn.Constants.Events.PlayerRegenEnabled then
         -- todo : when award later is implemented, check if any items are low on trade time remaining
         -- todo : should i implement callbacks in case of combat to resume loot allocation?
     end
+end
+
+function ML:SendWhisperHelp(target)
+    Logging:Debug("SendWhisperHelp(%s)", target)
+    SendChatMessage(L["whisper_guide_1"], "WHISPER", nil, target)
+    local msg, db = nil, self.db.profile
+    for i = 1, db.buttons.default.numButtons do
+        msg = "[R2D2]: ".. db.buttons.default[i]["text"] .. ":  "
+        msg = msg .. "" .. db.buttons.default[i]["whisperKey"]
+        SendChatMessage(msg, "WHISPER", nil, target)
+    end
+    SendChatMessage(L["whisper_guide_2"], "WHISPER", nil, target)
+end
+
+function ML:SendWhisperItems(target)
+    Logging:Debug("SendWhisperHelp(%s)", target)
+    SendChatMessage(L["whisper_items"], "WHISPER", nil, target)
+    if #self.lootTable == 0 then
+        SendChatMessage(L["whisper_items_none"], "WHISPER", nil, target)
+    else
+        for session, item in pairs(self.lootTable) do
+            SendChatMessage(format("%d   %s", session, item.link), "WHISPER", nil, target)
+        end
+    end
+end
+
+function ML:GetItemsFromMessage(msg, sender)
+    Logging:Debug("GetItemsFromMessage(%s) : %s", sender, msg)
+    
+    local C = AddOn.Constants
+    if not AddOn.isMasterLooter then return end
+   
+    local sessionArg, responseArg = AddOn:GetArgs(msg, 2)
+    sessionArg = tonumber(sessionArg)
+    
+    if not sessionArg or not Util.Objects.IsNumber(sessionArg) or sessionArg > #self.lootTable then return end
+    if not responseArg then return end
+    
+    -- default to response #1 if not specified
+    local response = 1
+    local whisperKeys = {}
+    for k, v in pairs(self.db.profile.buttons.default) do
+        if k ~= 'numButtons' then
+            -- extract the whisperKeys to a table
+            gsub(v.whisperKey, '[%w]+', function(x) tinsert(whisperKeys, {key = x, num = k}) end)
+        end
+    end
+    
+    for _,v in ipairs(whisperKeys) do
+        if strmatch(responseArg, v.key) then
+            response = v.num
+            break
+        end
+    end
+    
+    local toSend = {
+        gear1 = nil,
+        gear2 = nil,
+        ilvl = nil,
+        diff = nil,
+        note = L["auto_extracted_from_whisper"],
+        response = response
+    }
+    
+    local count = 0
+    local link = self.lootTable[sessionArg].link
+    for s, v in ipairs(self.lootTable) do
+        if AddOn:ItemIsItem(v.link, link) then
+            AddOn:SendCommand(C.group, C.Commands.Response, s, sender, toSend)
+            count = count + 1
+        end
+    end
+    
+    -- todo : could put stuff in here for current items they are using, but not for now
+    local typeCode = self.lootTable[sessionArg].typeCode or self.lootTable[sessionArg].equipLoc
+    AddOn:Print(format(L["item_response_ack_from_s"], link, AddOn.Ambiguate(sender)))
+    SendChatMessage(
+            format(L["whisper_item_ack"],
+                   AddOn:GetItemTextWithCount(link, count),
+                   AddOn:GetResponse(typeCode, response).text
+            ), "WHISPER", nil, sender)
 end
 
 function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
@@ -1338,10 +1486,11 @@ end
 
 function ML.AwardPopupOnClickYes(frame, data, callback, ...)
     -- Logging:Debug("AwardPopupOnClickYes() : %s, %s", Util.Objects.ToString(callback), Util.Objects.ToString(data, 3))
+    -- todo : this could be collapsed entirely into passing data (ItemAward)
     ML:Award(
         data.session,
         data.winner,
-        data.responseText,
+        data:NormalizedResponse().text, -- todo: can't we do this later?
         data.reason,
         ML.AwardPopupOnClickYesCallback,
         data,
@@ -1349,7 +1498,7 @@ function ML.AwardPopupOnClickYes(frame, data, callback, ...)
         ...
     )
     -- we need to delay the test mode disabling so comms have a chance to be sent first
-    if AddOn:TestModeEnabled() and ML:HasAllItemsBeenAwarded() then ML:EndSession() end
+    if AddOn:TestModeEnabled() and ML:HaveAllItemsBeenAwarded() then ML:EndSession() end
 end
 
 function ML.AwardPopupOnClickNo(frame, data)

@@ -17,7 +17,7 @@ R2D2.Options = {
 
     }
 }
--- just capture version here, it will be turned into smemantic version later
+-- just capture version here, it will be turned into semantic version later
 -- as we don't have access to that model yet here
 R2D2.version = GetAddOnMetadata(AddOnName, "Version")
 
@@ -80,7 +80,6 @@ AddOn.components.Logging    = R2D2.Libs.Logging
 
 local Logging = AddOn.components.Logging
 local Tables = AddOn.Libs.Util.Tables
-
 
 local function GetDbValue(self, i)
     -- Logging:Debug("GetDbValue(%s, %s)", self:GetName(), tostring(i[#i]))

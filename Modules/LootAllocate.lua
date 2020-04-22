@@ -258,7 +258,7 @@ function LootAllocate:SetCandidateData(session, candidate, data, val)
     end
     local ok, _ = pcall(Set, session, candidate, data, val)
     if not ok then
-        Logging:Warn("SetCandidateData() : Error for candidate=%s", candidate)
+        Logging:Warn("SetCandidateData() : Error for candidate %s", candidate)
     end
 end
 
@@ -269,7 +269,7 @@ function LootAllocate:GetCandidateData(session, candidate, data)
     end
     local ok, arg = pcall(Get, session, candidate, data)
     if not ok then
-        Logging:Warn("GetCandidateData() : Error for candidate=%s", candidate)
+        Logging:Warn("GetCandidateData() : Error for candidate %s", candidate)
     else
         return arg
     end
