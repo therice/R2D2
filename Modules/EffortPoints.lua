@@ -28,7 +28,7 @@ EP.defaults = {
             -- EP values by creature
             -- These are represented as strings instead of numbers in order to facilitate
             -- easy access by path when reading/writing values
-            creatures          = {
+            creatures  = {
                 -- Lucifron
                 ['12118'] = 10,
                 -- Magmadar
@@ -81,10 +81,10 @@ EP.options = {
     name = L['ep'],
     desc = L['ep_desc'],
     args = {
-        raid = {
+        awards = {
             type = 'group',
-            name = L['raids'],
-            desc = L['raids_desc'],
+            name = L['awards'],
+            desc = L['awards_desc'],
             childGroups = "tab",
             args = {
                 auto_award_settings = {
@@ -92,15 +92,23 @@ EP.options = {
                     name = L['auto_award'],
                     inline = true,
                     args = {
-                        -- function COpts.Range(name, order, min, max, step, extra)
                         ['raid.auto_award_victory'] = COpts.Toggle(L['auto_award_victory'], 0, L['auto_award_victory_desc']),
                         ['raid.award_defeat'] = COpts.Toggle(L['award_defeat'], 1, L['award_defeat_desc']),
-                        ['raid.auto_award_defeat'] = COpts.Toggle(L['auto_award_defeat'], 2, L['auto_award_defeat_desc']),
-                        ['raid.award_defeat_pct'] = COpts.Range(L['award_defeat_pct'], 3, 0, 1, 0.01, {isPercent=true, desc= L['award_defeat_pct_desc']}),
+                        ['raid.auto_award_defeat'] = COpts.Toggle(L['auto_award_defeat'], 2, L['auto_award_defeat_desc'], function () return not EP.db.profile.raid.award_defeat end),
+                        ['raid.award_defeat_pct'] = COpts.Range(L['award_defeat_pct'], 3, 0, 1, 0.01, {isPercent=true, desc= L['award_defeat_pct_desc'], disabled = function () return not EP.db.profile.raid.award_defeat end}),
                     }
                 }
             }
         },
+        raid = {
+            type = 'group',
+            name = L['raids'],
+            desc = L['raids_desc'],
+            childGroups = "tab",
+            args = {
+            }
+        },
+        --[[
         standby = {
             type = 'group',
             name = L['standby'],
@@ -126,6 +134,7 @@ EP.options = {
                 },
             }
         },
+        --]]
     }
 }
 
