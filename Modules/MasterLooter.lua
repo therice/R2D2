@@ -35,12 +35,19 @@ ML.defaults = {
         timeout = 60,
         -- are whispers supported for candidate responses
         acceptWhispers = true,
-        -- are awards announced via  specified channel
+        -- are awards announced via specified channel
         announceAwards = true,
         -- where awards are announced, channel + message
-        awardText =  {
-            { channel = "group", text = "&p was awarded &i for &r"}
+        announceAwardText =  {
+            { channel = "group", text = "&p was awarded &i for &r (&g GP)"},
         },
+        -- are items under consideration announced via specified channel
+        announceItems = true,
+        -- the prefix/preamble to use for announcing items
+        announceItemPrefix = "Items under consideration:",
+        -- where items are announced, channel + message
+        announceItemText = { channel = "group", text = "&s: &i"},
+        
         buttons = {
             -- dynamically constructed in the do/end loop below
             -- example data left behind for illustration
@@ -81,7 +88,30 @@ ML.defaults = {
     }
 }
 
--- these are the options displayed in configuration UI
+ML.AwardStringsDesc = {
+    L["announce_&s_desc"],
+    L["announce_&p_desc"],
+    L["announce_&i_desc"],
+    L["announce_&r_desc"],
+    L["announce_&n_desc"],
+    L["announce_&l_desc"],
+    L["announce_&t_desc"],
+    L["announce_&o_desc"],
+    L["announce_&m_desc"],
+    L["announce_&g_desc"],
+}
+
+
+ML.AnnounceItemStringsDesc = {
+    L["announce_&s_desc"],
+    L["announce_&i_desc"],
+    L["announce_&l_desc"],
+    L["announce_&t_desc"],
+    L["announce_&o_desc"],
+}
+
+-- these are the options displayed in configuration UI (probably want to move this out of the module into
+-- a location which manages all configuration options)
 ML.options = {
     name = L['ml'],
     type = 'group',
@@ -173,7 +203,6 @@ ML.options = {
             type = 'group',
             name = L["announcements"],
             args = {
-                description = COpts.Description('TODO : Incomplete'),
                 awards = {
                     order = 1,
                     name = L["awards"],
@@ -181,15 +210,77 @@ ML.options = {
                     inline = true,
                     args = {
                         announceAwards = COpts.Toggle(L["announce_awards"], 1, L["announce_awards_desc"], false, {width='full'}),
+                        description = COpts.Description(
+                                function () return L["announce_awards_desc_detail"] .. '\n' .. Util.Strings.Join("\n", unpack(ML.AwardStringsDesc)) end,
+                                "medium",
+                                2,
+                                {
+                                    hidden = function() return not ML.db.profile.announceAwards end
+                                }
+                        ),
+                        -- additional arguments are added dynamically below
                     }
                 },
                 considerations = {
                     order = 2,
-                    name = "Considerations",
+                    name = L["considerations"],
                     type = 'group',
                     inline = true,
                     args = {
-                    
+                        announceItems = COpts.Toggle(L["announce_items"], 1, L["announce_items_desc"], false , {width='full'}),
+                        description = COpts.Description(
+                                L["announce_items_desc_detail"], "medium", 2,
+                                {
+                                    hidden = function() return not ML.db.profile.announceItems end
+                                }
+                        ),
+                        announceItemChannel = {
+                            order = 3,
+                            name = L["channel"],
+                            desc = L["channel_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            values = {
+                                NONE         = _G.NONE,
+                                SAY          = _G.CHAT_MSG_SAY,
+                                YELL         = _G.CHAT_MSG_YELL,
+                                PARTY        = _G.CHAT_MSG_PARTY,
+                                GUILD        = _G.CHAT_MSG_GUILD,
+                                OFFICER      = _G.CHAT_MSG_OFFICER,
+                                RAID         = _G.CHAT_MSG_RAID,
+                                RAID_WARNING = _G.CHAT_MSG_RAID_WARNING,
+                                group        = _G.GROUP,
+                                chat         = L["chat"],
+                            },
+                            get = function() return ML.db.profile.announceItemText.channel end,
+                            set = function(_, v)  ML.db.profile.announceItemText.channel = v end,
+                            hidden = function() return not ML.db.profile.announceItems end,
+                        },
+                        announceItemPrefix = COpts.Input(
+                                L["message_header"], 4,
+                                {
+                                    desc = L["message_header_desc"],
+                                    width = "double",
+                                    hidden = function() return not ML.db.profile.announceItems end,
+                                }
+                        ),
+                        announceItemMessageDesc = COpts.Description(
+                                function () return L["announce_items_desc_detail2"] .. '\n' .. Util.Strings.Join("\n", unpack(ML.AnnounceItemStringsDesc)) end,
+                                "medium",
+                                5,
+                                {
+                                    hidden = function() return not ML.db.profile.announceItems end,
+                                }
+                        ),
+                        announceItemMessage = COpts.Input(
+                                L["message_for_each_item"], 6,
+                                {
+                                    width = "double",
+                                    get = function() return ML.db.profile.announceItemText.text end,
+                                    set = function(_, v)  ML.db.profile.announceItemText.text = v end,
+                                    hidden = function() return not ML.db.profile.announceItems end,
+                                }
+                        ),
                     }
                 }
             }
@@ -235,6 +326,7 @@ ML.options = {
                     args = {
                         acceptWhispers = COpts.Toggle(L['accept_whispers'], 1, L['accept_whispers_desc']),
                         desc = COpts.Description(L["responses_from_chat_desc"], nil, 2)
+                        -- additional arguments are added dynamically below
                     }
                 }
             }
@@ -270,20 +362,61 @@ do
         index = index + 1
     end
     
+   
+end
+
+-- sets up configuration options that rely upon DB settings
+local function ConfigureOptionsFromDb(db)
     -- setup the whisper keys for various responses
-    for i = 1, DefaultButtons.numButtons do
-        local button = DefaultButtons[i]
+    for i = 1, db.buttons.default.numButtons do
+        local button = db.buttons.default[i] --DefaultButtons[i]
         ML.options.args.responses.args.whisperResponses.args["whisperkey_" .. i] = {
             order = i + 3,
             name = button.text,
             desc = format(L["whisperkey_for_x"], button.text),
             type = "input",
             width = "double",
-            get = function() return ML.db.profile.buttons.default[i].whisperKey end,
-            set = function(k, v) ML.db.profile.buttons.default[i].whisperKey = tostring(v) end,
+            get = function() return db.buttons.default[i].whisperKey end,
+            set = function(k, v) db.buttons.default[i].whisperKey = tostring(v) end,
             hidden = function()
-                return not ML.db.profile.acceptWhispers or ML.db.profile.buttons.default.numButtons < i
+                return not db.acceptWhispers or db.buttons.default.numButtons < i
             end,
+        }
+    end
+    
+    -- sets up options for channel and messages for award announcements
+    for i = 1, #db.announceAwardText do
+        ML.options.args.announcements.args.awards.args["awardChannel" .. i] = {
+            order = i + 3,
+            name = L["channel"],
+            desc = L["channel_desc"],
+            type = "select",
+            style = "dropdown",
+            values = {
+                NONE         = _G.NONE,
+                SAY          = _G.CHAT_MSG_SAY,
+                YELL         = _G.CHAT_MSG_YELL,
+                PARTY        = _G.CHAT_MSG_PARTY,
+                GUILD        = _G.CHAT_MSG_GUILD,
+                OFFICER      = _G.CHAT_MSG_OFFICER,
+                RAID         = _G.CHAT_MSG_RAID,
+                RAID_WARNING = _G.CHAT_MSG_RAID_WARNING,
+                group        = _G.GROUP,
+                chat         = L["chat"],
+            },
+            get = function() return db.announceAwardText[i].channel end,
+            set = function(_, v)  db.announceAwardText[i].channel = v end,
+            hidden = function() return not db.announceAwards end,
+        }
+        ML.options.args.announcements.args.awards.args["awardMessage" .. i] = {
+            order = i + 3.1,
+            name = L["message"],
+            desc = L["message_desc"],
+            type = "input",
+            width = "double",
+            get = function() return db.announceAwardText[i].text end,
+            set = function(_, v) db.announceAwardText[i].text = v end,
+            hidden = function() return not db.announceAwards end,
         }
     end
 end
@@ -291,6 +424,9 @@ end
 function ML:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), ML.defaults)
+    -- setup the addiitonal configuraiton options once DB has been established
+    ConfigureOptionsFromDb(self.db.profile)
+    
     -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(self.db.namespaces, 2))
     -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(ML.defaults, 6))
     --[[
@@ -408,9 +544,7 @@ function ML:BuildDb()
 
             local defaultResponses = self:DefaultDbValue('profile.responses', type)
             local defaultResponse = defaultResponses and defaultResponses[i] or nil
-
             local dbResponse = self:DbValue('responses', type)[i]
-
             -- look at type, text and color
             if not defaultResponse
                 or (dbResponse.text ~= defaultResponse.text)
@@ -1077,31 +1211,23 @@ ML.AnnounceItemStrings = {
     ["&o"] = function(_,_,v) return v.owner and AddOn.Ambiguate(v.owner) or "" end,
 }
 
-ML.AnnounceItemStringsDesc = {
-    L["announce_&s_desc"],
-    L["announce_&i_desc"],
-    L["announce_&l_desc"],
-    L["announce_&t_desc"],
-    L["announce_&o_desc"],
-}
-
-local AnnounceItemString =  "&s: &i (&t)"
-
 function ML:AnnounceItems(table)
-    -- todo : should we suppress announcements via configuration?
+    if not self.db.profile.announceItems then return end
     Logging:Trace("AnnounceItems()")
-    AddOn:SendAnnouncement(L["announce_item_text"], AddOn.Constants.group)
+    
+    local channel, text = self.db.profile.announceAwardText.channel,self.db.profile.announceAwardText.text
+    AddOn:SendAnnouncement(self.db.profile.announceItemPrefix, channel)
     Util.Tables.Iter(table,
-            function(v, i)
-                local msg = AnnounceItemString
-                for text, fn in pairs(self.AnnounceItemStrings) do
-                    msg = gsub(msg, text, escapePatternSymbols(tostring(fn(v.session or i, v.link, v))))
-                end
-                if v.isRoll then
-                    msg = _G.ROLL .. ": " .. msg
-                end
-                AddOn:SendAnnouncement(msg, AddOn.Constants.group)
-            end
+                     function(v, i)
+                         local msg = text
+                         for text, fn in pairs(self.AnnounceItemStrings) do
+                             msg = gsub(msg, text, escapePatternSymbols(tostring(fn(v.session or i, v.link, v))))
+                         end
+                         if v.isRoll then
+                             msg = _G.ROLL .. ": " .. msg
+                         end
+                         AddOn:SendAnnouncement(msg, channel)
+                     end
     )
 end
 
@@ -1130,25 +1256,8 @@ ML.AwardStrings = {
     end,
 }
 
-ML.AwardStringsDesc = {
-    L["announce_&s_desc"],
-    L["announce_&p_desc"],
-    L["announce_&i_desc"],
-    L["announce_&r_desc"],
-    L["announce_&n_desc"],
-    L["announce_&l_desc"],
-    L["announce_&t_desc"],
-    L["announce_&o_desc"],
-    L["announce_&m_desc"],
-    L["announce_&g_desc"],
-}
-
-local AwardTexts = {
-    { channel = "group", text = "&p was awarded &i for &r (&g GP)"}
-}
-
 function ML:AnnounceAward(name, link, response, roll, session, changeAward, owner, itemAward)
-    -- todo : should we suppress announcements via configuration?
+    if not self.db.profile.announceAwards then return end
     
     local gp = itemAward and itemAward:GetGp() or nil
     -- pretty up some texts (if able to
@@ -1158,7 +1267,7 @@ function ML:AnnounceAward(name, link, response, roll, session, changeAward, owne
         name = UI.ColoredDecorator(AddOn.GetClassColor(itemAward.class)):decorate(name)
     end
     
-    for _, awardText in pairs(AwardTexts) do
+    for _, awardText in pairs(self.db.profile.announceAwardText) do
         local message = awardText.text
         for text, func in pairs(self.AwardStrings) do
             message = gsub(message, text, escapePatternSymbols(tostring(func(name, link, response, roll, session, owner, gp))))
@@ -1591,9 +1700,7 @@ function ML.LootTableCompare(a, b)
         Logging:Trace("LootTableCompare(%s, %s) : %s", a.subTypeId, b.subTypeId, tostring(a.subTypeId > b.subTypeId))
         return a.subTypeId > b.subTypeId
     end
-
-    -- todo: add support for relics
-
+    
     if a.ilvl ~= b.ilvl then
         Logging:Trace("LootTableCompare(%s, %s) : %s", a.ilvl, b.ilvl, tostring( a.ilvl > b.ilvl))
         return a.ilvl > b.ilvl
