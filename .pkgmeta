@@ -4,3 +4,7 @@ ignore:
   - TODO.md
   - Test
   - */Test/*
+  - .gitignore
+  - .luacheckrc
+  - .pkgmeta
+  - .travis.yml
