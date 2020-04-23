@@ -2,6 +2,7 @@ logs
 tmp
 dist
 .cache
+.DS_Store
 RUNNING_PID
 
 /.idea
@@ -11,6 +12,7 @@ RUNNING_PID
 /.settings
 /RUNNING_PID
 *.iml
+.release
 
 # SBT
 dist

@@ -1,0 +1,6 @@
+package-as: R2D2
+
+ignore:
+  - TODO.md
+  - Test
+  - */Test/*
