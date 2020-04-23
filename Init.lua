@@ -20,6 +20,12 @@ R2D2.Options = {
 -- just capture version here, it will be turned into semantic version later
 -- as we don't have access to that model yet here
 R2D2.version = GetAddOnMetadata(AddOnName, "Version")
+--@debug@
+-- if local development and not substituted, then use a dummy version
+if R2D2.version == '@project-version@' then
+    R2D2.version = '1-dev'
+end
+--@end-debug@
 
 -- Shim for determining locale for localization
 do

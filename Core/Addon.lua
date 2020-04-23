@@ -97,8 +97,10 @@ end
 
 function R2D2:OnEnable()
     Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), tostring(self.version))
-    -- todo : remove this before publishing
+    
+    --@debug@
     self.mode:Enable(R2D2.Constants.Modes.Develop)
+    --@end-debug@
     
     for name, module in self:IterateModules() do
         Logging:Debug("OnEnable(%s) - Examining module (startup) '%s'", self:GetName(), name)
