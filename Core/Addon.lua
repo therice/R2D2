@@ -38,7 +38,9 @@ function Mode:__tostring()
 end
 
 function R2D2:OnInitialize()
+    --@debug@
     Logging:SetRootThreshold(Logging.Level.Debug)
+    --@end-debug@
     Logging:Debug("OnInitialize(%s)", self:GetName())
     -- convert to a semantic version
     self.version = Models.SemanticVersion:new(self.version)
@@ -46,8 +48,8 @@ function R2D2:OnInitialize()
         {cmd = "config", desc = L["chat_commands_config"]},
         {cmd = "test", desc = L["chat_commands_test"]},
         {cmd = "version", desc = L["chat_commands_version"]},
-        {cmd = "looth", desc = L["TBD"]},
-        {cmd = "traffich", desc = L["TBD"]},
+        {cmd = "looth", desc = L["chat_commands_looth"]},
+        {cmd = "traffich", desc = L["chat_commands_traffich"]},
         -- development intentionally not documented
     }
     -- the player class

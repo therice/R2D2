@@ -128,7 +128,9 @@ end
 function LoggingUI:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.frame = self:GetFrame()
+    --@debug@
     self.frame:Show()
+    --@end-debug@
 end
 
 function LoggingUI:OnEnable()

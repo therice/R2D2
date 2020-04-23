@@ -1215,7 +1215,7 @@ function ML:AnnounceItems(table)
     if not self.db.profile.announceItems then return end
     Logging:Trace("AnnounceItems()")
     
-    local channel, text = self.db.profile.announceAwardText.channel,self.db.profile.announceAwardText.text
+    local channel, text = self.db.profile.announceItemText.channel,self.db.profile.announceItemText.text
     AddOn:SendAnnouncement(self.db.profile.announceItemPrefix, channel)
     Util.Tables.Iter(table,
                      function(v, i)

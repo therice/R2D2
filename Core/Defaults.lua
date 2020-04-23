@@ -4,7 +4,7 @@ local _, AddOn = ...
 -- The second magic key is ['**']. It works similar to the ['*'] key, except that it'll also be inherited by all the keys in the same table.
 AddOn.defaults = {
     profile = {
-        logThreshold = AddOn.Libs.Logging.Level.Debug,
+        logThreshold = AddOn.Libs.Logging.Level.Warn,
         minimizeInCombat = false,
         minimap = {
           shown = true,
