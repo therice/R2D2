@@ -108,17 +108,17 @@ function Points.Get(name)
     if points[name] then return points[name]:Get() end
 end
 
-function AddEntry(name, entry)
+local function AddEntry(name, entry)
     points[name] = entry
     pendingUpdate = true
 end
 
-function RemoveEntry(name)
+local function RemoveEntry(name)
     points[name] = nil
     pendingUpdate = true
 end
 
-function GetEntry(name)
+local function GetEntry(name)
     return Points.GetEntry(name)
 end
 
@@ -175,12 +175,12 @@ function Points:Adjust(award)
    
         local function ep(amt) target.ep = oper(target.ep, amt) end
         local function gp(amt) target.gp = oper(target.gp, amt) end
-        local target =
+        local targetFn =
                 type == Award.ResourceType.Ep and ep or
                 type == Award.ResourceType.Gp and gp or
                 nil -- intentional to find missing cases
     
-        target(amount)
+        targetFn(amount)
     end
     
     -- todo : if we want to record history entries after point adjustment then needs to be refactored to grab 'before' quantity
@@ -666,7 +666,7 @@ local AdjustLevels = {
     [GroupAdjustLevel.category]   = GroupAdjustLevel,
 }
 
-function GetAdjustLevel()
+local function GetAdjustLevel()
     local category = Strings.Split(MSA_DROPDOWNMENU_MENU_VALUE, "_")[2]
     return AdjustLevels[category]
 end

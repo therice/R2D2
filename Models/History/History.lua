@@ -17,12 +17,12 @@ AddOn.components.Models.History.History = History
 
 function History:initialize(instant)
     -- all timestamps will be in UTC/GMT and require use cases to convert to local TZ
-    local instant = instant and Date(instant) or Date('utc')
+    local di = instant and Date(instant) or Date('utc')
     -- for versioning history entries, this is independent of add-on version
     self.version = SemanticVersion(1, 0)
     -- unique identifier should multiple instances be created at same instant3
-    self.id = instant.time .. '-' .. counterGetAndIncr()
-    self.timestamp = instant.time
+    self.id = di.time .. '-' .. counterGetAndIncr()
+    self.timestamp = di.time
 end
 
 function History:afterReconstitute(instance)

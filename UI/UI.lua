@@ -28,7 +28,7 @@ local function Extra(options, extra)
 end
 
 function COpts.Header(name, width, order, extra)
-    header = {
+    local header = {
         order = order or 0,
         type = 'header',
         name = name,
@@ -39,7 +39,7 @@ function COpts.Header(name, width, order, extra)
 end
 
 function COpts.Description(descr, fontSize, order, extra)
-    description = {
+    local description = {
         order = order or 0,
         type = 'description',
         name = descr,
@@ -49,7 +49,7 @@ function COpts.Description(descr, fontSize, order, extra)
 end
 
 function COpts.Input(name, order, extra)
-    input = {
+    local input = {
         order = order or 1,
         type = 'input',
         name = name,
@@ -58,7 +58,7 @@ function COpts.Input(name, order, extra)
 end
 
 function COpts.Range(name, order, min, max, step, extra)
-    range = {
+    local range = {
         order = order or 1,
         type = 'range',
         name = name,
@@ -71,7 +71,7 @@ function COpts.Range(name, order, min, max, step, extra)
 end
 
 function COpts.Execute(name, order, descr, fn, extra)
-    execute = {
+    local execute = {
         order = order or 1,
         type = 'execute',
         name = name,
@@ -84,7 +84,7 @@ end
 
 
 function COpts.Select(name, order, descr, values, get, set, extra)
-    sel = {
+    local sel = {
         order = order or 1,
         type = 'select',
         name = name,
@@ -98,7 +98,7 @@ function COpts.Select(name, order, descr, values, get, set, extra)
 end
 
 function COpts.Toggle(name, order, descr, disabled, extra)
-    toggle = {
+    local toggle = {
         order = order or 1,
         type = 'toggle',
         name = name,

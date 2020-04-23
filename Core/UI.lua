@@ -148,7 +148,8 @@ end
 
 function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, class)
     local celldata = data and (data[realrow].cols and data[realrow].cols[column] or data[realrow][column])
-    local class = celldata and celldata.args and celldata.args[1] or class
+    class = celldata and celldata.args and celldata.args[1] or class
+    
     if class then
         frame:SetNormalTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
         local coords = CLASS_ICON_TCOORDS[class]

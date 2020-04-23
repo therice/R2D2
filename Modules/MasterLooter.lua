@@ -909,7 +909,7 @@ function ML:PrintLootError(cause, slot, item, winner)
     elseif cause == ML.AwardReasons.Failure.Locked then
         AddOn:SessionError(format(L["no_permission_to_loot_item_at_x"], slot))
     else
-        local prefix = format(L["unable_to_give_item_to_player'"], item, addon:GetUnitClassColoredName(winner)) .. "  - "
+        local prefix = format(L["unable_to_give_item_to_player'"], item, AddOn:GetUnitClassColoredName(winner)) .. "  - "
         if cause ==  ML.AwardReasons.Failure.LootGone then
             AddOn:Print(prefix, _G.LOOT_GONE)
         elseif cause == ML.AwardReasons.Failure.MLInventoryFull then

@@ -43,6 +43,22 @@ GpTooltip.options = {
     }
 }
 
+local function OnTooltipSetItemAddGp(tooltip, ...)
+    -- logging:Trace("GearPointsTooltip:OnTooltipSetItem(%s)",  Objects.ToString(tooltip:GetName()))
+    local _, itemlink = tooltip:GetItem()
+    local gp, comment, ilvl = GearPoints:GetValue(itemlink)
+    -- todo : may want to go back to this instead of returning from value
+    --local ilvl = GearPoints:GetItemLevel(itemlink)
+    --[[
+    logging:Trace("GearPointsTooltip:OnTooltipSetItem(%s) : GP = %s, Comment = %s, ItemLevel = %s",
+            itemlink,  Objects.ToString(gp),  Objects.ToString(comment),  Objects.ToString(ilvl)
+    )
+    --]]
+    if ilvl then tooltip:AddLine(L["gp_tooltip_ilvl"]:format(ilvl)) end
+    if not gp then return end
+    tooltip:AddLine(L["gp_tooltip_gp"]:format(gp, comment), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+end
+
 function GpTooltip:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), GpTooltip.defaults)
@@ -65,21 +81,7 @@ function GpTooltip:OnEnable()
 end
 
 
-function OnTooltipSetItemAddGp(tooltip, ...)
-    -- logging:Trace("GearPointsTooltip:OnTooltipSetItem(%s)",  Objects.ToString(tooltip:GetName()))
-    local _, itemlink = tooltip:GetItem()
-    local gp, comment, ilvl = GearPoints:GetValue(itemlink)
-    -- todo : may want to go back to this instead of returning from value
-    --local ilvl = GearPoints:GetItemLevel(itemlink)
-    --[[
-    logging:Trace("GearPointsTooltip:OnTooltipSetItem(%s) : GP = %s, Comment = %s, ItemLevel = %s",
-            itemlink,  Objects.ToString(gp),  Objects.ToString(comment),  Objects.ToString(ilvl)
-    )
-    --]]
-    if ilvl then tooltip:AddLine(L["gp_tooltip_ilvl"]:format(ilvl)) end
-    if not gp then return end
-    tooltip:AddLine(L["gp_tooltip_gp"]:format(gp, comment), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
-end
+
 
 
 

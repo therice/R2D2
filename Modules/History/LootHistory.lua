@@ -263,7 +263,7 @@ function LootHistory.SetCellGear(rowFrame, frame, data, cols, row, realrow, colu
         frame:SetScript("OnLeave", function() UI:HideTooltip() end)
         frame:SetScript("OnClick", function()
             if IsModifiedClick() then
-                HandleModifiedItemClick(gear);
+                HandleModifiedItemClick(item)
             end
         end)
         frame:Show()
@@ -527,8 +527,7 @@ function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realro
     local tip = self.moreInfo
     tip:SetOwner(self.frame, "ANCHOR_RIGHT")
     
-    local row = data[realrow]
-    local entry = row.entry
+    local entry = data[realrow].entry
     local color = AddOn.GetClassColor(entry.class)
     
     tip:AddLine(AddOn.Ambiguate(entry.owner), color.r, color.g, color.b)
@@ -800,10 +799,8 @@ function LootHistory:GetStatistics()
                 
                 local c_pairs = CDB.static.pairs
                 for name, data in c_pairs(self:GetHistory()) do
-                    local statsEntry
-                    
                     for i = #data, 1, -1 do
-                        statsEntry = stats:ProcessEntry(name, data[i], i)
+                        stats:ProcessEntry(name, data[i], i)
                     end
                 end
     

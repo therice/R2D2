@@ -1191,7 +1191,7 @@ do
             local ModuleFilters = Module.filters
             
             if MSA_DROPDOWNMENU_MENU_VALUE == "FILTER_RANK" then
-                info = MSA_DropDownMenu_CreateInfo()
+                local info = MSA_DropDownMenu_CreateInfo()
                 if IsInGuild() then
                     for k = 1, GuildControlGetNumRanks() do
                         info.text = GuildControlGetRankName(k)
@@ -1369,7 +1369,7 @@ function LootAllocate:UpdateSessionButtons()
 end
 
 -- if button not present for session, then creates one and associates with session
--- any newly created or existing button is then updates to reflect the sstatus
+-- any newly created or existing button is then updates to reflect the status
 function LootAllocate:UpdateSessionButton(session, texture, link, awarded)
     local btn = sessionButtons[session]
     if not btn then

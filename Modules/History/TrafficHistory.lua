@@ -250,7 +250,7 @@ function TrafficHistory.SetCellSubjectIcon(rowFrame, frame, data, cols, row, rea
 end
 
 function TrafficHistory.SetSubjectIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectType)
-    local subjectType = subjectType or data[realrow][column].args[1]
+    subjectType = subjectType or data[realrow][column].args[1]
     -- https://wow.gamepedia.com/API_Texture_SetTexCoord
     if subjectType == Award.SubjectType.Guild then
         frame:SetNormalTexture(134157)
@@ -274,7 +274,7 @@ function TrafficHistory.SetCellSubject(rowFrame, frame, data, cols, row, realrow
 end
 
 function TrafficHistory.SetSubject(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectType)
-    local subjectType = subjectType or data[realrow][column].args[1]
+    subjectType = subjectType or data[realrow][column].args[1]
     if subjectType == Award.SubjectType.Guild then
         frame.text:SetText(_G.GUILD)
         frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Award.SubjectType.Guild):GetRGB())
@@ -289,8 +289,7 @@ function TrafficHistory.SetCellAction(rowFrame, frame, data, cols, row, realrow,
 end
 
 function TrafficHistory.SetAction(rowFrame, frame, data, cols, row, realrow, column, fShow, table, actionType)
-    local actionType = actionType or data[realrow][column].args[1]
-    
+    actionType = actionType or data[realrow][column].args[1]
     frame.text:SetText(Award.TypeIdToAction[actionType])
     frame.text:SetTextColor(AddOn.GetActionTypeColor(actionType):GetRGB())
 end
@@ -300,7 +299,7 @@ function TrafficHistory.SetCellResource(rowFrame, frame, data, cols, row, realro
 end
 
 function TrafficHistory.SetResource(rowFrame, frame, data, cols, row, realrow, column, fShow, table, resourceType)
-    local resourceType = resourceType or data[realrow][column].args[1]
+    resourceType = resourceType or data[realrow][column].args[1]
     frame.text:SetText(Award.TypeIdToResource[resourceType]:upper())
     frame.text:SetTextColor(AddOn.GetResourceTypeColor(resourceType):GetRGB())
 end
