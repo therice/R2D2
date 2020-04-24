@@ -1441,7 +1441,7 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
     if prefix == C.name then
         local success, command, data = AddOn:Deserialize(serializedMsg)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
-                      tostring(success), command, tostring(sender), tostring(dist),
+                      tostring(success), tostring(command), tostring(sender), tostring(dist),
                       Util.Objects.ToString(data, 3)
         )
         

@@ -87,7 +87,7 @@ function VersionCheck:OnCommReceived(prefix, serializedMsg, dist, sender)
         if success and command == AddOn.Constants.Commands.VersionCheckReply then
             if listOfNames[data[1]] then
                 local name, class, guildRank, v, m = unpack(data)
-                local version = SemanticVersion():reconstitute(v)
+                local version = SemanticVersion(v)
                 local mode = AddOn.Mode():reconstitute(m)
                 self:AddEntry(name, class, guildRank, version, mode)
             end
