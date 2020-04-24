@@ -173,7 +173,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
     if prefix == C.name then
         local success, command, data = self:Deserialize(serializedMsg)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
-                      tostring(success), command, tostring(sender), tostring(dist),
+                      tostring(success), tostring(command), tostring(sender), tostring(dist),
                       Util.Objects.ToString(data, 3)
         )
 
@@ -262,15 +262,17 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
             elseif command == C.Commands.VersionCheck and not self:UnitIsUnit(sender, "player") then
                 local v, mode = unpack(data)
+                Logging:Trace("VersionCheck(%s, %s)", Util.Objects.ToString(v), Util.Objects.ToString(mode))
+                
                 local VC = self:VersionCheckModule()
-                local version = Models.SemanticVersion():reconstitute(v)
+                local version = Models.SemanticVersion(v)
                 VC:TrackVersion(
                         self:UnitName(sender),
                         version,
                         AddOn.Mode():reconstitute(mode)
                 )
                 if dist == "GUILD" then sender = C.guild end
-                self:SendCommand(sender,  C.Commands.VersionCheck.VersionCheckReply , self.playerName, self.playerClass, self.guildRank, self.version, self.mode)
+                self:SendCommand(sender, C.Commands.VersionCheckReply , self.playerName, self.playerClass, self.guildRank, self.version, self.mode)
         
                 if self.versionCheckComplete then return end
     
@@ -278,11 +280,11 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 if verCheck == C.VersionStatus.OutOfDate then
                     self:PrintOutOfDateVersionWarning(version)
                 end
-            elseif command ==  C.Commands.VersionCheck.VersionCheckReply then
+            elseif command == C.Commands.VersionCheckReply then
                 local name, _, _, v, mode = unpack(data)
                 if not name then Logging:Warn("VersionCheckReply without name from %s", sender)  end
                 local VC = self:VersionCheckModule()
-                local version = Models.SemanticVersion():reconstitute(v)
+                local version = Models.SemanticVersion(v)
                 
                 VC:TrackVersion(
                         self:UnitName(sender),
