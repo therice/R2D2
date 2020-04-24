@@ -8,7 +8,7 @@ local Config    = {}
 
 AddOn.components.Config = Config
 -- name, width, height
-AddOn.Libs.AceConfigDialog:SetDefaultSize("R2D2",  850, 600)
+AddOn.Libs.AceConfigDialog:SetDefaultSize("R2D2",  850, 700)
 
 function Config.SetupOptions()
     local Options = Util.Tables.Copy(AddOn.Options)

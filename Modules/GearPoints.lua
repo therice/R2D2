@@ -131,7 +131,7 @@ GP.options = {
     name = L['gp'],
     desc = L['gp_desc'],
     args = {
-        help = COpts.Description(L["gp_help"]),
+        help = COpts.Description(L["gp_help"], nil, 9),
         headerEquation = COpts.Header(L["equation"], nil, 10),
         equation = {
             order = 11,
@@ -140,7 +140,7 @@ GP.options = {
             name = "",
             args = {
                 -- http://www.epgpweb.com/help/gearpoints
-                help = COpts.Description("GP = base * (coefficient ^ ((item_level / 26) + (item_rarity - 4)) * equipment_slot_multiplier) * multiplier", "large"),
+                help = COpts.Description("|cfffcd400GP = base * (coefficient ^ ((item_level / 26) + (item_rarity - 4)) * equipment_slot_multiplier) * multiplier|r", "medium"),
                 ["formula.gp_base"] = COpts.Range("base", 2, 1, 1000),
                 ["formula.gp_coefficient_base"] = COpts.Range("coefficient", 3, 1, 100),
                 ["formula.gp_multiplier"] = COpts.Range("multiplier", 4, 1, 100),
@@ -157,6 +157,7 @@ GP.options = {
             }
         },
         slotsHeader = COpts.Header(L["equipment_slots"], nil, 40),
+        slotsHelp = COpts.Description(L["equipment_slots_help"], "medium", 41),
     }
 }
 
@@ -167,7 +168,7 @@ do
     local aargs = GP.options.args.awards.args
 
     for award, _ in pairs(awardScalingDefaults) do
-        aargs['award_scaling.' .. award .. '.scale'] = COpts.Range(L[award], 1, 0, 1, 0.01, {isPercent = true, desc=format(L["award_scaling_for_reason"], L[award])})
+        aargs['award_scaling.' .. award .. '.scale'] = COpts.Range(L[award], 1, 0, 1, 0.01, {isPercent = true, width = 'double', desc=format(L["award_scaling_for_reason"], L[award])})
     end
 
     local scalingDefaults = GP.defaults.profile.slot_scaling

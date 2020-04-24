@@ -261,11 +261,11 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                     Logging:Warn("Non-MasterLooter %s sent DB", sender)
                 end
             elseif command == C.Commands.VersionCheck and not self:UnitIsUnit(sender, "player") then
-                local name, _, _, v, mode = unpack(data)
+                local v, mode = unpack(data)
                 local VC = self:VersionCheckModule()
                 local version = Models.SemanticVersion():reconstitute(v)
                 VC:TrackVersion(
-                        name,
+                        self:UnitName(sender),
                         version,
                         AddOn.Mode():reconstitute(mode)
                 )
@@ -285,7 +285,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 local version = Models.SemanticVersion():reconstitute(v)
                 
                 VC:TrackVersion(
-                        name,
+                        self:UnitName(sender),
                         version,
                         AddOn.Mode():reconstitute(mode)
                 )
