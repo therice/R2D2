@@ -519,7 +519,7 @@ function AddOn:SendGuildVersionCheck()
 end
 
 function AddOn:PrintOutOfDateVersionWarning(newVersion, ourVersion)
-    self:Print(format(L["version_out_of_date_msg"], ourVersion or self.version, newVersion))
+    self:Print(format(L["version_out_of_date_msg"], tostring(ourVersion or self.version), tostring(newVersion)))
     self.versionCheckComplete = true
 end
 
