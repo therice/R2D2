@@ -135,7 +135,6 @@ function CompressedDb.static.pairs(cdb)
     local function stateless_iter(tbl, k)
         local v
         k, v = next(tbl, k)
-        --print(k .. ' = ' .. type(v))
         if v ~= nil then return k, decompress(v) end
     end
     

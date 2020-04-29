@@ -1343,8 +1343,11 @@ function ML:OnEvent(event, ...)
             self:SendWhisperItems(sender)
         elseif Util.Strings.StartsWith(msg, "!item") and self.running then
             self:GetItemsFromMessage(gsub(msg, "!item", ""):trim(), sender)
-        elseif Util.Strings.StartsWith(msg, "!standby") and self.running then
-        
+        elseif Util.Strings.StartsWith(msg, "!standby") then
+            AddOn:StandbyModule():AddPlayerFromMessage(
+                    gsub(msg, "!standby", ""):trim(),
+                    sender
+            )
         end
     elseif event == AddOn.Constants.Events.PlayerRegenEnabled then
         -- todo : when award later is implemented, check if any items are low on trade time remaining
@@ -1465,6 +1468,8 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
             elseif command == C.Commands.LootTable and AddOn:UnitIsUnit(sender, AddOn.playerName) then
                 self:ScheduleTimer("Timer", 11 + 0.5 * #self.lootTable, "LootSend")
+            elseif command == C.Commands.StandbyPingAck then
+                AddOn:StandbyModule():PingAck(sender, unpack(data))
             end
         end
     end

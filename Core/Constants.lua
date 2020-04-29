@@ -48,6 +48,8 @@ AddOn.Constants = {
         ReRoll                  =   "ReRoll",
         Roll                    =   "Roll",
         Rolls                   =   "Rolls",
+        StandbyPing             =   "StandbyPing",
+        StandbyPingAck          =   "StandbyPingAck",
         StartHandleLoot         =   "StartHandleLoot",
         TrafficHistoryAdd       =   "TrafficHistoryAdd",
         VersionCheck            =   "VersionCheck",
@@ -61,6 +63,7 @@ AddOn.Constants = {
         LootHistoryFilter     = name .. "_LH_Filter",
         PointsRightClick      = name .. "_Points_RightClick",
         PointsFilter          = name .. "_Points_Filter",
+        StandbyRightClick     = name .. "_Standby_RightClick",
         TrafficHistoryFilter  = name .. "_TH_Filter",
     },
 
@@ -90,6 +93,7 @@ AddOn.Constants = {
         LootHistorySend         =   name .. "_LootHistorySend",
         MasterLooterAddItem     =   name .. "_MasterLooterAddItem",
         MasterLooterBuildDb     =   name .. "_MasterLooterBuildDb",
+        PlayerNotFound          =   name .. "_PlayerNotFound",
         SessionChangedPost      =   name .. "_SessionChangedPost",
         TrafficHistorySend      =   name .. "_TrafficHistorySend"
     },

@@ -558,7 +558,7 @@ function LootAllocate:GetFrame()
                 -- show the menu
                 if button == "RightButton" and row then
                     MenuFrame.name = data[realrow].name
-                    MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0);
+                    MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0)
                 -- update more info
                 elseif button == "LeftButton" and row then
                     AddOn.UpdateMoreInfo(self:GetName(), f, realrow, data,

@@ -340,6 +340,17 @@ function C_ChatInfo.RegisterAddonMessagePrefix(prefix)
 
 end
 
+C_FriendList = {}
+--
+--function C_FriendList.IsFriend() end
+--function C_FriendList.GetNumIgnores() end
+--function C_FriendList.GetIgnoreName() end
+--function C_FriendList.SetSelectedIgnore() end
+--function C_FriendList.GetSelectedIgnore() end
+--function C_FriendList.AddOrDelIgnore() end
+--function C_FriendList.AddIgnore() end
+
+
 C_CreatureInfo = {}
 C_CreatureInfo.ClassInfo = {
 	[1] = {
@@ -626,17 +637,16 @@ if not wipe then
 	end
 end
 
-
-
 function hooksecurefunc(func_name, post_hook_func)
 	local orig_func = _G[func_name]
 	-- assert(type(orig_func)=="function")
 
-	_G[func_name] = function (...)
-				local ret = { orig_func(...) }		-- yeahyeah wasteful, see if i care, it's a test framework
-				post_hook_func(...)
-				return unpack(ret)
-			end
+	_G[func_name] =
+		function (...)
+			local ret = { orig_func(...) }		-- yeahyeah wasteful, see if i care, it's a test framework
+			post_hook_func(...)
+			return unpack(ret)
+		end
 end
 
 RED_FONT_COLOR_CODE = ""
@@ -695,6 +705,9 @@ end
 -----
 
 UIParent = {}
+WhoFrame = CreateFrame("Who")
+FriendsFrame = CreateFrame("Friends")
+WHO_NUM_RESULTS = " players total"
 Minimap = {
 }
 

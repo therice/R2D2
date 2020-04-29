@@ -51,5 +51,15 @@ describe("LibUtil", function()
 
             print(Util.Objects.ToString(copy))
         end)
+        it("provides keys", function()
+            local keys = Util(TestTable2):Keys()()
+            local copy = {}
+            for _, v in pairs(keys) do
+                assert(Util.Objects.In(v, 'a', 'b', 'c', 'd'))
+                Util.Tables.Push(copy, v)
+            end
+            
+            print(Util.Objects.ToString(copy))
+        end)
     end)
 end)

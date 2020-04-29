@@ -332,6 +332,13 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                         self:ScheduleTimer("ResetReconnectRequest", 5)
                     end
                 end
+            elseif command == C.Commands.StandbyPing then
+                if self:UnitIsUnit(sender, self.masterLooter) then
+                    local standbyPlayer = unpack(data)
+                    self:SendCommand(sender, C.Commands.StandbyPingAck, standbyPlayer)
+                else
+                    Logging:Warn("Non-MasterLooter %s sent standby ping command", sender)
+                end
             -- todo : check if history is enabled
             elseif command == C.Commands.LootHistoryAdd then
                 local winner, table = unpack(data)
