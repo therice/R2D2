@@ -132,6 +132,7 @@ read_globals = {
 	"UIParent",
 	
 	-- Frame API
+	"ChatFrame_AddMessageEventFilter",
 	"CreateFrame",
 	"EnumerateFrames",
 	"FauxScrollFrame_OnVerticalScroll",
@@ -140,6 +141,7 @@ read_globals = {
 	"BACKPACK_CONTAINER",
 	"CLASS_ICON_TCOORDS",
 	"ENABLE",
+	"ERR_CHAT_PLAYER_NOT_FOUND_S",
 	"FRIENDS_FRIENDS_CHOICE_EVERYONE",
 	"INVSLOT_FIRST_EQUIPPED",
 	"INVSLOT_LAST_EQUIPPED",

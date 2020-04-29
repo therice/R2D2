@@ -200,7 +200,7 @@ function UI.Sort(table, rowa, rowb, sortbycol, valueFn)
 end
 
 function UI.RGBToHex(r,g,b)
-    return string.format("%02x%02x%02x", 255*r, 255*g, 255*b)
+    return string.format("%02x%02x%02x", math.floor(255*r), math.floor(255*g), math.floor(255*b))
 end
 
 function UI.RGBToHexPrefix(r, g, b)

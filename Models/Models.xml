@@ -8,6 +8,7 @@
     <Script file="Candidate.lua"/>
     <Script file="Point.lua"/>
     <Script file="Encounter.lua"/>
+    <Script file="Standby.lua"/>
     <Script file="History\History.lua" />
     <Script file="History\Loot.lua" />
     <Script file="History\Traffic.lua" />

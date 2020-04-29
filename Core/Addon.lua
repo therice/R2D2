@@ -50,6 +50,7 @@ function R2D2:OnInitialize()
         {cmd = "version", desc = L["chat_commands_version"]},
         {cmd = "looth", desc = L["chat_commands_looth"]},
         {cmd = "traffich", desc = L["chat_commands_traffich"]},
+        {cmd = "standby", desc = L["chat_commands_standby"]},
         -- development intentionally not documented
     }
     -- the player class
@@ -148,6 +149,27 @@ function R2D2:OnEnable()
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
     self:Print(format(L["chat version"], tostring(self.version)) .. " is now loaded. Thank you for trusting us to handle all your EP/GP needs!")
+    
+    -- this filters out any responses to whispers related to addon
+    local ChatMsgWhisperInformFilter = function(_, event, msg, player, ...)
+        return strfind(msg, "[[R2D2]]:")
+    end
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER_INFORM", ChatMsgWhisperInformFilter)
+    
+    -- this filters (and captures) relevant messages related to attempting to contact individual players
+    local ChatMsgFilter = function(f, event, msg, player, ...)
+        if msg:match(string.format(ERR_CHAT_PLAYER_NOT_FOUND_S, "(.+)")) then
+            local regex = gsub(ERR_CHAT_PLAYER_NOT_FOUND_S, "%%s", "(.+)")
+            local _, _, character = strfind(msg, regex)
+            Logging:Trace("%s - %s", msg, character)
+            -- if a player is not found, dispatch the message and let subscribers handle as they see fit
+            self:SendMessage(AddOn.Constants.Messages.PlayerNotFound, character)
+        end
+        
+        -- don't muck with workflow here, just return what was passed and let it flow onward
+        return false, msg, player, ...
+    end
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", ChatMsgFilter)
 end
 
 function R2D2:OnDisable()
@@ -240,6 +262,8 @@ function R2D2:ChatCommand(msg)
         self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then
         self:Version(args[1])
+    elseif cmd == 'standby' or cmd == "bench"then
+        self:CallModule("Standby")
     elseif cmd == 'dev' then
         local flag = R2D2.Constants.Modes.Develop
         if self.mode:Enabled(flag) then

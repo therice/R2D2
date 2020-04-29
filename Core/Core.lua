@@ -49,6 +49,10 @@ function AddOn:LootAllocateModule()
     return self:GetModule("LootAllocate")
 end
 
+function AddOn:StandbyModule()
+    return self:GetModule("Standby")
+end
+
 function AddOn:LootHistoryModule()
     return self:GetModule("LootHistory")
 end
@@ -368,6 +372,7 @@ function AddOn:OnEvent(event, ...)
     local C = AddOn.Constants.Commands
     local E = AddOn.Constants.Events
     if Util.Objects.In(event, E.PartyLootMethodChanged, E.PartyLeaderChanged, E.GroupLeft) then
+        if event == E.GroupLeft then self:StandbyModule():ResetRoster() end
         self:NewMasterLooterCheck()
     elseif event == E.RaidInstanceWelcome then
         self:ScheduleTimer("OnRaidEnter", 2)

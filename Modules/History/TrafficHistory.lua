@@ -16,14 +16,14 @@ local ItemUtil = AddOn.Libs.ItemUtil
 
 
 TrafficHistory.options = {
-    name = 'Traffic History',
-    desc = 'Traffic History Description',
+    name = L["traffic_history"],
+    desc = L["traffic_history_desc"],
     ignore_enable_disable = true,
     args = {
         openHistory = {
             order = 5,
-            name = "Open Traffic History",
-            desc = "Desc",
+            name = L['open_traffic_history'],
+            desc = L['open_traffic_history_desc'],
             type = "execute",
             func = function()
                 AddOn:CallModule("TrafficHistory")
@@ -258,6 +258,9 @@ function TrafficHistory.SetSubjectIcon(rowFrame, frame, data, cols, row, realrow
     elseif subjectType == Award.SubjectType.Raid then
         frame:SetNormalTexture(134156)
         frame:GetNormalTexture():SetTexCoord(0,1,0,1)
+    elseif subjectType == Award.SubjectType.Standby then
+        frame:SetNormalTexture(134155)
+        frame:GetNormalTexture():SetTexCoord(0,1,0,1)
     end
 end
 
@@ -281,6 +284,9 @@ function TrafficHistory.SetSubject(rowFrame, frame, data, cols, row, realrow, co
     elseif subjectType == Award.SubjectType.Raid then
         frame.text:SetText(_G.GROUP)
         frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Award.SubjectType.Raid):GetRGB())
+    elseif subjectType == Award.SubjectType.Standby then
+        frame.text:SetText(L["standby"])
+        frame.text:SetTextColor(AddOn.GetSubjectTypeColor(Award.SubjectType.Standby):GetRGB())
     end
 end
 
@@ -528,6 +534,8 @@ local function SelectionFilter(entry)
             display = Strings.Equal(selectedName, _G.GUILD)
         elseif subjectType == Award.SubjectType.Raid then
             display = Strings.Equal(selectedName, _G.GROUP)
+        elseif subjectType == Award.SubjectType.Standby then
+            display = Strings.Equal(selectedName, L["standby"])
         end
     end
     
@@ -617,37 +625,6 @@ function TrafficHistory.FilterMenu(menu, level)
     end
 end
 
--- @param actionType see Models.Award.ActionType
--- @param subjectType see Models.Award.SubjectType
--- @param subjects the subject names for specified subject type (e.g. characters)
--- @param resourceType see Models.Award.ResourceType
--- @param resourceQuantity the quantity for specified resource type
--- @param desc the description for entry
--- @param beforeSend an optional function to invoke with created entry prior to sending out (via message and command)
---[[
-function TrafficHistory:CreateEntry(actionType, subjectType, subjects, resourceType, resourceQuantity, desc, beforeSend)
-    local C = AddOn.Constants
-    if (AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) then return end
-    local entry = Traffic()
-    entry.actor = AddOn.playerName
-    entry.actorClass = AddOn.playerClass
-    entry:SetAction(actionType)
-    entry:SetSubjects(subjectType, Objects.IsTable(subjects) and unpack(subjects) or subjects)
-    entry:SetResource(resourceType, resourceQuantity)
-    entry.description = desc
-    entry:Finalize()
-    
-    -- if there was a function specified for callback before sending, invoke it now with the entry
-    if beforeSend and Objects.IsFunction(beforeSend) then beforeSend(entry) end
-    
-    AddOn:SendMessage(C.Messages.TrafficHistorySend, entry)
-    -- todo : support settings for sending and tracking history
-    -- todo : send to guild or group? guild for now
-    AddOn:SendCommand(C.guild, C.Commands.TrafficHistoryAdd, entry)
-    return entry
-end
---]]
-
 function TrafficHistory:CreateFromAward(award, lhEntry)
     if (AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) then return end
     
@@ -686,38 +663,3 @@ function TrafficHistory:CreateFromAward(award, lhEntry)
     AddOn:SendCommand(C.guild, C.Commands.TrafficHistoryAdd, entry)
     return entry
 end
-
--- @param actionType see Models.Award.ActionType
--- @param subjectType see Models.Award.SubjectType
--- @param resourceType see Models.Award.ResourceType
--- @param lootHistoryEntry the loot history entry associated with traffic entry
--- @param awardData the award popup data (see LootAllocate.GetAwardPopupData)
--- @param desc the description for entry
---[[
-function TrafficHistory:CreateFromLootHistory(actionType, subjectType, resourceType, lootHistoryEntry, awardData)
-    local baseGp, awardGp = awardData.baseGp, awardData.awardGp
-    
-    local function BeforeSend(entry)
-        entry.lootHistoryId = lootHistoryEntry.id
-        -- copy over attributes to traffic entry which are relevant
-        -- could ignore them and rely upon loot history for later retrieval, but there's no guarantee
-        -- the loot and traffic histories are not pruned independently
-        for _, attr in pairs(Tables.New('item', 'mapId', 'instance', 'boss', 'response', 'responseId', 'typeCode')) do
-            -- Logging:Debug("CreateFromLootHistory(%s)", tostring(attr))
-            entry[attr] = lootHistoryEntry[attr]
-        end
-        
-        entry.baseGp = baseGp
-        entry.awardScale = awardData.awardScale
-        entry.ownerClass = awardData.class
-    end
-    
-    local award = Award(lootHistoryEntry.timestamp)
-    award:SetSubjects(subjectType, lootHistoryEntry.owner)
-    award:SetAction(actionType)
-    award:SetResource(resourceType, awardGp and awardGp or baseGp)
-    award.description = format(L["awarded_item_for_reason"], lootHistoryEntry.item, lootHistoryEntry:FormattedResponse())
-    
-    return self:CreateFromAward(award, BeforeSend)
-end
---]]

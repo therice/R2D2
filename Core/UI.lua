@@ -8,8 +8,9 @@ local Models    = AddOn.components.Models
 
 --@param module the module name (for determining settings associated with more info)
 --@param f the frame to which to add widgets
-function AddOn.EmbedMoreInfoWidgets(module, f)
-    local moreInfo = AddOn:MoreInfoSettings(module)
+--@param fn the function to call to populate the frame
+function AddOn.EmbedMoreInfoWidgets(module, f, fn)
+    local moreInfo = AddOn:MoreInfoEnabled(module)
     
     -- more info button
     local miButton = CreateFrame("Button", nil, f.content, "UIPanelButtonTemplate")
@@ -34,7 +35,13 @@ function AddOn.EmbedMoreInfoWidgets(module, f)
             button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
             button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
         end
-        AddOn.UpdateMoreInfo(module, f)
+        
+        if Util.IsFunction(fn) then
+            Logging:Debug("EmbedMoreInfoWidgets() : Invoking custom function")
+            fn(module, f)
+        else
+            AddOn.UpdateMoreInfo(module, f)
+        end
     end)
     miButton:SetScript("OnEnter", function() UI:CreateTooltip(L["click_more_info"]) end)
     miButton:SetScript("OnLeave", function() UI:HideTooltip() end)
@@ -163,6 +170,7 @@ AddOn.Constants.Colors.SubjectTypes = {
     [Models.Award.SubjectType.Character] = _G.ITEM_QUALITY_COLORS[1].color,
     [Models.Award.SubjectType.Guild]     = _G.ITEM_QUALITY_COLORS[2].color,
     [Models.Award.SubjectType.Raid]      = _G.ITEM_QUALITY_COLORS[5].color,
+    [Models.Award.SubjectType.Standby]   = _G.ITEM_QUALITY_COLORS[3].color,
 }
 
 function AddOn.GetSubjectTypeColor(subjectType)

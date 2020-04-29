@@ -272,13 +272,13 @@ function Points:BuildData()
     pendingUpdate = false
 end
 
--- todo : fix this stupid functoin
+-- todo : this function could be revisited
 function Points:Update(forceUpdate)
     -- Logging:Debug("Update(%s)", tostring(forceUpdate or false))
     -- if module isn't enabled, no need to perform update
     if not self:IsEnabled() then return end
     if not self.frame then return end
-    -- execute the udpate if forced or pending update combined with state of update handler
+    -- execute the update if forced or pending update combined with state of update handler
     local performUpdate = forceUpdate or (pendingUpdate and (self.updateHandler and self.updateHandler:Eligible() or true))
     if not performUpdate then return end
     -- Logging:Debug("Update(%s) - Performing update", tostring(forceUpdate or false))

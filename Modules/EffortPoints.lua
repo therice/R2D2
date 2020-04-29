@@ -69,11 +69,6 @@ EP.defaults = {
                 ['11583'] = 20,
             }
         },
-        -- todo : add option for verifying whether standby members are still online
-        standby = {
-            enabled = false,
-            standby_pct = 0.80,
-        }
     }
 }
 
@@ -108,33 +103,6 @@ EP.options = {
             args = {
             }
         },
-        --[[
-        standby = {
-            type = 'group',
-            name = L['standby'],
-            desc = L['standby_desc'],
-            args = {
-                sb_enabled = {
-                    type = 'group',
-                    name = L['standby_toggle'],
-                    inline = true,
-                    order = 1,
-                    args = {
-                        ['standby.enabled'] = COpts.Toggle(L['enable'], 0, L['standby_toggle_desc']),
-                    }
-                },
-                sb_settings = {
-                    type = 'group',
-                    name = L['settings'],
-                    inline = true,
-                    order = 2,
-                    args = {
-                        ['standby.standby_pct']  = COpts.Range(L['standby_pct'], 1, 0, 1, 0.01, { isPercent = true, desc = L['standby_pct_desc']})
-                    }
-                },
-            }
-        },
-        --]]
     }
 }
 
@@ -201,7 +169,7 @@ function EP:OnEncounterEnd(encounter)
     
     -- basic settings for awarding EP based upon encounter
     local autoAwardVictory =  self.db.profile.raid.auto_award_victory
-    local awardDefeat =  self.db.profile.raid.award_defeat
+    local awardDefeat = self.db.profile.raid.award_defeat
     local autoAwardDefeat = self.db.profile.raid.auto_award_defeat
     
     local creatureId = Encounter:GetEncounterCreatureId(encounter.id)
@@ -229,6 +197,22 @@ function EP:OnEncounterEnd(encounter)
                 AddOn:PointsModule():Adjust(award)
             else
                 Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, award)
+            end
+            
+            -- now look at standby
+            local standbyRoster, awardPct = AddOn:StandbyModule():GetAwardRoster()
+            if standbyRoster and Tables.Count(standbyRoster) > 0 and awardPct then
+                award = Award()
+                award:SetSubjects(Award.SubjectType.Standby, standbyRoster)
+                award:SetAction(Award.ActionType.Add)
+                award:SetResource(Award.ResourceType.Ep, math.floor(creatureEp * awardPct))
+                award.description = L["standby"] .. ' : ' .. format(
+                        encounter.success and L["award_n_ep_for_boss_victory"] or L["award_n_ep_for_boss_defeat"],
+                        creatureEp, encounter.name
+                )
+                
+                -- todo : do we want to prompt for standby/bench awards?
+                AddOn:PointsModule():Adjust(award)
             end
         else
             Logging:Warn("OnEncounterEnd(%s) : No EP value found for Creature Id %d", encounter:toTable(), creatureId)

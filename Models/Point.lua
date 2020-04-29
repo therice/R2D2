@@ -70,6 +70,7 @@ local SubjectType = {
     Character = 1, -- one or more named characters
     Guild     = 2, -- guild members
     Raid      = 3, -- raid members
+    Standby   = 4, -- standby/bench members
 }
 
 local ResourceType = {
