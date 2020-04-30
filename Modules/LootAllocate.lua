@@ -9,7 +9,6 @@ local Util          = AddOn.Libs.Util
 local Models        = AddOn.components.Models
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 15, 0.2
-local DefaultScrollTableData = {}
 local GuildRankSort, ResponseSort, EpSort, GpSort, PrSort
 local MenuFrame, FilterMenu
 -- session is a number mapping to item
@@ -52,14 +51,14 @@ end
 function LootAllocate:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     local C = AddOn.Constants
-    DefaultScrollTableData = {
+    self.scrollCols = {
         { name = "",                DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellClass),    colName = "class",      sortnext = 2,       width = 20, }, -- 1 Class
         { name = _G.NAME,			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellName),		colName = "name",		defaultsort = 1,	width = 120,}, -- 2 Candidate Name
         { name = _G.RANK,			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellRank),		colName = "rank",		sortnext = 4,		width = 95, comparesort = GuildRankSort,}, -- 3 Guild rank
         { name = L["response"],	    DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellResponse),	colName = "response",   sortnext = 7,		width = 240,comparesort = ResponseSort,}, -- 4 Response
         { name = L["ep_abbrev"],	DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellEp),		colName = "ep",		    sortnext = 6,		width = 45, comparesort = EpSort,}, -- 5 EP
         { name = L["gp_abbrev"],	DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellGp),		colName = "gp",		    sortnext = 9,		width = 45, comparesort = GpSort,}, -- 6 GP
-        { name = L["pr_abbrev"],	DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellPr),		colName = "pr",		    sortnext = 13,		width = 45, comparesort = PrSort,}, -- 7 PR
+        { name = L["pr_abbrev"],	DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellPr),		colName = "pr",		    sortnext = 13,	    width = 45, comparesort = PrSort,}, -- 7 PR
         { name = _G.ITEM_LEVEL_ABBR,DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellIlvl),	    colName = "ilvl",		sortnext = 9,		width = 45, }, -- 8 Total ilvl
         { name = L["diff"],		    DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellDiff),		colName = "diff",							width = 40, }, -- 9 ilvl difference
         { name = L["g1"],			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellGear),		colName = "gear1",                          width = 20, align = "CENTER", }, -- 10 Current gear 1
@@ -67,7 +66,6 @@ function LootAllocate:OnInitialize()
         { name = L["notes"],		DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellNote),		colName = "note",							width = 50, align = "CENTER", }, -- 12 Note icon
         { name = _G.ROLL,			DoCellUpdate = UI.ScrollingTableDoCellUpdate(LootAllocate.SetCellRoll), 	colName = "roll",		sortnext = 5,		width = 50, align = "CENTER", }, -- 13 Roll
     }
-    self.scrollCols = { unpack(DefaultScrollTableData) }
     self.db = AddOn.db:RegisterNamespace(self:GetName(), LootAllocate.defaults)
     MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.AllocateRightClick, UIParent)
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.AllocateFilter, UIParent)
@@ -423,77 +421,50 @@ function LootAllocate:BuildScrollingTable()
     self.frame.st:SetData(rows)
 end
 
-
-local function Sort(table, rowa, rowb, sortbycol, valueFn)
-    Logging:Trace("Sort(%s)", sortbycol)
-    local lte = LootAllocate.GetLootTableEntry(session)
-    local column = table.cols[sortbycol]
-    local row1, row2 = table:GetRow(rowa), table:GetRow(rowb)
-    local v1, v2 = valueFn(lte, row1), valueFn(lte, row2)
-    
-    if v1 == v2 then
-        if column.sortnext then
-            local nextcol = table.cols[column.sortnext]
-            if nextcol and not(nextcol.sort) then
-                if nextcol.comparesort then
-                    return nextcol.comparesort(table, row1, row2, column.sortnext)
-                else
-                    return table:CompareSort(row1, row2, column.sortnext)
-                end
-            end
-        end
-        
-        return false
-    else
-        local direction = column.sort or column.defaultsort or 1
-        if direction == 1 then
-            return v1 < v2
-        else
-            return v1 > v2
-        end
-    end
-
-end
-
 function ResponseSort(table, rowa, rowb, sortbycol)
-    return Sort(table, rowa, rowb, sortbycol,
-        function(lte, row)
-           return AddOn:GetResponse(
-                   lte.typeCode or lte.equipLoc,
-                   lte:GetCandidateResponse(row.name).response
-           ).text
+    return UI.Sort(table, rowa, rowb, sortbycol,
+        function(row)
+            local lte = LootAllocate.GetLootTableEntry(session)
+            return AddOn:GetResponse(
+                    lte.typeCode or lte.equipLoc,
+                    lte:GetCandidateResponse(row.name).response
+            ).text
         end
     )
 end
 
 function GuildRankSort(table, rowa, rowb, sortbycol)
-    return Sort(table, rowa, rowb, sortbycol,
-                function(lte, row)
+    return UI.Sort(table, rowa, rowb, sortbycol,
+                function(row)
+                    local lte = LootAllocate.GetLootTableEntry(session)
                     return guildRanks[lte:GetCandidateResponse(row.name).rank] or 100
                 end
     )
 end
 
 function EpSort(table, rowa, rowb, sortbycol)
-    return Sort(table, rowa, rowb, sortbycol,
-                function(lte, row)
-                    return 1000
+    return UI.Sort(table, rowa, rowb, sortbycol,
+                function(row)
+                    local entry = AddOn:PointsModule().GetEntry(row.name)
+                    return entry and entry.ep or 0
                 end
     )
 end
 
 function GpSort(table, rowa, rowb, sortbycol)
-    return Sort(table, rowa, rowb, sortbycol,
-                function(lte, row)
-                    return 100
+    return UI.Sort(table, rowa, rowb, sortbycol,
+                function(row)
+                    local entry = AddOn:PointsModule().GetEntry(row.name)
+                    return entry and entry.gp or 1
                 end
     )
 end
 
 function PrSort(table, rowa, rowb, sortbycol)
-    return Sort(table, rowa, rowb, sortbycol,
-                function(lte, row)
-                    return 1.0
+    return UI.Sort(table, rowa, rowb, sortbycol,
+                function(row)
+                    local entry = AddOn:PointsModule().GetEntry(row.name)
+                    return entry and entry:GetPR() or 0.0
                 end
     )
 end
@@ -1452,7 +1423,6 @@ function LootAllocate.SetCellRank(rowFrame, frame, data, cols, row, realrow, col
     local name = data[realrow].name
     local entry = LootAllocate.GetLootTableEntry(session)
     local response = entry:GetCandidateResponse(name)
-    -- Logging:Trace("SetCellRank(%s) : %s", name, response.rank)
     frame.text:SetText(lootTable[session].candidates[name].rank)
     frame.text:SetTextColor(AddOn:GetResponseColor(entry.typeCode or  entry.equipLoc, response.response))
     data[realrow].cols[column].value = response.rank or ""
@@ -1497,7 +1467,6 @@ function LootAllocate.SetCellIlvl(rowFrame, frame, data, cols, row, realrow, col
     local iLvlDecimal = true
     local name = data[realrow].name
     local cresponse = LootAllocate.GetLootTableEntryResponse(session, name)
-    -- Logging:Trace("SetCellIlvl(%s) : %s (%s)", name,cresponse.ilvl, type(cresponse.ilvl))
     frame.text:SetText(iLvlDecimal and Util.Numbers.Round2(cresponse.ilvl, 2) or Util.Numbers.Round2(cresponse.ilvl))
     data[realrow].cols[column].value = cresponse.ilvl or ""
 end
@@ -1505,8 +1474,6 @@ end
 function LootAllocate.SetCellDiff(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name
     local cresponse = LootAllocate.GetLootTableEntryResponse(session, name)
-
-    -- Logging:Trace("SetCellDiff(%s) : %s", name, cresponse.diff)
     frame.text:SetText(lootTable[session].candidates[name].diff)
     frame.text:SetTextColor(unpack(LootAllocate:GetDiffColor(cresponse.diff)))
     data[realrow].cols[column].value = cresponse.diff or ""

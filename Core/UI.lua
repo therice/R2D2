@@ -158,9 +158,13 @@ function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, colum
     class = celldata and celldata.args and celldata.args[1] or class
     
     if class then
-        frame:SetNormalTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
         local coords = CLASS_ICON_TCOORDS[class]
-        frame:GetNormalTexture():SetTexCoord(unpack(coords))
+        if coords then
+            frame:SetNormalTexture("Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES")
+            frame:GetNormalTexture():SetTexCoord(unpack(coords))
+        else
+            frame:SetNormalTexture("Interface/ICONS/INV_Sigil_Thorim.png")
+        end
     else
         frame:SetNormalTexture("Interface/ICONS/INV_Sigil_Thorim.png")
     end
