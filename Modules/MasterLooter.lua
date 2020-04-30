@@ -1260,7 +1260,7 @@ function ML:AnnounceAward(name, link, response, roll, session, changeAward, owne
     if not self.db.profile.announceAwards then return end
     
     local gp = itemAward and itemAward:GetGp() or nil
-    -- pretty up some texts (if able to
+    -- pretty up some texts (if able to)
     if itemAward then
         local r = itemAward:NormalizedResponse()
         response = UI.ColoredDecorator(r.color):decorate(response)
@@ -1563,6 +1563,9 @@ function ML:Test(items)
     if not tContains(self.candidates, AddOn.playerName) then
         self:AddCandidate(AddOn.playerName, AddOn.playerClass, AddOn.guildRank)
     end
+    
+    -- self:AddCandidate("Eliovak-Atiesh", "ROGUE", "Powder Monkey")
+    
     AddOn:SendCommand(C.group, C.Commands.Candidates, self.candidates)
     for _, name in ipairs(items) do
         self:AddItem(name)
