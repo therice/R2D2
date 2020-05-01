@@ -243,7 +243,6 @@ function Standby:UpdateMoreInfo(module, f, row, data)
     end
     
     if not moreInfo or not player then
-        Logging:Debug("%s, %s", tostring(moreInfo), tostring(player))
         return f.moreInfo:Hide()
     end
     

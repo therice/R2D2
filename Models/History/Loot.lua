@@ -164,6 +164,8 @@ function LootStatisticsEntry:AddRaid(raid)
     if not Util.Tables.ContainsKey(self.raids, raid) then
         self.raids[raid] = true
     end
+    
+    self.totalled = false
 end
 
 function LootStatisticsEntry:AddResponse(id, response, color, historyIndex)
@@ -180,6 +182,7 @@ function LootStatisticsEntry:AddResponse(id, response, color, historyIndex)
                      }
     )
     
+    self.totalled = false
 end
 
 function LootStatisticsEntry:AddAward(item, intervalText, color, historyIndex)
@@ -229,7 +232,7 @@ function LootStatisticsEntry:CalculateTotals()
         self.totals.raids = Util(self.raids):Keys():Copy()()
         self.totals.raids.count = Util.Tables.Count(self.totals.raids)
         self.totalled = true
-        end
+    end
 end
 
 function LootStatisticsEntry:GetTotals()

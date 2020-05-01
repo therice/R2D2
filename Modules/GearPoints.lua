@@ -123,7 +123,7 @@ GP.defaults = {
 
 GP.DefaultAwardColor = GP.defaults.profile.award_scaling.ms_need.color
 
-Logging:Debug("DefaultAwardColor = %s", Util.Objects.ToString(GP.DefaultAwardColor))
+-- Logging:Debug("DefaultAwardColor = %s", Util.Objects.ToString(GP.DefaultAwardColor))
 
 -- These are arguments for configuring options via UI
 -- See UI/Config.lua

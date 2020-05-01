@@ -109,7 +109,7 @@ function Date.tzone(ts)
     local utc = os_date('!*t', ts)
     local lcl = os_date('*t', ts)
     lcl.isdst = false
-    return os.difftime(os_time(lcl), os_time(utc))
+    return difftime(os_time(lcl), os_time(utc))
 end
 
 for _, c in ipairs { 'year', 'month', 'day', 'hour', 'min', 'sec', 'yday' } do

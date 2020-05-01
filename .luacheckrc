@@ -30,6 +30,7 @@ read_globals = {
 	"bit",
 	"ceil",
 	"date",
+	"difftime",
 	"format",
 	"getglobal",
 	"gsub",

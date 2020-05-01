@@ -131,9 +131,9 @@ end
 -- when LootTable command is received (provided applicable conditions are met)
 function LootAllocate:ReceiveLootTable(lt)
     active = true
-    -- Logging:Debug("ReceiveLootTable(BEFORE) : %s", Util.Objects.ToString(lt, 4))
+    --Logging:Debug("ReceiveLootTable(BEFORE) : %s", Util.Objects.ToString(lt, 4))
     lootTable = Util(lt):Copy():Map(function(entry) return entry:ToAllocateEntry() end)()
-    -- Logging:Debug("ReceiveLootTable(AFTER) : %s", Util.Objects.ToString(lootTable, 4))
+    --Logging:Debug("ReceiveLootTable(AFTER) : %s", Util.Objects.ToString(lootTable, 4))
     self:Setup(lootTable)
     if not AddOn.enabled then return end
     self:Show()
@@ -142,7 +142,7 @@ end
 -- @param session the session id
 -- @return the AllocateEntry for the specified session id
 function LootAllocate.GetLootTableEntry(session)
-    --Logging:Debug("GetLootTableEntry(%d) : %d", session, #lootTable)
+    -- Logging:Debug("GetLootTableEntry(%d) : %s", session, Util.Objects.ToString(lootTable[session].candidates))
     if not Util.Objects.IsNumber(session) then session = tonumber(session) end
     return lootTable[session]
 end
@@ -251,7 +251,7 @@ end
 
 function LootAllocate:SetCandidateData(session, candidate, data, val)
     local function Set(session, candidate, data, val)
-        -- Logging:Trace("SetCandidateData(%s, %s) : data=%s val=%s", session, candidate, Util.Objects.ToString(data), Util.Objects.ToString(val))
+        --Logging:Debug("SetCandidateData(%s, %s) : data=%s val=%s", session, candidate, Util.Objects.ToString(data), Util.Objects.ToString(val))
         LootAllocate.GetLootTableEntryResponse(session, candidate):Set(data, val)
     end
     local ok, _ = pcall(Set, session, candidate, data, val)
@@ -262,9 +262,9 @@ end
 
 function LootAllocate:GetCandidateData(session, candidate, data)
     local function Get(session, candidate, data)
-        -- Logging:Trace("GetCandidateData(%s, %s) : data=%s", session, candidate, Util.Objects.ToString(data))
         return LootAllocate.GetLootTableEntryResponse(session, candidate):Get(data)
     end
+    
     local ok, arg = pcall(Get, session, candidate, data)
     if not ok then
         Logging:Warn("GetCandidateData() : Error for candidate %s", candidate)
@@ -355,7 +355,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                 for i = 1, #lootTable do
                     for candidate in pairs(lootTable[i].candidates) do
                         if self:GetCandidateData(i, candidate, "response") == "ANNOUNCED" then
-                            Logging:Warn("No response from %s", candidate)
+                            Logging:Warn("No response from %s for item %d", candidate, i)
                             self:SetCandidateData(i, candidate, "response", "NOTHING")
                         end
                     end
@@ -388,7 +388,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
             elseif command == C.Commands.LootTableAdd and fromMl then
                 local oldLen = #lootTable
                 for index, entry in pairs(unpack(data)) do
-                    Logging:Debug("LootTableAdd(%s, %s) : %s", tostring(oldLen), tostring(index), Util.Objects.ToString(entry, 4))
+                    -- Logging:Debug("LootTableAdd(%s, %s) : %s", tostring(oldLen), tostring(index), Util.Objects.ToString(entry, 4))
                     lootTable[index] = Models.ItemEntry:new():reconstitute(entry):ToAllocateEntry()
                 end
 
@@ -580,7 +580,7 @@ function LootAllocate:GetFrame()
     local item = UI:New("IconBordered", f.content, "Interface/ICONS/INV_Misc_QuestionMark")
     item:SetMultipleScripts({
         OnEnter = function()
-            if not lootTable then return; end
+            if not lootTable then return end
             UI:CreateHypertip(lootTable[session].link)
             GameTooltip:AddLine("")
             GameTooltip:AddLine(L["always_show_tooltip_howto"], nil, nil, nil, true)
@@ -860,7 +860,7 @@ do
     end
     
     function LootAllocate.SolicitResponseRollPrint(target, isThisItem, isRoll)
-        Logging:Debug("SolicitResponseRollPrint(%s, %s, %s)", tostring(target), tostring(isThisItem), tostring(isRoll))
+        -- Logging:Debug("SolicitResponseRollPrint(%s, %s, %s)", tostring(target), tostring(isThisItem), tostring(isRoll))
         
         local itemText = isThisItem and L["this_item"] or L["all_unawarded_items"]
         if isRoll then
@@ -1399,7 +1399,7 @@ function LootAllocate:GetDiffColor(num)
 end
 
 --
--- functions below starting with 'SetCell' are invoked for settinv values of individual cells in a row
+-- functions below starting with 'SetCell' are invoked for setting values of individual cells in a row
 --
 function LootAllocate.SetCellClass(rowFrame, frame, data, cols, row, realrow, column, fShow, table, ...)
     local name = data[realrow].name

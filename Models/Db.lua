@@ -37,7 +37,7 @@ local function decompress(data)
     return raw
 end
 
--- This doesn't work due to semantics of how thinks like table.insert works
+-- This doesn't work due to semantics of how things like table.insert works
 -- e.g. using raw(get/set) vs access through functions overridden in setmetatable
 --[[
 function CompressedDb.static:create(db)

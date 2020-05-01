@@ -118,7 +118,7 @@ function Award:SetSubjects(type, ...)
     if not Tables.ContainsValue(SubjectType, type) then
         error("Invalid Subject Type specified")
     end
-    Logging:Debug("SetSubjects(%s)", tostring(type))
+    -- Logging:Debug("SetSubjects(%s)", tostring(type))
     
     self.subjectType = type
     if self.subjectType == ActionType.Character then

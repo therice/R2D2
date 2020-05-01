@@ -157,6 +157,8 @@ function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, colum
     local celldata = data and (data[realrow].cols and data[realrow].cols[column] or data[realrow][column])
     class = celldata and celldata.args and celldata.args[1] or class
     
+    --Logging:Debug("SetCellClassIcon(%s)", tostring(class))
+    
     if class then
         local coords = CLASS_ICON_TCOORDS[class]
         if coords then
