@@ -42,6 +42,7 @@ local ROW_HEIGHT, NUM_ROWS = 20, 15
 local SubjectTypesForDisplay, ActionTypesForDisplay, ResourceTypesForDisplay = {}, {}, {}
 local FilterMenu
 local selectedDate, selectedName, selectedAction, selectedResource
+local stats = {stale = true, value = nil}
 
 function TrafficHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -162,6 +163,7 @@ end
 
 function TrafficHistory:AddEntry(entry)
     self:GetHistory():insert(entry:toTable())
+    stats.stale = true
 end
 
 function TrafficHistory:Show()
@@ -169,7 +171,10 @@ function TrafficHistory:Show()
 end
 
 function TrafficHistory:Hide()
-    if self.frame then self.frame:Hide() end
+    if self.frame then
+        self.frame.moreInfo:Hide()
+        self.frame:Hide()
+    end
 end
 
 function TrafficHistory:BuildData()
@@ -389,7 +394,35 @@ function TrafficHistory:GetFrame()
     st.frame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
     st:SetFilter(self.FilterFunc)
     st:EnableSelection(true)
+    st:RegisterEvents({
+                          ["OnClick"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
+                              if row then
+                                  if button == "LeftButton" then
+                                      self:UpdateMoreInfo(self:GetName(), f, realrow, data)
+                                  end
+                              end
+                              return false
+                          end,
+                          --[[
+                          ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
+                              if row then self:UpdateMoreInfo(self:GetName(), f, realrow, data) end
+                              return false
+                          end,
+                          ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
+                              if row then
+                                  if f.st:GetSelection() then
+                                      self:UpdateMoreInfo(self:GetName(), f, realrow, data)
+                                  else
+                                      if self.frame then self.frame.moreInfo:Hide() end
+                                  end
+                              end
+                              return false
+                          end,
+                          --]]
+                      })
     f.st = st
+    
+    AddOn.EmbedMoreInfoWidgets(self:GetName(), f, function(m, f) self:UpdateMoreInfo(m, f) end)
     
     f.date = ST:CreateST(
             {
@@ -517,6 +550,82 @@ function TrafficHistory:GetFrame()
     f:SetWidth(st.frame:GetWidth() + 20)
     return f
 end
+
+local MaxSubjects = 40
+-- how far in the past do we look at history for stats
+local TrafficIntervalInDays = 30
+local CountDecorator = UI.ColoredDecorator(1, 1, 1, 1)
+local TotalDecorator = UI.ColoredDecorator(0, 1, 0.59, 1)
+
+function TrafficHistory:UpdateMoreInfo(module, f, row, data)
+    local moreInfo = AddOn:MoreInfoEnabled(module)
+    local C = AddOn.Constants
+    
+    local entry
+    if data and row then
+        entry = data[row].entry
+    else
+        local selection = f.st:GetSelection()
+        entry = selection and f.st:GetRow(selection).entry or nil
+    end
+    
+    if not moreInfo or not entry then
+        return f.moreInfo:Hide()
+    end
+    
+    local tip = f.moreInfo
+    tip:SetOwner(f, "ANCHOR_RIGHT")
+    
+    if Objects.In(entry.subjectType, Award.SubjectType.Guild,  Award.SubjectType.Raid, Award.SubjectType.Standby) then
+        local color = C.Colors.SubjectTypes[entry.subjectType]
+        tip:AddLine(Award.TypeIdToSubject[entry.subjectType], color.r, color.g, color.b)
+        tip:AddLine(" ")
+        local subjectCount = Tables.Count(entry.subjects)
+        tip:AddDoubleLine("Players", subjectCount)
+    
+        local shown = 0
+        
+        for _, subject in pairs(Tables.Sort(entry.subjects, function (a, b) return a[1] < b[1 ]end)) do
+            if shown < MaxSubjects then
+                tip:AddLine(UI.ColoredDecorator(AddOn.GetClassColor(subject[2])):decorate(AddOn.Ambiguate(subject[1])))
+                shown = shown + 1
+            else
+                tip:AddLine("... (" .. tostring(subjectCount - shown) .. " more)")
+                break
+            end
+        end
+    else
+        local subject = entry.subjects[1]
+        local name, class = subject[1], subject[2]
+        local color = AddOn.GetClassColor(class)
+        tip:AddLine(AddOn.Ambiguate(name), color.r, color.g, color.b)
+        tip:AddLine(" ")
+        
+        local stats = TrafficHistory:GetStatistics()
+        local se = stats and stats:Get(name) or nil
+        if stats and se then
+            tip:AddLine("For the past " .. TrafficIntervalInDays .. " days")
+            tip:AddLine(" ")
+            tip:AddDoubleLine("Resource", "Count/Awarded")
+            local totals = se:CalculateTotals()
+            for _, resource in pairs({Award.ResourceType.Ep, Award.ResourceType.Gp}) do
+                local decorator = UI.ColoredDecorator(AddOn.GetResourceTypeColor(resource))
+                
+                tip:AddDoubleLine(
+                        decorator:decorate(Strings.Upper(Award.TypeIdToResource[resource])),
+                        CountDecorator:decorate(tostring(totals.awards[resource].count)) .. ' / ' ..
+                        TotalDecorator:decorate(tostring(totals.awards[resource].total))
+                )
+            end
+        else
+            tip:AddLine("No entries in the past " .. TrafficIntervalInDays .. " days")
+        end
+    end
+    
+    tip:Show()
+    tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
+end
+
 
 local function SelectionFilter(entry)
     -- Logging:Debug("SelectionFilter() : %s", Objects.ToString(entry, 3))
@@ -662,4 +771,43 @@ function TrafficHistory:CreateFromAward(award, lhEntry)
     -- todo : send to guild or group? guild for now
     AddOn:SendCommand(C.guild, C.Commands.TrafficHistoryAdd, entry)
     return entry
+end
+
+
+function TrafficHistory:GetStatistics()
+    local check, ret = pcall(
+            function()
+                --Logging:Debug("GetStatistics() : %s", Objects.ToString(stats, 2))
+                if stats.stale or Objects.IsNil(stats.value) then
+                    local cutoff = Models.Date()
+                    cutoff:add{day = -TrafficIntervalInDays}
+                    -- Logging:Debug("GetStatistics() : Processing History after %s", tostring(cutoff))
+                    
+                    local c_pairs = CDB.static.pairs
+                    
+                    local s = Models.History.TrafficStatistics()
+                    for _, entryTable in c_pairs(self:GetHistory()) do
+                        -- Logging:Debug("GetStatistics() : Processing Entry")
+                        local entry = Models.History.Traffic():reconstitute(entryTable)
+                        local ts = Models.Date(entry.timestamp)
+    
+                        if ts > cutoff then
+                            s:ProcessEntry(entry)
+                        end
+                    end
+                    
+                    stats.stale = false
+                    stats.value = s
+                end
+                
+                return stats.value
+            end
+    )
+    
+    if not check then
+        Logging:Warn("Error processing Traffic History")
+        AddOn:Print("Error processing Traffic History")
+    else
+        return ret
+    end
 end

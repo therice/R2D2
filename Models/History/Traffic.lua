@@ -3,12 +3,17 @@ local Util = AddOn.Libs.Util
 local Objects = Util.Objects
 local Tables = Util.Tables
 local Class = AddOn.Libs.Class
-local Award = AddOn.components.Models.Award
-local History = AddOn.components.Models.History.History
+local Models = AddOn.components.Models
+local Award = Models.Award
+local History = Models.History.History
 
 local Traffic = Class('Traffic', History)
+local TrafficStatistics = Class('TrafficStatistics')
+local TrafficStatisticsEntry = Class('TrafficStatisticsEntry')
 
 AddOn.components.Models.History.Traffic = Traffic
+AddOn.components.Models.History.TrafficStatistics = TrafficStatistics
+AddOn.components.Models.History.TrafficStatisticsEntry = TrafficStatisticsEntry
 
 function Traffic:initialize(instant, data)
     History.initialize(self, instant)
@@ -57,4 +62,100 @@ function Traffic:Finalize()
             end
         end
     end
+end
+
+
+-- Loot Statistics
+function TrafficStatistics:initialize()
+    -- mapping from character name to associated stats
+    self.entries = {}
+end
+
+function TrafficStatistics:Get(name)
+    return self.entries[name]
+end
+
+function TrafficStatistics:GetOrAdd(name)
+    local entry
+    if not Util.Tables.ContainsKey(self.entries, name) then
+        entry = TrafficStatisticsEntry()
+        self.entries[name] = entry
+    else
+        entry = self.entries[name]
+    end
+    return entry
+end
+
+function TrafficStatistics:ProcessEntry(entry)
+    -- force entry into class instance
+    if not Traffic.isInstanceOf(entry, Traffic) then
+        entry = Traffic():reconstitute(entry)
+    end
+    
+    local appliesTo = Util(entry.subjects):Copy(function(subject) return subject[1] end):Flip()()
+    local stats = Util(appliesTo):Copy(function(_, name) return self:GetOrAdd(name) end, true)()
+    for _, si in pairs(stats) do si:AddAward(entry) end
+end
+
+function TrafficStatisticsEntry:initialize()
+    self.awards = {}
+    self.totals = {
+        awards = {
+        
+        }
+    }
+    self.totalled = false
+end
+
+function TrafficStatisticsEntry:AddAward(award)
+    if not Tables.ContainsKey(self.awards, award.resourceType) then
+       self.awards[award.resourceType] = {}
+    end
+    
+    -- print(Objects.ToString(award, 2))
+    -- this tracks resource type to action and amount
+    Tables.Push(self.awards[award.resourceType],
+                {
+                    award.actionType,
+                    award.resourceQuantity,
+                }
+    )
+    
+    -- todo : do we want to track raids, bosses, etc? if so, it's there - just need to record it
+    self.totalled = false
+end
+
+function TrafficStatisticsEntry:CalculatePending()
+    return not self.totalled and Tables.Count(self.awards) > 0
+end
+
+function TrafficStatisticsEntry:CalculateTotals()
+    if self:CalculatePending() then
+        for rt, actions in pairs(self.awards) do
+            local totals = 0
+            local count = 0
+            for _, oper in pairs(actions) do
+                local o, q = unpack(oper)
+                if o == Award.ActionType.Add then
+                    totals = totals + q
+                elseif o == Award.ActionType.Subtract then
+                    totals = totals - q
+                elseif o == Award.ActionType.Reset then
+                    -- this one is different, do we just
+                end
+                count = count + 1
+            end
+    
+            self.totals.awards[rt] = {
+                count = 0,
+                total = 0,
+            }
+            self.totals.awards[rt].count = count
+            self.totals.awards[rt].total = totals
+        end
+    end
+    
+    -- index is the resource type (i.e. EP and GP)
+    -- {awards = {{total = 0, count = 3}, {total = 273, count = 25}}}
+    return self.totals
 end

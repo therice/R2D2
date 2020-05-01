@@ -772,6 +772,7 @@ function ML:AddItem(item, bagged, lootSlot, owner, index)
 end
 
 function ML:RemoveItem(session)
+    Logging:Debug("RemoveItem(%d)", session)
     Util.Tables.Remove(self.lootTable, session)
 end
 
@@ -1260,12 +1261,17 @@ function ML:AnnounceAward(name, link, response, roll, session, changeAward, owne
     if not self.db.profile.announceAwards then return end
     
     local gp = itemAward and itemAward:GetGp() or nil
+    
+    -- You cannot send escape codes (this includes colors) in chat, with the exception of target charms.
+    -- Therefore, the following code causes issues. Keeping it around as a warning.
+    --[[
     -- pretty up some texts (if able to)
     if itemAward then
         local r = itemAward:NormalizedResponse()
         response = UI.ColoredDecorator(r.color):decorate(response)
         name = UI.ColoredDecorator(AddOn.GetClassColor(itemAward.class)):decorate(name)
     end
+    --]]
     
     for _, awardText in pairs(self.db.profile.announceAwardText) do
         local message = awardText.text

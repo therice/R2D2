@@ -593,10 +593,16 @@ end
 
 
 time = os.clock
-
+difftime = os.difftime
 strmatch = string.match
 strlower = string.lower
 strupper = string.upper
+
+function ChatFrame_AddMessageEventFilter(event, fn)
+
+
+end
+
 
 function SendChatMessage(text, chattype, language, destination)
 	assert(#text<255)
