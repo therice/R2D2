@@ -82,9 +82,23 @@ EP.options = {
             desc = L['awards_desc'],
             childGroups = "tab",
             args = {
+                general = {
+                    order  = 0,
+                    type   = 'group',
+                    name   = L['general_options'],
+                    inline = true,
+                    args = {
+                        ep_min = COpts.Range("Minimum", 1, 0, 1000, 1,
+                                             {
+                                                 desc = "The minimum EP required to be eligible for awards"
+                                             }),
+                        
+                    }
+                },
                 auto_award_settings = {
+                    order = 1,
                     type = 'group',
-                    name = L['auto_award'],
+                    name = L['awards'],
                     inline = true,
                     args = {
                         ['raid.auto_award_victory'] = COpts.Toggle(L['auto_award_victory'], 0, L['auto_award_victory_desc']),

@@ -769,6 +769,22 @@ function Points.FilterMenu(menu, level)
             info.checked = ModuleFilters.member_of[what]
             MSA_DropDownMenu_AddButton(info, level)
         end
+    
+        info = MSA_DropDownMenu_CreateInfo()
+        info.text = L["ep_abbrev"]
+        info.isTitle = true
+        info.notCheckable = true
+        info.disabled = true
+        MSA_DropDownMenu_AddButton(info, level)
+    
+        info = MSA_DropDownMenu_CreateInfo()
+        info.text = L["greater_than_min"]
+        info.func = function()
+            ModuleFilters.minimums['ep'] = not ModuleFilters.minimums['ep']
+            Points:Update(true)
+        end
+        info.checked = ModuleFilters.minimums['ep']
+        MSA_DropDownMenu_AddButton(info, level)
     end
 end
 
@@ -806,6 +822,12 @@ function Points.FilterFunc(table, row)
             
             -- short-circuit if we found a false evaluation
             if not include then break end
+        end
+    end
+    
+    if include then
+        if Util.Tables.ContainsKey(ModuleFilters.minimums, 'ep') and ModuleFilters.minimums['ep'] then
+            include = member.ep >= AddOn:EffortPointsModule().db.profile.ep_min
         end
     end
     
