@@ -200,7 +200,7 @@ function TrafficHistory:BuildData()
                 {value = entry.resourceType, DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellResource)},
                 {
                     value       = math.floor(entry.resourceQuantity) == entry.resourceQuantity and entry.resourceQuantity or (entry.resourceQuantity * 100) .. '%',
-                    comparesort = function(table, rowa, rowb, sortbycol) return UI.Sort(table, rowa, rowb, sortbycol, function(row) return row.entry.resourceQuantity + .0 end) end
+                    comparesort = function(table, rowa, rowb, sortbycol) return UI.Sort(table, rowa, rowb, sortbycol, function(r) return r.entry.resourceQuantity + .0 end) end
                 },
                 {value = entry.resourceBefore},
                 {DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellResourceAfter)},
