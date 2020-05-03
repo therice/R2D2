@@ -25,6 +25,10 @@ function History:initialize(instant)
     self.timestamp = di.time
 end
 
+function History:TimestampAsDate()
+    return Date(self.timestamp)
+end
+
 function History:afterReconstitute(instance)
     instance.version = SemanticVersion(instance.version)
     return instance

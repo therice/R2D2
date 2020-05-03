@@ -13,6 +13,8 @@ local Award = Models.Award
 local Objects = Util.Objects
 local Strings = Util.Strings
 local Class = AddOn.Libs.Class
+local Date = Models.Date
+local DateFormat = Models.DateFormat
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 25, 5
 local MenuFrame, FilterMenu
@@ -90,6 +92,7 @@ function Points:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     self.frame = self:GetFrame()
     self.adjustFrame = self:GetAdjustFrame()
+    self.decayFrame = self:GetDecayFrame()
     self:BuildData()
     self.updateHandler = AddOn.CreateUpdateHandler(function() Points:Update() end, MIN_UPDATE_INTERVAL)
     self:Show()
@@ -167,10 +170,16 @@ function Points:Adjust(award)
         
         local function add(to, amt) return to + amt end
         local function reset(_, _) return amount end
+        local function decay(amt, by)
+            -- Logging:Debug("%d - math.floor(%d * %s) = %d", amt, amt, tostring(by), (amt - math.floor(amt * by)))
+            return amt - math.floor(amt * by)
+        end
+        
         local oper =
                 action == Award.ActionType.Add and add or
                 action == Award.ActionType.Subtract and add or
                 action == Award.ActionType.Reset and reset or
+                action == Award.ActionType.Decay and decay or
                 nil -- intentional to find missing cases
    
         local function ep(amt) target.ep = oper(target.ep, amt) end
@@ -233,6 +242,12 @@ end
 function Points:Show()
     if self.frame then
         self.frame:Show()
+    
+        if AddOn:DevModeEnabled() or CanEditOfficerNote() then
+            self.frame.decay:Show()
+        else
+            self.frame.decay:Hide()
+        end
     end
 end
 
@@ -360,6 +375,12 @@ function Points:GetFrame()
     filter:SetScript("OnEnter", function() UI:CreateTooltip(L["deselect_responses"]) end)
     filter:SetScript("OnLeave", function() UI:HideTooltip() end)
     f.filter = filter
+    
+    -- decay
+    local decay = UI:CreateButton(L["decay"], f.content)
+    decay:SetPoint("RIGHT", f.filter, "LEFT", -10, 0)
+    decay:SetScript("OnClick", function() self:UpdateDecayFrame() end)
+    f.decay = decay
     
     return f
 end
@@ -532,13 +553,11 @@ function Points:UpdateAdjustFrame(subjectType, name, resource)
     if not self.adjustFrame then return end
     
     local c
-    
     if subjectType == Award.SubjectType.Character then
         c = AddOn.GetClassColor(GetEntry(name).class)
     else
         c = AddOn.GetSubjectTypeColor(subjectType)
     end
-    
     
     self.adjustFrame.subjectType = subjectType
     
@@ -594,10 +613,114 @@ function Points.AwardPopupOnClickNo(frame, award)
 end
 
 
+function Points:GetDecayFrame()
+    if self.decayFrame then return self.decayFrame end
+    
+    local f = UI:CreateFrame("R2D2_Decay_Points", "DecayPoints", L["r2d2_decay_points_frame"], 150, 275)
+    f:SetWidth(225)
+    f:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", -150)
+
+    local pctLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    pctLabel:SetPoint("TOPLEFT", f.content, "TOPLEFT", 15, -45)
+    pctLabel:SetText(L["percent"])
+    f.pctLabel = pctLabel
+    
+    local pct =
+        UI('Slider')
+                .SetSliderValues(0, 1, 0.01)
+                .SetIsPercent(true)
+                .SetValue(.10)
+                .SetPoint("TOPLEFT", f.pctLabel, "BOTTOMLEFT")
+                .SetParent(f)()
+    f.pct = pct
+    
+    local descLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    descLabel:SetPoint("TOPLEFT", f.pctLabel, "TOPLEFT", 0, -65)
+    descLabel:SetText(L["description"])
+    f.descLabel = descLabel
+
+    local desc = UI:New("EditBox", f.content)
+    desc:SetHeight(25)
+    desc:SetWidth(200)
+    desc:SetPoint("TOPLEFT", f.descLabel, "BOTTOMLEFT", 0, -15)
+    f.desc = desc
+
+    local close = UI:CreateButton(_G.CANCEL, f.content)
+    close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -13, 5)
+    close:SetScript("OnClick", function() f:Hide() end)
+    f.close = close
+    
+    local decay = UI:CreateButton(L["decay"], f.content)
+    decay:SetPoint("RIGHT", f.close, "LEFT", -25)
+    decay:SetScript("OnClick",
+                     function()
+                         Dialog:Spawn(AddOn.Constants.Popups.ConfirmDecayPoints, {f.Validate()})
+                     end
+    )
+    f.decay = decay
+    
+    function f.Validate()
+        local epDecay = Award()
+        epDecay:SetSubjects(Award.SubjectType.Guild)
+        epDecay:SetAction(Award.ActionType.Decay)
+        epDecay:SetResource(Award.ResourceType.Ep, f.pct:GetValue())
+        epDecay.description = f.desc:GetText()
+        
+        local gpDecay = Award():reconstitute(epDecay:toTable())
+        gpDecay:SetResource(Award.ResourceType.Gp, f.pct:GetValue())
+        
+        return epDecay, gpDecay
+    end
+    
+    self.decayFrame = f
+    return self.decayFrame
+end
+
+function Points:UpdateDecayFrame()
+    if not self.decayFrame then return end
+    
+    local f = self.decayFrame
+    f.desc:SetText(format(L["decay_on_d"], DateFormat.Short:format(Date())))
+    
+    if not self.decayFrame:IsVisible() then self.decayFrame:Show() end
+end
+
+function Points.DecayOnShow(frame, awards)
+    UI.DecoratePopup(frame)
+    
+    -- just grab one, they will both be the same except
+    -- one will be for EP and other for GP
+    local award = awards[1]
+    
+    local decoratedText =
+        UI.ColoredDecorator(
+            AddOn.GetSubjectTypeColor(award.subjectType)
+        ):decorate("the " .. award:GetSubjectOriginText())
+    
+    
+    frame.text:SetText(
+            format(L["confirm_decay"],
+                   award.resourceQuantity * 100,
+                   decoratedText
+            )
+    )
+end
+
+function Points.DecayOnClickYes(frame, awards, ...)
+    for _, award in pairs(awards) do
+        Points:Adjust(award)
+    end
+    
+    if Points.decayFrame then Points.decayFrame:Hide() end
+end
+
+function Points.DecayOnClickNo(frame, awards)
+    -- intentional no-op
+end
+    
 local AdjustLevel = Class('AdjustLevel')
 local DynamicAdjustLevel = Class('DynamicAdjustLevel', AdjustLevel)
 local StaticAdjustLevel = Class('StaticAdjustLevel', AdjustLevel)
-
 ---
 --- Base Class for Adjust Menu Level
 ---

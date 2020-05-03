@@ -109,3 +109,20 @@ Dialog:Register(AddOn.Constants.Popups.ConfirmAdjustPoints, {
     hide_on_escape = true,
     show_while_dead = true,
 })
+
+Dialog:Register(AddOn.Constants.Popups.ConfirmDecayPoints, {
+    text = "something_went_wrong",
+    on_show = AddOn:PointsModule().DecayOnShow,
+    buttons = {
+        {
+            text = _G.YES,
+            on_click = AddOn:PointsModule().DecayOnClickYes,
+        },
+        {
+            text = _G.NO,
+            on_click = AddOn:PointsModule().DecayOnClickNo
+        },
+    },
+    hide_on_escape = true,
+    show_while_dead = true,
+})

@@ -195,10 +195,13 @@ function TrafficHistory:BuildData()
                 -- the icon of the class who received the item
                 {DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellSubjectIcon)},
                 {value = entry.subjectType, DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellSubject)},
-                {value = entry:FormattedTimestamp() or ""},
+                {value = entry:FormattedTimestamp() or "", comparesort = UI.SortByTimestamp},
                 {value = entry.actionType, DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellAction)},
                 {value = entry.resourceType, DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellResource)},
-                {value = entry.resourceQuantity},
+                {
+                    value       = math.floor(entry.resourceQuantity) == entry.resourceQuantity and entry.resourceQuantity or (entry.resourceQuantity * 100) .. '%',
+                    comparesort = function(table, rowa, rowb, sortbycol) return UI.Sort(table, rowa, rowb, sortbycol, function(row) return row.entry.resourceQuantity + .0 end) end
+                },
                 {value = entry.resourceBefore},
                 {DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellResourceAfter)},
                 {value = entry.description},
@@ -582,7 +585,8 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
         tip:AddLine(" ")
         local subjectCount = Tables.Count(entry.subjects)
         tip:AddDoubleLine("Players", subjectCount)
-    
+        tip:AddLine(" ")
+        
         local shown = 0
         
         for _, subject in pairs(Tables.Sort(entry.subjects, function (a, b) return a[1] < b[1 ]end)) do
@@ -617,6 +621,12 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
                         TotalDecorator:decorate(tostring(totals.awards[resource].total))
                 )
             end
+            tip:AddLine(" ")
+            tip:AddDoubleLine("Operation", "Count")
+            local decorator = UI.ColoredDecorator(AddOn.GetActionTypeColor(Award.ActionType.Decay))
+            tip:AddDoubleLine(decorator:decorate(Award.TypeIdToAction[Award.ActionType.Decay]), CountDecorator:decorate(tostring(totals.decays.count)))
+            decorator = UI.ColoredDecorator(AddOn.GetActionTypeColor(Award.ActionType.Reset))
+            tip:AddDoubleLine(decorator:decorate(Award.TypeIdToAction[Award.ActionType.Reset]), CountDecorator:decorate(tostring(totals.resets.count)))
         else
             tip:AddLine("No entries in the past " .. TrafficIntervalInDays .. " days")
         end
