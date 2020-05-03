@@ -1090,6 +1090,7 @@ do
             info.disabled = true
             MSA_DropDownMenu_AddButton(info, level)
         
+            --[[
             info = MSA_DropDownMenu_CreateInfo()
             info.text = L["Always show owner"]
             info.func = function()
@@ -1098,6 +1099,7 @@ do
             end
             info.checked = ModuleFilters.alwaysShowOwner
             MSA_DropDownMenu_AddButton(info, level)
+            --]]
         
             info = MSA_DropDownMenu_CreateInfo()
             info.text = L["Candidates that can't use the item"]
@@ -1146,6 +1148,23 @@ do
             end
     
             info = MSA_DropDownMenu_CreateInfo()
+            info.text = L["ep_abbrev"]
+            info.isTitle = true
+            info.notCheckable = true
+            info.disabled = true
+            MSA_DropDownMenu_AddButton(info, level)
+    
+            info = MSA_DropDownMenu_CreateInfo()
+            info.text = L["greater_than_min"]
+            info.func = function()
+                ModuleFilters.minimums['ep'] = not ModuleFilters.minimums['ep']
+                LootAllocate:Update(true)
+            end
+            info.checked = ModuleFilters.minimums['ep']
+            MSA_DropDownMenu_AddButton(info, level)
+            
+            --[[
+            info = MSA_DropDownMenu_CreateInfo()
             info.text = RANK
             info.isTitle = true
             info.notCheckable = true
@@ -1158,9 +1177,10 @@ do
             info.hasArrow = true
             info.value = "FILTER_RANK"
             MSA_DropDownMenu_AddButton(info, level)
+            --]]
         elseif level == 2 then
+            --[[
             local ModuleFilters = Module.filters
-            
             if MSA_DROPDOWNMENU_MENU_VALUE == "FILTER_RANK" then
                 local info = MSA_DropDownMenu_CreateInfo()
                 if IsInGuild() then
@@ -1183,6 +1203,7 @@ do
                 info.checked = ModuleFilters.ranks.notInYourGuild
                 MSA_DropDownMenu_AddButton(info, level)
             end
+            --]]
         end
     end
 end
@@ -1196,32 +1217,53 @@ function LootAllocate.FilterFunc(table, row)
     local ModuleFilters = Module.filters
     local name = row.name
     local entry = LootAllocate.GetLootTableEntry(session)
+    
+    local include = true
+    
+    --[[
+    
     local rank = entry:GetCandidateResponse(name).rank
-
+    
     if ModuleFilters.alwaysShowOwner then
-        if AddOn:UnitIsUnit(name, entry.owner) then
-            return true
-        end
+        include = not AddOn:UnitIsUnit(name, entry.owner)
+        Logging:Debug("#1 = %s", tostring(include))
     end
-
-    if rank and guildRanks[rank] then
-        if not ModuleFilters.ranks[guildRanks[rank]] then
-            return false
+    --]]
+    
+    --if include then
+    --    if rank and guildRanks[rank] then
+    --        include = ModuleFilters.ranks[guildRanks[rank]]
+    --    elseif not ModuleFilters.ranks.notInYourGuild then
+    --        include = false
+    --    end
+    --end
+    
+    
+    if include then
+        local response = entry:GetCandidateResponse(name).response
+        if not ModuleFilters.showPlayersCantUseTheItem then
+            include = not AddOn:AutoPassCheck(entry:GetCandidateResponse(name).class, entry.equipLoc, entry.typeId, entry.subTypeId, entry.classes)
         end
-    elseif not ModuleFilters.ranks.notInYourGuild then
-        return false
-    end
-
-    local response = entry:GetCandidateResponse(name).response
-    if not ModuleFilters.showPlayersCantUseTheItem then
-        return not AddOn:AutoPassCheck(entry:GetCandidateResponse(name).class, entry.equipLoc, entry.typeId, entry.subTypeId, entry.classes)
+    
+        if include then
+            if response == "AUTOPASS" or response == "PASS" or Util.Objects.IsNumber(response) then
+                include = ModuleFilters[response]
+            else
+                include = ModuleFilters["STATUS"]
+            end
+        end
     end
     
-    if response == "AUTOPASS" or response == "PASS" or Util.Objects.IsNumber(response) then
-        return ModuleFilters[response]
-    else
-        return ModuleFilters["STATUS"]
+    if include then
+        if Util.Tables.ContainsKey(ModuleFilters.minimums, 'ep') and ModuleFilters.minimums['ep'] then
+            local ep = AddOn:PointsModule().Get(name)
+            if Util.Objects.IsNumber(ep) then
+                include = ep >= AddOn:EffortPointsModule().db.profile.ep_min
+            end
+        end
     end
+    
+    return include
 end
 
 -- Get rolls ranged from 1 to 100 for all candidates, and guarantee everyone's roll is different

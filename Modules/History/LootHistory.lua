@@ -193,7 +193,7 @@ function LootHistory:BuildData()
                         cols = {
                             { value = entry.class, DoCellUpdate = AddOn.SetCellClassIcon, args = { entry.class } },
                             { value = AddOn.Ambiguate(name), color = AddOn.GetClassColor(entry.class) },
-                            { value = entry:FormattedTimestamp() or ""},
+                            { value = entry:FormattedTimestamp() or "",  comparesort = UI.SortByTimestamp},
                             { value = entry.instance},
                             { DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellGear)},
                             { value = entry.item },

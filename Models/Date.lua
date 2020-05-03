@@ -560,3 +560,6 @@ function parse_date(s)
         return d
     end
 end
+
+DateFormat.Short = DateFormat("mm/dd/yyyy")
+DateFormat.Full = DateFormat("mm/dd/yyyy HH:MM:SS")

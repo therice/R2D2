@@ -169,6 +169,10 @@ function UI.ScrollingTableDoCellUpdate(fn)
     end
 end
 
+function UI.SortByTimestamp(table, rowa, rowb, sortbycol)
+    return UI.Sort(table, rowa, rowb, sortbycol, function(row) return row.entry:TimestampAsDate() end)
+end
+
 function UI.Sort(table, rowa, rowb, sortbycol, valueFn)
     local column = table.cols[sortbycol]
     local row1, row2 = table:GetRow(rowa), table:GetRow(rowb)

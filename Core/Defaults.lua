@@ -33,13 +33,16 @@ AddOn.defaults = {
                 filters = {
                     ['*'] = true,
                     ranks = {
-                        ['*'] = true
+                        ['*'] = true,
                     },
                     class = {
-                        ['*'] = true
+                        ['*'] = true,
                     },
                     member_of = {
-                        ['*'] = false
+                        ['*'] = false,
+                    },
+                    minimums = {
+                        ['*'] = false,
                     }
                 },
             },

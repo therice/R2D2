@@ -188,6 +188,7 @@ AddOn.Constants.Colors.ActionTypes = {
     [Models.Award.ActionType.Add]      = CreateColor(0, 1, 0.59, 1),
     [Models.Award.ActionType.Subtract] = CreateColor(0.96, 0.55, 0.73, 1),
     [Models.Award.ActionType.Reset]    = CreateColor(1, 0.96, 0.41, 1),
+    [Models.Award.ActionType.Decay]    = CreateColor(0.53, 0.53, 0.93, 1),
 }
 
 function AddOn.GetActionTypeColor(actionTYpe)

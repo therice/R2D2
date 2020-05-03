@@ -31,6 +31,7 @@ function Traffic:initialize(instant, data)
     
     if data then
         if not Award.isInstanceOf(data, Award) then
+            -- type was table
             error("The specified data was not of the correct type : " .. type(data))
         end
         Tables.CopyInto(self, data:toTable())
@@ -102,7 +103,13 @@ function TrafficStatisticsEntry:initialize()
     self.totals = {
         awards = {
         
-        }
+        },
+        resets = {
+            count = 0
+        },
+        decays = {
+            count = 0,
+        },
     }
     self.totalled = false
 end
@@ -133,25 +140,34 @@ function TrafficStatisticsEntry:CalculateTotals()
     if self:CalculatePending() then
         for rt, actions in pairs(self.awards) do
             local totals = 0
-            local count = 0
+            local awards = 0
+            local decays = 0
+            local resets = 0
+            
             for _, oper in pairs(actions) do
                 local o, q = unpack(oper)
                 if o == Award.ActionType.Add then
                     totals = totals + q
+                    awards = awards + 1
                 elseif o == Award.ActionType.Subtract then
                     totals = totals - q
+                    awards = awards + 1
                 elseif o == Award.ActionType.Reset then
-                    -- this one is different, do we just
+                    resets = resets + 1
+                elseif o == Award.ActionType.Decay then
+                    decays = decays + 1
                 end
-                count = count + 1
             end
     
             self.totals.awards[rt] = {
                 count = 0,
                 total = 0,
             }
-            self.totals.awards[rt].count = count
+            
+            self.totals.awards[rt].count = awards
             self.totals.awards[rt].total = totals
+            self.totals.resets.count = resets
+            self.totals.decays.count = decays -- math.floor(decays / 2) -- one for EP and one for GP (2 for each operation)
         end
     end
     

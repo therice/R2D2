@@ -64,6 +64,7 @@ local ActionType = {
     Add      = 1,
     Subtract = 2,
     Reset    = 3,
+    Decay    = 4,
 }
 
 local SubjectType = {

@@ -108,6 +108,7 @@ AddOn.Constants = {
         ConfirmAdjustPoints     =   name .. "_ConfirmAdjustPoints",
         ConfirmAbort            =   name .. "_ConfigAbort",
         ConfirmAward            =   name .. "_ConfirmAward",
+        ConfirmDecayPoints      =   name .. "_ConfirmDecayPoints",
         ConfirmReannounceItems  =   name .. "_ConfirmReannounceItems",
         ConfirmUsage            =   name .. "_ConfirmUsage",
     },
