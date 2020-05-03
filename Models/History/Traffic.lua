@@ -163,6 +163,7 @@ function TrafficStatisticsEntry:CalculateTotals()
                 count = 0,
                 total = 0,
             }
+            
             self.totals.awards[rt].count = awards
             self.totals.awards[rt].total = totals
             self.totals.resets.count = resets

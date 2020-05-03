@@ -586,7 +586,6 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
         local subjectCount = Tables.Count(entry.subjects)
         tip:AddDoubleLine("Players", subjectCount)
         tip:AddLine(" ")
-        
         local shown = 0
         
         for _, subject in pairs(Tables.Sort(entry.subjects, function (a, b) return a[1] < b[1 ]end)) do
