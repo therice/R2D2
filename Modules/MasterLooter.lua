@@ -504,7 +504,7 @@ end
 -- the msg will be in the format of 'ace serialized message' = 'count of event'
 -- where the deserialized message will be a tuple of 'module of origin' (e.g MasterLooter), 'db key name' (e.g. outOfRaid)
 function ML:ConfigTableChanged(msg)
-    -- Logging:Debug("ConfigTableChanged() : %s", Util.Objects.ToString(msg))
+     Logging:Debug("ConfigTableChanged() : %s", Util.Objects.ToString(msg))
     if not AddOn.mlDb then return ML:UpdateDb() end
     for serializedMsg, _ in pairs(msg) do
         local success, module, val = AddOn:Deserialize(serializedMsg)
@@ -961,7 +961,6 @@ local function RegisterAndAnnounceAward(session, winner, response, reason, itemA
     
     AddOn:SendCommand(C.group, C.Commands.Awarded, session, winner, itemEntry.owner)
     
-    -- AnnounceAward(name, link, response, roll, session, changeAward, owner)
     self:AnnounceAward(winner, itemEntry.link, reason and reason.text or response,
                        AddOn:LootAllocateModule():GetCandidateData(session, winner, "roll"),
                        session, previousWinner, nil, itemAward)
@@ -1153,6 +1152,8 @@ local function OnGiveLootTimeout(entry)
 end
 
 function ML:GiveLoot(slot, winner, callback, ...)
+    Logging:Debug("GiveLoot(%d) - %s", slot, tostring(winner))
+    
     if AddOn.lootOpen then
         local entry = {slot = slot, callback = callback, args = {...}, }
         entry.timer = self:ScheduleTimer(OnGiveLootTimeout, LOOT_TIMEOUT, entry)
@@ -1176,6 +1177,8 @@ function ML:GiveLoot(slot, winner, callback, ...)
 end
 
 function ML:UpdateLootSlots()
+    Logging:Debug("UpdateLootSlots()")
+    
     if not AddOn.lootOpen then
         Logging:Warn("UpdateLootSlots() : Attempting to update loot slots without an open loot window")
         return
@@ -1198,6 +1201,37 @@ function ML:UpdateLootSlots()
             end
         end
     end
+end
+
+function ML:HookLootButton(i)
+    local lootButton = getglobal("LootButton"..i)
+    -- ElvUI
+    if getglobal("ElvLootSlot"..i) then lootButton = getglobal("ElvLootSlot"..i) end
+    local hooked = self:IsHooked(lootButton, "OnClick")
+    if lootButton and not hooked then
+        Logging:Debug("HookLootButton(%d)", i)
+        self:HookScript(lootButton, "OnClick", "LootOnClick")
+    end
+end
+
+function ML:LootOnClick(button)
+    if not IsAltKeyDown() or IsShiftKeyDown() or IsControlKeyDown() then return end
+    Logging:Debug("LootOnClick(%s)", Util.Objects.ToString(button))
+    
+    if getglobal("ElvLootFrame") then button.slot = button:GetID() end
+    
+    -- Check we're not already looting that item
+    for _, v in ipairs(self.lootTable) do
+        if button.slot == v.lootSlot then
+            AddOn:Print(L["loot_already_on_list"])
+            return
+        end
+    end
+    
+    local LS = AddOn:LootSessionModule()
+    self:AddItem(GetLootSlotLink(button.slot), false, button.slot)
+    AddOn:CallModule(LS:GetName())
+    LS:Show(self.lootTable)
 end
 
 ML.AnnounceItemStrings = {
@@ -1486,18 +1520,21 @@ function ML:CanWeLootItem(item, quality)
     -- item is set (AND)
     -- auto-loot is enabled (AND)
     -- item is equipable OR auto-loot non-equipable (AND)
-    -- quality is set and >= our threshol
+    -- quality is set and >= our threshold
     if item and self.db.profile.autoLootEquipable and
         (IsEquippableItem(item) or self.db.profile.autoLootNonEquipable) and
         (quality and quality >= GetLootThreshold()) then
         return self.db.profile.autoLootBoe or not AddOn:IsItemBoe(item)
     end
+    
     Logging:Debug("CanWeLootItem(%s, %s) = %s", item, tostring(quality), tostring(ret))
     return ret
 end
 
 function ML:LootOpened()
-    if AddOn.isMasterLooter and GetNumLootItems() > 0 then
+    local itemCount = GetNumLootItems()
+    Logging:Debug("LootOpened() : %s, %d", tostring(AddOn.isMasterLooter), itemCount)
+    if AddOn.isMasterLooter and itemCount > 0 then
         local LS = AddOn:LootSessionModule()
         
         -- check if we need to update the existing session
@@ -1505,13 +1542,14 @@ function ML:LootOpened()
             self:UpdateLootSlots()
         -- not running, just add the loot
         else
-            for i = 1, GetNumLootItems() do
+            for i = 1, itemCount do
                 local item =  AddOn:GetLootSlotInfo(i)
                 if item then
                     local link = item.link
                     local quantity = item.quantity
                     local quality = item.quality
-                    -- todo : alt-click looting (maybe)
+                    self:ScheduleTimer("HookLootButton", 0.5, i)
+                    
                     -- todo : auto-awarding of items (probably not)
                     -- check if we are allowed to loot item
                     if link and self:CanWeLootItem(link, quality) and quantity > 0 then
@@ -1522,21 +1560,23 @@ function ML:LootOpened()
                     end
                 end
             end
+        end
             
     
-            if #self.lootTable > 0 and not self.running then
-                if self.db.profile.autoStart and AddOn:GetCandidate(AddOn.playerName) then
-                    self:StartSession()
-                else
-                    AddOn:CallModule(LS:GetName())
-                    LS:Show(self.lootTable)
-                end
+        if #self.lootTable > 0 and not self.running then
+            if self.db.profile.autoStart and AddOn:GetCandidate(AddOn.playerName) then
+                self:StartSession()
+            else
+                AddOn:CallModule(LS:GetName())
+                LS:Show(self.lootTable)
             end
         end
     end
 end
 
 function ML:OnLootOpen()
+    Logging:Debug("OnLootOpen(%s)", tostring(AddOn.handleLoot))
+    
     if AddOn.handleLoot then
         wipe(self.lootQueue)
         if not InCombatLockdown() then -- skip combat lock-down setting?

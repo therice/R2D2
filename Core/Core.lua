@@ -446,6 +446,7 @@ end
 
 -- Fired when a corpse is looted
 function AddOn:LootOpened(...)
+    Logging:Debug("LootOpened()")
     self.lootOpen = true
     if AddOn.isMasterLooter then
         for i =1, GetNumLootItems() do
@@ -466,6 +467,8 @@ function AddOn:LootOpened(...)
 end
 
 function AddOn:AddLootSlotInfo(i, ...)
+    Logging:Debug("AddLootSlotInfo(%d)", i)
+    
     local texture, name, quantity, currencyId, quality = GetLootSlotInfo(i)
     local guid = self:ExtractCreatureId(GetLootSourceInfo(i))
     
@@ -482,7 +485,7 @@ function AddOn:AddLootSlotInfo(i, ...)
                 quantity = quantity,
                 quality  = quality,
                 guid     = guid,
-                boss     = (GetUnitName("target")),
+                boss     = GetUnitName("target"),
                 autoloot = select(1, ...),
             }
         end
@@ -498,6 +501,7 @@ end
 -- Fired when a player ceases looting a corpse. Note that this will fire before the last
 -- CHAT_MSG_LOOT event for that loot
 function AddOn:LootClosed()
+    Logging:Debug("LootClosed()")
     self.lootOpen = false
 end
 
