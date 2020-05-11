@@ -12,7 +12,7 @@ local MIN_BUTTON_WIDTH = 40
 
 local awaitingRolls = {}
 local ROLL_TIMEOUT = 1.5
-local ROLL_SHOW_RESULT_TIME = 5
+local ROLL_SHOW_RESULT_TIME = 3
 
 local RANDOM_ROLL_PATTERN =
     _G.RANDOM_ROLL_RESULT:gsub("%(", "%%(")
@@ -206,12 +206,12 @@ function Loot:OnRoll(entry, button)
     if not item.isRoll then
         -- Only send minimum necessary data, because the information of currently equipped gear has been sent
         -- when we receive the loot table
-        local response = AddOn:GetResponse(item.typeCode or item.equipLoc, button)
-
         -- Logging:Trace("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
         for _, session in ipairs(item.sessions) do
             AddOn:SendResponse(C.group, session, button, item.note)
         end
+        
+        local response = AddOn:GetResponse(item.typeCode or item.equipLoc, button)
         AddOn:Print(format(L["response_to_item"], AddOn:GetItemTextWithCount(item.link, #item.sessions))
                 .. " : " .. (response and response.text or "???")
         )
@@ -275,7 +275,18 @@ do
                 Logging:Warn("EntryProto.Update() : No item provided")
                 return
             end
-
+    
+            if item ~= entry.item then
+                entry.noteEditbox:Hide()
+                entry.noteEditbox:SetText("")
+            end
+    
+            if item.isRoll then
+                entry.noteButton:Hide()
+            else
+                entry.noteButton:Show()
+            end
+            
             entry.item = item
             entry.itemText:SetText(
                     item.isRoll and (_G.ROLL .. ": ") or "" ..
@@ -289,8 +300,6 @@ do
             else
                 entry.noteButton:SetNormalTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Disabled")
             end
-
-            -- todo : implement timeouts via settings
             
             if AddOn:GetMasterLooterDbValue('timeout') then
                 entry.timeoutBar:SetMinMaxValues(0, AddOn:GetMasterLooterDbValue('timeout') or AddOn:MasterLooterModule():DbValue('timeout'))
