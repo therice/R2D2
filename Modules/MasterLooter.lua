@@ -848,6 +848,7 @@ ML.AwardReasons = {
 function ML:CanGiveLoot(slot, item, winner)
     local lootSlotInfo = AddOn:GetLootSlotInfo(slot)
     
+    Logging:Debug("CanGiveLoot(slot=%s) : item=%s, winner=%s", tostring(slot), tostring(item), tostring(winner))
     if not AddOn.lootOpen then
         return false, ML.AwardReasons.Failure.LootNotOpen
     elseif not lootSlotInfo or (not AddOn:ItemIsItem(lootSlotInfo.link, item)) then
@@ -855,6 +856,7 @@ function ML:CanGiveLoot(slot, item, winner)
     elseif lootSlotInfo.locked then
         return false, ML.AwardReasons.Failure.Locked
     elseif AddOn:UnitIsUnit(winner, "player") and not self:HaveFreeSpaceForItem(item.link) then
+        Logging:Debug("CanGiveLoot(winner=%s) : is winner=%s", tostring(winner), tostring(AddOn:UnitIsUnit(winner, "player")))
         return false, ML.AwardReasons.Failure.MLInventoryFull
     elseif AddOn:UnitIsUnit(winner, "player") then
         if lootSlotInfo.quality < GetLootThreshold() then
@@ -936,7 +938,7 @@ function ML:PrintLootError(cause, slot, item, winner)
 end
 
 local function AwardFailed(session, winner, status, callback, ...)
-    Logging:Debug("AwardFailed : %d, %s, %s, %s", session, winner, status. Util.Objects.ToString(callback))
+    Logging:Debug("AwardFailed : %d, %s, %s, %s", session, winner, status, Util.Objects.ToString(callback))
     AddOn:SendMessage(AddOn.Constants.Messages.AwardFailed, session, winner, status)
     if callback then
         callback(false, session, winner, status, ...)
@@ -1086,11 +1088,12 @@ function ML:Award(session, winner, response, reason, callback, ...)
     
     -- loot is open, make sure item didn't change
     if AddOn.lootOpen and not AddOn:ItemIsItem(itemEntry.link, GetLootSlotLink(itemEntry.lootSlot)) then
-        Logging:Debug("Award(%d) - Loot slot changed before award completed", session)
+        Logging:Debug("Award(%d) : Loot slot changed before award completed", session)
         self:UpdateLootSlots()
     end
     
     local canGiveLoot, cause = self:CanGiveLoot(itemEntry.lootSlot, itemEntry.link, winner or AddOn.playerName)
+    Logging:Debug("Award(%d) : canGiveLoot=%s, cause=%s", session, tostring(canGiveLoot), tostring(cause))
     if not canGiveLoot then
         if cause == ML.AwardReasons.Failure.QualityBelowThreshold or cause == ML.AwardReasons.Failure.NotBop then
             self:PrintLootError(cause, itemEntry.lootSlot, itemEntry.link, winner or AddOn.playerName)
@@ -1147,7 +1150,7 @@ local function OnGiveLootTimeout(entry)
     
     if entry.callback then
         -- loot attempt failed
-        entry.callback(false, ML.AwardReasons.Failure.Timeout, unpack(entry.cargs))
+        entry.callback(false, ML.AwardReasons.Failure.Timeout, unpack(entry.args))
     end
 end
 
@@ -1160,7 +1163,7 @@ function ML:GiveLoot(slot, winner, callback, ...)
         Util.Tables.Push(self.lootQueue, entry)
     
         for i = 1, MAX_RAID_MEMBERS do
-            if AddOn.UnitIsUnit(GetMasterLootCandidate(slot, i), winner) then
+            if AddOn:UnitIsUnit(GetMasterLootCandidate(slot, i), winner) then
                 Logging:Debug("GiveLoot(%d, %d)", slot, i)
                 GiveMasterLoot(slot, i)
                 break
@@ -1564,7 +1567,7 @@ function ML:LootOpened()
             
     
         if #self.lootTable > 0 and not self.running then
-            if self.db.profile.autoStart and AddOn:GetCandidate(AddOn.playerName) then
+            if self.db.profile.autoStart and self:GetCandidate(AddOn.playerName) then
                 self:StartSession()
             else
                 AddOn:CallModule(LS:GetName())
