@@ -415,7 +415,7 @@ function AddOn:OnEvent(event, ...)
         if loot and not loot.isLooted then
             local link =  loot.link
             local quality = loot.quality
-            Logging:Debug("LootSlotCleared : %d, %s, %s", slot, link, quality)
+            Logging:Debug("LootSlotCleared : slot=%s, link=%s, quality=%s", tostring(slot), tostring(link), tostring(quality))
             -- no-op for now
             if quality and quality >= GetLootThreshold() and IsInInstance() then end
             loot.isLooted = true
@@ -475,9 +475,9 @@ function AddOn:AddLootSlotInfo(i, ...)
     if texture then
         local link = GetLootSlotLink(i)
         if currencyId then
-            Logging:Debug("LootOpened() : ignoring %s as it's a currency", link)
+            Logging:Debug("LootOpened() : ignoring %s as it's a currency", tostring(link))
         elseif not self:IsItemBlacklisted(link) then
-            Logging:Debug("LootOpened() : adding %s (%d) from %s to Loot Slot Info", link, i, guid)
+            Logging:Debug("LootOpened() : adding %s (%s) from %s to Loot Slot Info", tostring(link), tostring(i), tostring(guid))
             -- todo : make the entry a a class
             self.lootSlotInfo[i] = {
                 name     = name,

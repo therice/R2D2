@@ -139,14 +139,14 @@ function Item:GetGp(awardReason)
     end
     
     local awardGp
-    if awardReason then
+    if self.gp and awardReason then
         local awardScale = AddOn:GearPointsModule():GetAwardScale(awardReason)
         if awardScale then
             awardGp = math.floor(self.gp * awardScale)
         end
     end
     
-    return self.gp, awardGp
+    return self.gp or 0, awardGp or 0
 end
 
 --[[
