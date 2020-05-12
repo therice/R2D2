@@ -206,15 +206,20 @@ function Loot:OnRoll(entry, button)
     if not item.isRoll then
         -- Only send minimum necessary data, because the information of currently equipped gear has been sent
         -- when we receive the loot table
+        
         -- Logging:Trace("OnRoll(%s) : %s", tostring(button), response and Util.Objects.ToString(response) or 'nil')
         for _, session in ipairs(item.sessions) do
             AddOn:SendResponse(C.group, session, button, item.note)
         end
         
+        
         local response = AddOn:GetResponse(item.typeCode or item.equipLoc, button)
+        local me = AddOn:PointsModule().GetEntry(AddOn.playerName)
         AddOn:Print(format(L["response_to_item"], AddOn:GetItemTextWithCount(item.link, #item.sessions))
                 .. " : " .. (response and response.text or "???")
+                .. format(" (PR %.2f)", (me and me:GetPR() or 0.0))
         )
+        
         item.rolled = true
         self.EntryManager:Trash(entry)
         self:Update()

@@ -86,6 +86,7 @@ function Points:OnInitialize()
     GuildStorage.RegisterCallback(self, GuildStorage.Events.GuildMemberDeleted, "MemberDeleted")
     GuildStorage.RegisterCallback(self, GuildStorage.Events.StateChanged, "DataChanged")
     GuildStorage.RegisterCallback(self, GuildStorage.Events.Initialized, "DataChanged")
+    self.updateHandler = AddOn.CreateUpdateHandler(function() Points:Update() end, MIN_UPDATE_INTERVAL)
 end
 
 function Points:OnEnable()
@@ -94,13 +95,14 @@ function Points:OnEnable()
     self.adjustFrame = self:GetAdjustFrame()
     self.decayFrame = self:GetDecayFrame()
     self:BuildData()
-    self.updateHandler = AddOn.CreateUpdateHandler(function() Points:Update() end, MIN_UPDATE_INTERVAL)
+    self.updateHandler:Start()
     self:Show()
 end
 
 function Points:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
     self:Hide()
+    self.updateHandler:Stop()
 end
 
 function Points:EnableOnStartup()
@@ -213,7 +215,7 @@ function Points:Adjust(award)
             -- don't apply to actual officer notes in test mode
             -- it will also fail if we cannot edit officer notes
             if (not AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) and CanEditOfficerNote() then
-                -- todo : don't forget to uncomment actual persistenct in LibGuildStorage-1.3.lua
+                -- todo : don't forget to uncomment actual persistence in LibGuildStorage-1.3.lua
                 -- todo : we probably need to see if this is successful, otherwise could be lost
                 GuildStorage:SetOfficeNote(subject, target:ToNote())
             end
@@ -222,7 +224,7 @@ function Points:Adjust(award)
         end
     end
     
-    -- we just adjust something for someone, so rebuild the data if needed
+    -- we just adjusted something for someone, so rebuild the data if needed
     if self.frame and self.frame:IsVisible() then
         self:BuildData()
     end
@@ -287,7 +289,6 @@ function Points:BuildData()
     pendingUpdate = false
 end
 
--- todo : this function could be revisited
 function Points:Update(forceUpdate)
     -- Logging:Debug("Update(%s)", tostring(forceUpdate or false))
     -- if module isn't enabled, no need to perform update

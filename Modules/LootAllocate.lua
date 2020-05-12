@@ -284,6 +284,28 @@ function LootAllocate:CandidateCheck()
     end
 end
 
+function LootAllocate:AnnounceResponse(session, name)
+    local userResponse = LootAllocate.GetLootTableEntryResponse(session, name)
+    if userResponse and tonumber(userResponse.response) ~= nil then
+        local entry = LootAllocate.GetLootTableEntry(session)
+        local pointRecord = AddOn:PointsModule().GetEntry(name)
+        local response = AddOn:GetResponse(entry.typeCode or entry.equipLoc, userResponse.response)
+        local baseGp, awardGp = entry:GetGp(response.award_scale)
+        
+        -- L["response_to_item_detailed"] = "%s (PR %.2f) specified %s for %s (GP %d/%d)"
+        local announcement = format(L["response_to_item_detailed"],
+                                    AddOn.Ambiguate(name),
+                                    (pointRecord and pointRecord:GetPR() or 0.0),
+                                    (response and response.text or "???"),
+                                    entry.link,
+                                    awardGp and awardGp or baseGp,
+                                    baseGp
+        )
+        
+        AddOn:SendAnnouncement(announcement, AddOn.Constants.group)
+    end
+end
+
 function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
     Logging:Trace("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
     Logging:Trace("OnCommReceived() : %s", serializedMsg)
@@ -367,6 +389,11 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                     self:SetCandidateData(session, name, key, value)
                 end
                 self:Update()
+    
+                -- Annouce the response
+                if AddOn.isMasterLooter then
+                    self:AnnounceResponse(session, name)
+                end
             elseif command == C.Commands.Rolls then
                 if fromMl then
                     local session, table = unpack(data)
