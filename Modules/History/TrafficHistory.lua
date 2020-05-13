@@ -13,7 +13,7 @@ local Traffic = Models.History.Traffic
 local CDB = Models.CompressedDb
 local ST = AddOn.Libs.ScrollingTable
 local ItemUtil = AddOn.Libs.ItemUtil
-
+local Dialog = AddOn.Libs.Dialog
 
 TrafficHistory.options = {
     name = L["traffic_history"],
@@ -40,7 +40,7 @@ TrafficHistory.defaults = {
 
 local ROW_HEIGHT, NUM_ROWS = 20, 15
 local SubjectTypesForDisplay, ActionTypesForDisplay, ResourceTypesForDisplay = {}, {}, {}
-local FilterMenu
+local FilterMenu, MenuFrame
 local selectedDate, selectedName, selectedAction, selectedResource
 local stats = {stale = true, value = nil}
 
@@ -137,7 +137,9 @@ function TrafficHistory:OnInitialize()
     self.db = AddOn.Libs.AceDB:New('R2D2_TrafficDB', TrafficHistory.defaults)
     -- todo : this needs an additional qualifier (possibly guild or player), as it groups everything into one table
     self.history = CDB(self.db.factionrealm)
+    MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.TrafficHistoryRightClick, UIParent)
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.TrafficHistoryFilter, UIParent)
+    MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
 end
 
@@ -400,7 +402,10 @@ function TrafficHistory:GetFrame()
     st:RegisterEvents({
                           ["OnClick"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                               if row then
-                                  if button == "LeftButton" then
+                                  if button == "RightButton" and data[realrow].entry.subjectType == Award.SubjectType.Character then
+                                      MenuFrame.entry = data[realrow].entry
+                                      MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0)
+                                  elseif button == "LeftButton" then
                                       self:UpdateMoreInfo(self:GetName(), f, realrow, data)
                                   end
                               end
@@ -634,6 +639,46 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
     tip:Show()
     tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
 end
+
+TrafficHistory.RightClickEntries = {
+    -- level 1
+    {
+        -- 1 Title, player name
+        {
+            text = function(_, entry)
+                -- will only be called for an individual character, we filter out other subjects in frame
+                local subject = entry.subjects[1]
+                return format("%s - %s",
+                              UI.ColoredDecorator(AddOn.GetClassColor(subject[2]):GetRGB()):decorate(subject[1]),
+                              entry:FormattedTimestamp()
+                )
+            end,
+            isTitle = true,
+            notCheckable = true,
+            disabled = true,
+        },
+        -- 2 Spacer
+        {
+            text = "",
+            notCheckable = true,
+            disabled = true,
+        },
+        -- 3 Revert
+        {
+            text = "Revert",
+            value = "REVERT",
+            notCheckable = true,
+            func = function(_, entry)
+                Dialog:Spawn(AddOn.Constants.Popups.ConfirmRevert, entry)
+            end,
+        },
+    },
+}
+
+TrafficHistory.RightClickMenu = UI.RightClickMenu(
+        function() return AddOn:DevModeEnabled() or CanEditOfficerNote() end,
+        TrafficHistory.RightClickEntries
+)
 
 
 local function SelectionFilter(entry)

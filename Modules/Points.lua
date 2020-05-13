@@ -158,6 +158,29 @@ function Points:DataChanged(event, state)
     end
 end
 
+function Points:RevertAdjust(entry)
+    if entry.subjectType ~= Award.SubjectType.Character then
+        error("Unsupported subject type for reverting an award : " .. Award.TypeIdToSubject[entry.subjectType])
+    end
+    
+    if not Objects.In(entry.actionType, Award.ActionType.Add, Award.ActionType.Subtract) then
+        error("Unsupported resource type for reverting an award : " .. Award.TypeIdToAction[entry.actionType])
+    end
+    
+    local award = Award(entry)
+    if award.actionType == Award.ActionType.Add then
+        award.actionType = Award.ActionType.Subtract
+    elseif award.actionType == Award.ActionType.Subtract then
+        award.actionType = Award.ActionType.Add
+    end
+    
+    -- nil out item, this is a revert so no associated loot history record
+    award.item = nil
+    award.description = "Revert '" .. entry.description .. "'"
+    
+    Points:Adjust(award)
+end
+
 function Points:Adjust(award)
     -- Logging:Debug("%s", Objects.ToString(award:toTable()))
     
@@ -718,7 +741,38 @@ end
 function Points.DecayOnClickNo(frame, awards)
     -- intentional no-op
 end
+
+
+function Points.RevertOnShow(frame, entry)
+    UI.DecoratePopup(frame)
     
+    local decoratedText
+    
+    if entry.subjectType == Award.SubjectType.Character then
+        local subject = entry.subjects[1]
+        local c = AddOn.GetClassColor(subject[2])
+        decoratedText = UI.ColoredDecorator(c.r, c.g, c.b):decorate(subject[1])
+    end
+    
+    frame.text:SetText(
+            format(L["confirm_revert"],
+                   Award.TypeIdToAction[entry.actionType]:lower(),
+                   entry.resourceQuantity,
+                   Award.TypeIdToResource[entry.resourceType]:upper(),
+                   entry.actionType == Award.ActionType.Add and "to" or "from",
+                   decoratedText
+            )
+    )
+end
+
+function Points.RevertOnClickYes(frame, entry, ...)
+    Points:RevertAdjust(entry)
+end
+
+function Points.RevertOnClickNo(frame, entry)
+    -- intentional no-op
+end
+
 local AdjustLevel = Class('AdjustLevel')
 local DynamicAdjustLevel = Class('DynamicAdjustLevel', AdjustLevel)
 local StaticAdjustLevel = Class('StaticAdjustLevel', AdjustLevel)
