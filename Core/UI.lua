@@ -124,7 +124,6 @@ end
 
 function UpdateHandler:OnUpdate(elapsed)
     self.elapsed = self.elapsed + elapsed
-    
     -- Logging:Debug("OnUpdate(%.2f) : elapsed=%.2f, interval=%.2f, pending=%s", elapsed, self.elapsed, self.interval, tostring(self.pending))
     if self.pending and self.elapsed > self.interval then
         self.callback()
@@ -132,7 +131,11 @@ function UpdateHandler:OnUpdate(elapsed)
     end
 end
 
-function UpdateHandler:Dispose()
+function UpdateHandler:Start()
+    self.frame:Show()
+end
+
+function UpdateHandler:Stop()
     self.frame:Hide()
 end
 
@@ -148,17 +151,16 @@ end
 
 function AddOn.CreateUpdateHandler(callback, updateInterval)
     local entry = UpdateHandler(callback, updateInterval)
-    entry.frame:SetScript("OnUpdate", function(self, elapsed) entry:OnUpdate(elapsed) end)
-    entry.frame:Show()
+    -- OnUpdate is not called on any hidden frames, only while they are shown on-screen.
+    entry.frame:SetScript("OnUpdate", function(_, elapsed) entry:OnUpdate(elapsed) end)
+    entry:Stop()
     return entry
 end
 
 function AddOn.SetCellClassIcon(rowFrame, frame, data, cols, row, realrow, column, fShow, table, class)
     local celldata = data and (data[realrow].cols and data[realrow].cols[column] or data[realrow][column])
     class = celldata and celldata.args and celldata.args[1] or class
-    
     --Logging:Debug("SetCellClassIcon(%s)", tostring(class))
-    
     if class then
         local coords = CLASS_ICON_TCOORDS[class]
         if coords then

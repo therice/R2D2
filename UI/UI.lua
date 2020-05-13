@@ -116,18 +116,19 @@ function UI.RightClickMenu(predicate, entries, callback)
         
         local info = MSA_DropDownMenu_CreateInfo()
         local candidateName = menu.name
+        local el = menu.entry
         local value = _G.MSA_DROPDOWNMENU_MENU_VALUE
         
         for _, entry in ipairs(entries[level]) do
             info = MSA_DropDownMenu_CreateInfo()
             if not entry.special then
-                if not entry.onValue or entry.onValue == value or (Util.Objects.IsFunction(entry.onValue) and entry.onValue(candidateName)) then
-                    if (entry.hidden and Util.Objects.IsFunction(entry.hidden) and not entry.hidden(candidateName)) or not entry.hidden then
+                if not entry.onValue or entry.onValue == value or (Util.Objects.IsFunction(entry.onValue) and entry.onValue(candidateName, el)) then
+                    if (entry.hidden and Util.Objects.IsFunction(entry.hidden) and not entry.hidden(candidateName, el)) or not entry.hidden then
                         for name, val in pairs(entry) do
                             if name == "func" then
-                                info[name] = function() return val(candidateName) end
+                                info[name] = function() return val(candidateName, el) end
                             elseif Util.Objects.IsFunction(val) then
-                                info[name] = val(candidateName)
+                                info[name] = val(candidateName, el)
                             else
                                 info[name] = val
                             end

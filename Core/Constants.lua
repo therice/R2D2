@@ -57,14 +57,15 @@ AddOn.Constants = {
     },
 
     DropDowns = {
-        AllocateRightClick    = name .. "_Allocate_RightClick",
-        AllocateFilter        = name .. "_Allocate_Filter",
-        LootHistoryRightClick = name .. "_LH_RightClick",
-        LootHistoryFilter     = name .. "_LH_Filter",
-        PointsRightClick      = name .. "_Points_RightClick",
-        PointsFilter          = name .. "_Points_Filter",
-        StandbyRightClick     = name .. "_Standby_RightClick",
-        TrafficHistoryFilter  = name .. "_TH_Filter",
+        AllocateRightClick       = name .. "_Allocate_RightClick",
+        AllocateFilter           = name .. "_Allocate_Filter",
+        LootHistoryRightClick    = name .. "_LH_RightClick",
+        LootHistoryFilter        = name .. "_LH_Filter",
+        PointsRightClick         = name .. "_Points_RightClick",
+        PointsFilter             = name .. "_Points_Filter",
+        StandbyRightClick        = name .. "_Standby_RightClick",
+        TrafficHistoryFilter     = name .. "_TH_Filter",
+        TrafficHistoryRightClick = name .. "_TH__RightClick",
     },
 
     Events = {
@@ -110,6 +111,7 @@ AddOn.Constants = {
         ConfirmAward            =   name .. "_ConfirmAward",
         ConfirmDecayPoints      =   name .. "_ConfirmDecayPoints",
         ConfirmReannounceItems  =   name .. "_ConfirmReannounceItems",
+        ConfirmRevert           =   name .. "_ConfirmRevert",
         ConfirmUsage            =   name .. "_ConfirmUsage",
     },
 

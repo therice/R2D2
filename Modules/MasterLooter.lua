@@ -46,7 +46,7 @@ ML.defaults = {
         -- the prefix/preamble to use for announcing items
         announceItemPrefix = "Items under consideration:",
         -- where items are announced, channel + message
-        announceItemText = { channel = "group", text = "&s: &i"},
+        announceItemText = { channel = "group", text = "&s: &i (&g GP)"},
         
         buttons = {
             -- dynamically constructed in the do/end loop below
@@ -82,6 +82,7 @@ ML.defaults = {
                                     { color = {1,0.5,0,1},	    sort = 2,	text = L["os_greed"], },        [2]
                                     { color = {0,0.7,0.7,1},    sort = 3,	text = L["minor_upgrade"], },   [3]
                                     { color = {1,0.5,0,1},	    sort = 4,	text = L["pvp"], },             [4]
+                                    { color = {1,0.5,0,1},	    sort = 4,	text = L["pvp"], },             [4]
                 --]]
             }
         }
@@ -108,6 +109,7 @@ ML.AnnounceItemStringsDesc = {
     L["announce_&l_desc"],
     L["announce_&t_desc"],
     L["announce_&o_desc"],
+    L["announce_&g_desc"],
 }
 
 -- these are the options displayed in configuration UI (probably want to move this out of the module into
@@ -361,8 +363,6 @@ do
         Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award], award_scale=award})
         index = index + 1
     end
-    
-   
 end
 
 -- sets up configuration options that rely upon DB settings
@@ -424,7 +424,7 @@ end
 function ML:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), ML.defaults)
-    -- setup the addiitonal configuraiton options once DB has been established
+    -- setup the additional configuration options once DB has been established
     ConfigureOptionsFromDb(self.db.profile)
     
     -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(self.db.namespaces, 2))
@@ -472,7 +472,7 @@ end
 function ML:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     -- mapping of candidateName = { class, role, rank }
-    -- entrie will be of type Candidate.Candidate
+    -- entries will be of type Candidate.Candidate
     self.candidates = {}
     -- the master looter's loot table (entries will be of type Item.ItemEntry)
     self.lootTable = {}
@@ -715,7 +715,7 @@ function ML:NewMasterLooter(ml)
     Logging:Debug("NewMasterLooter(%s)", ml)
     local C = AddOn.Constants
     -- Are we are the the ML?
-    if AddOn:UnitIsUnit(ml,C.player) then
+    if AddOn:UnitIsUnit(ml, C.player) then
         AddOn:SendCommand(C.group, C.Commands.PlayerInfoRequest)
         self:UpdateDb()
         self:UpdateCandidates(true)
@@ -1143,9 +1143,7 @@ end
 local function OnGiveLootTimeout(entry)
     -- remove entry from queue
     for k, v in pairs(ML.lootQueue) do
-        if v == entry then
-            tremove(ML.lootQueue, k)
-        end
+        if v == entry then tremove(ML.lootQueue, k) end
     end
     
     if entry.callback then
@@ -1241,19 +1239,24 @@ ML.AnnounceItemStrings = {
     ["&s"] = function(ses) return ses end,
     ["&i"] = function(...) return select(2,...) end,
     ["&l"] = function(_, item)
-        local t = ML:GetItemInfo(item)
-        return t and t:GetLevelText() or "" end,
+        local i = ML:GetItemInfo(item)
+        return i and i:GetLevelText() or "" end,
     ["&t"] = function(_, item)
-        local t = ML:GetItemInfo(item)
-        return t and t:GetTypeText() or "" end,
+        local i = ML:GetItemInfo(item)
+        return i and i:GetTypeText() or "" end,
     ["&o"] = function(_,_,v) return v.owner and AddOn.Ambiguate(v.owner) or "" end,
+    ["&g"] = function(_, item)
+        local i = ML:GetItemInfo(item)
+        local gp, _ = i:GetGp(nil)
+        return tostring(gp)
+    end,
 }
 
 function ML:AnnounceItems(table)
     if not self.db.profile.announceItems then return end
     Logging:Trace("AnnounceItems()")
     
-    local channel, text = self.db.profile.announceItemText.channel,self.db.profile.announceItemText.text
+    local channel, text = self.db.profile.announceItemText.channel, self.db.profile.announceItemText.text
     AddOn:SendAnnouncement(self.db.profile.announceItemPrefix, channel)
     Util.Tables.Iter(table,
                      function(v, i)
@@ -1321,6 +1324,7 @@ function ML:AnnounceAward(name, link, response, roll, session, changeAward, owne
         AddOn:SendAnnouncement(message, awardText.channel)
     end
 end
+
 
 function ML:StartSession()
     Logging:Debug("StartSession()")
