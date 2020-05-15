@@ -102,7 +102,10 @@ function R2D2:OnEnable()
     Logging:Debug("OnEnable(%s) : '%s', '%s'", self:GetName(), UnitName("player"), tostring(self.version))
     
     --@debug@
+    -- this enables certain code paths that wouldn't otherwise be available in normal usage
     self.mode:Enable(R2D2.Constants.Modes.Develop)
+    -- this enables flag for persistence of points to officer's notes (safety net)
+    self.mode:Enable(R2D2.Constants.Modes.Persistence)
     --@end-debug@
     
     for name, module in self:IterateModules() do
@@ -182,6 +185,10 @@ end
 
 function R2D2:DevModeEnabled()
     return self.mode:Enabled(AddOn.Constants.Modes.Develop)
+end
+
+function R2D2:PersistenceModeEnabled()
+    return self.mode:Enabled(AddOn.Constants.Modes.Persistence)
 end
 
 function R2D2:SessionError(...)
@@ -272,6 +279,15 @@ function R2D2:ChatCommand(msg)
             self.mode:Enable(flag)
         end
         self:Print("Development Mode = " .. tostring(self:DevModeEnabled()))
+    -- 'pm' == persitence mode (which coresponds to persisting changes to officer's notes for EPGP)
+    elseif cmd == 'pm' then
+        local flag = R2D2.Constants.Modes.Persistence
+        if self.mode:Enabled(flag) then
+            self.mode:Disable(flag)
+        else
+            self.mode:Enable(flag)
+        end
+        self:Print("Persistence Mode = " .. tostring(self:PersistenceModeEnabled()))
     else
         self:Help()
     end
