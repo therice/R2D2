@@ -47,6 +47,10 @@ ML.defaults = {
         announceItemPrefix = "Items under consideration:",
         -- where items are announced, channel + message
         announceItemText = { channel = "group", text = "&s: &i (&g GP)"},
+        -- are player's responses to items announced via specified channel
+        announceResponses = true,
+        -- where player's responses to items are announced, channel + message
+        announceResponseText = { channel = "group", text = L["response_to_item_detailed"]},
         
         buttons = {
             -- dynamically constructed in the do/end loop below
@@ -283,6 +287,43 @@ ML.options = {
                                     hidden = function() return not ML.db.profile.announceItems end,
                                 }
                         ),
+                    }
+                },
+                responses = {
+                    order =32,
+                    name = L["responses"],
+                    type = 'group',
+                    inline = true,
+                    args = {
+                        announceResponses = COpts.Toggle(L["announce_responses"], 1, L["announce_responses_desc"], false , {width='full'}),
+                        description = COpts.Description(
+                                L["announce_responses_desc_details"], "medium", 2,
+                                {
+                                    hidden = function() return not ML.db.profile.announceResponses end
+                                }
+                        ),
+                        announceResponsesChannel = {
+                            order = 3,
+                            name = L["channel"],
+                            desc = L["channel_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            values = {
+                                NONE         = _G.NONE,
+                                SAY          = _G.CHAT_MSG_SAY,
+                                YELL         = _G.CHAT_MSG_YELL,
+                                PARTY        = _G.CHAT_MSG_PARTY,
+                                GUILD        = _G.CHAT_MSG_GUILD,
+                                OFFICER      = _G.CHAT_MSG_OFFICER,
+                                RAID         = _G.CHAT_MSG_RAID,
+                                RAID_WARNING = _G.CHAT_MSG_RAID_WARNING,
+                                group        = _G.GROUP,
+                                chat         = L["chat"],
+                            },
+                            get = function() return ML.db.profile.announceResponseText.channel end,
+                            set = function(_, v)  ML.db.profile.announceResponseText.channel = v end,
+                            hidden = function() return not ML.db.profile.announceResponses end,
+                        },
                     }
                 }
             }

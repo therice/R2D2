@@ -3,6 +3,7 @@ local Dialog = AddOn.Libs.Dialog
 local Logging = AddOn.Libs.Logging
 local L = AddOn.components.Locale
 local UI = AddOn.components.UI
+local Util = AddOn.Libs.Util
 
 Dialog:Register(AddOn.Constants.Popups.ConfirmUsage, {
     text = L["confirm_usage_text"],
@@ -72,10 +73,11 @@ Dialog:Register(AddOn.Constants.Popups.ConfirmReannounceItems, {
     text = "something_went_wrong",
     on_show = function(self, data)
         UI.DecoratePopup(self)
+        
         if data.isRoll then
-            self.text:SetText(format(L["confirm_rolls"], data.text))
+            self.text:SetText(format(L["confirm_rolls"], data.target))
         else
-            self.text:SetText(format(L["confirm_unawarded"], data.text))
+            self.text:SetText(format(L["confirm_unawarded"], data.target))
         end
     end,
     buttons = {

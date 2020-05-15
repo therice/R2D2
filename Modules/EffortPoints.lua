@@ -176,6 +176,10 @@ function EP:OnEnable()
 end
 
 function EP:OnEncounterEnd(encounter)
+    if not encounter then
+        Logging:Warn("EP:OnEncounterEnd() : No encounter provided")
+        return
+    end
     -- (1) lookup associated EP for encounter
     -- (2) scale based upon victory/defeat
     -- (3) award to current members of raid
@@ -229,9 +233,9 @@ function EP:OnEncounterEnd(encounter)
                 AddOn:PointsModule():Adjust(award)
             end
         else
-            Logging:Warn("OnEncounterEnd(%s) : No EP value found for Creature Id %d", encounter:toTable(), creatureId)
+            Logging:Warn("OnEncounterEnd(%s) : No EP value found for Creature Id %d", Util.Objects.ToString(encounter:toTable()), creatureId)
         end
     else
-        Logging:Warn("OnEncounterEnd(%s) : No Creature Id found for Encounter", encounter:toTable())
+        Logging:Warn("OnEncounterEnd(%s) : No Creature Id found for Encounter",  Util.Objects.ToString(encounter:toTable()))
     end
 end
