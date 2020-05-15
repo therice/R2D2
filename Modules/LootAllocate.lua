@@ -319,7 +319,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
     
     local C = AddOn.Constants
     if prefix == C.name then
-        local success, command, data = AddOn:Deserialize(serializedMsg)
+        local success, command, data = AddOn:ProcessReceived(serializedMsg)
         local fromMl = AddOn:UnitIsUnit(sender, AddOn.masterLooter)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, fromMl=%s, data=%s,",
                       tostring(success), command, tostring(sender), tostring(dist),

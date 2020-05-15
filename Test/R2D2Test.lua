@@ -44,6 +44,20 @@ describe("R2D2", function()
             )
             print(R2D2.Libs.Util.Objects.ToString(scrubbed, 10))
         end)
+        it("handles data send/receipt", function()
+    
+            for _, m in ipairs({'ABABAB', '12345678901234567890123456789012345678901234567890', "{2, {a = {boe = false, subType = One-Handed Swords, link = |cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r, equipLoc = INVTYPE_WEAPON, id = 18832, typeId = 2, ilvl = 70, texture = 135313, quality = 4, type = Weapon, subTypeId = 7, classes = 4294967295}, d = {z = {boe = false, subType = One-Handed Swords, link = |cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r, equipLoc = INVTYPE_WEAPON, id = 18832, typeId = 2, ilvl = 70, texture = 135313, quality = 4, type = Weapon, subTypeId = 7, classes = 4294967295}, x = {boe = false, subType = One-Handed Swords, link = |cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r, equipLoc = INVTYPE_WEAPON, id = 18832, typeId = 2, ilvl = 70, texture = 135313, quality = 4, type = Weapon, subTypeId = 7, classes = 4294967295}}, c = {boe = false, subType = One-Handed Swords, link = |cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r, equipLoc = INVTYPE_WEAPON, id = 18832, typeId = 2, ilvl = 70, texture = 135313, quality = 4, type = Weapon, subTypeId = 7, classes = 4294967295}, b = {boe = false, subType = One-Handed Swords, link = |cff9d9d9d|Hitem:18832:2564:0:0:0:0:0:0:80:0:0:0:0|h[Brutality Blade]|h|r, equipLoc = INVTYPE_WEAPON, id = 18832, typeId = 2, ilvl = 70, texture = 135313, quality = 4, type = Weapon, subTypeId = 7, classes = 4294967295}}}"}) do
+                local new = R2D2:PrepareForSend("Test", m)
+                local old = R2D2:Serialize("Test", R2D2.ScrubData(m))
+                
+                local r = { R2D2:ProcessReceived(new) }
+                print("#1 " .. R2D2.Libs.Util.Objects.ToString(r))
+                r = { R2D2:ProcessReceived(old)}
+                print("#2 " .. R2D2.Libs.Util.Objects.ToString(r))
+                r = {R2D2:Deserialize(new)}
+                print("#3 " .. R2D2.Libs.Util.Objects.ToString(r))
+            end
+        end)
     end)
     describe("Mode", function()
         it("works as expected", function()
@@ -72,4 +86,3 @@ describe("R2D2", function()
         end)
     end)
 end)
-
