@@ -144,15 +144,19 @@ function lib:SetOfficeNote(name, note)
     local entry = self:GetMember(name)
     if entry then
         if entry:HasPendingOfficerNote() then
+            Logging:Warn("SetOfficeNote() : Pending officer note update for %s", name)
             DEFAULT_CHAT_FRAME:AddMessage(
                     format(MAJOR_VERSION .. " : ignoring attempt to set officer note before persisting pending officer note for %s", name)
             )
         else
+            Logging:Trace("SetOfficeNote() : Officer note for %s set to %s", name, note)
             entry.pendingOfficerNote = note
             SetState(States.PendingChanges)
         end
         
         return entry.pendingOfficerNote
+    else
+        Logging:Warn("SetOfficeNote() : Could not set officer not for %s", name)
     end
 end
 
@@ -272,8 +276,8 @@ local function OnUpdate()
             end
     
             if entry:HasPendingOfficerNote() then
-                -- todo : uncomment when ready
-                -- GuildRosterSetOfficerNote(i, entry.pendingOfficerNote)
+                Logging:Trace("Writing note '%s' for '%s'", entry.pendingOfficerNote, entry.name)
+                GuildRosterSetOfficerNote(i, entry.pendingOfficerNote)
                 entry.pendingOfficerNote = nil
             end
         end

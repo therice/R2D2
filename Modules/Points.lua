@@ -206,14 +206,14 @@ function Points:Adjust(award)
                 action == Award.ActionType.Reset and reset or
                 action == Award.ActionType.Decay and decay or
                 nil -- intentional to find missing cases
-   
+            
         local function ep(amt) target.ep = oper(target.ep, amt) end
         local function gp(amt) target.gp = oper(target.gp, amt) end
         local targetFn =
                 type == Award.ResourceType.Ep and ep or
                 type == Award.ResourceType.Gp and gp or
                 nil -- intentional to find missing cases
-    
+        
         targetFn(amount)
     end
     
@@ -231,21 +231,31 @@ function Points:Adjust(award)
     AddOn:TrafficHistoryModule():CreateFromAward(award, lhEntry)
     
     -- subject is a tuple of (name, class)
+    local updates = false
     for _, subject in pairs(award.subjects) do
         local target = GetEntry(subject[1])
         if target then
             apply(target, award.actionType, award.resourceType, award.resourceQuantity)
             -- don't apply to actual officer notes in test mode
             -- it will also fail if we cannot edit officer notes
-            if (not AddOn:TestModeEnabled() and not AddOn:DevModeEnabled()) and CanEditOfficerNote() then
-                -- todo : don't forget to uncomment actual persistence in LibGuildStorage-1.3.lua
+            if (not AddOn:TestModeEnabled() and AddOn:PersistenceModeEnabled()) and CanEditOfficerNote() then
                 -- todo : we probably need to see if this is successful, otherwise could be lost
-                GuildStorage:SetOfficeNote(subject, target:ToNote())
+                GuildStorage:SetOfficeNote(target.name, target:ToNote())
+                updates = true
+            else
+                Logging:Debug("Points:Adjust() : Skipping adjustment of EPGP for '%s'", target.name)
             end
         else
             Logging:Warn("Could not locate %s for applying %s. Possibly not in guild?", subject[1], Objects.ToString(award:toTable()))
         end
     end
+    
+    -- trigger the updated notes to be written, not sure if better way
+    if updates then GuildRoster() end
+    
+    -- announce what was done
+    local check, _ = pcall(function() AddOn:SendAnnouncement(award:ToAnnouncement(), AddOn.Constants.group) end)
+    if not check then Logging:Warn("Award() : Unable to announce adjustment") end
     
     -- we just adjusted something for someone, so rebuild the data if needed
     if self.frame and self.frame:IsVisible() then
