@@ -396,7 +396,7 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                     self:SetCandidateData(session, name, key, value)
                 end
                 self:Update()
-                
+
                 -- Announce the response, this is relevant when run via Master Looter
                 self:AnnounceResponse(session, name)
             elseif command == C.Commands.Rolls then

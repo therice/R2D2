@@ -256,7 +256,7 @@ function Points:Adjust(award)
     -- announce what was done
     local check, _ = pcall(function() AddOn:SendAnnouncement(award:ToAnnouncement(), AddOn.Constants.group) end)
     if not check then Logging:Warn("Award() : Unable to announce adjustment") end
-    
+
     -- we just adjusted something for someone, so rebuild the data if needed
     if self.frame and self.frame:IsVisible() then
         self:BuildData()
