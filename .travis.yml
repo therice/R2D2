@@ -10,6 +10,8 @@ install:
   - luarocks install --local luacheck
   - luarocks install --local luafilesystem
   - luarocks install --local busted
+  - luarocks install xml2lua
+  - luarocks install penlight
 
 before_script:
   - /home/travis/.luarocks/bin/luacheck . --no-color -q
