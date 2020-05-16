@@ -12,6 +12,7 @@ install:
   - luarocks install --local busted
   - luarocks install --local xml2lua
   - luarocks install --local penlight
+  - luarocks install --local bit32
 
 before_script:
   - /home/travis/.luarocks/bin/luacheck . --no-color -q

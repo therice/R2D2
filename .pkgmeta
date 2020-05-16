@@ -8,3 +8,4 @@ ignore:
   - .luacheckrc
   - .pkgmeta
   - .travis.yml
+  - .busted
