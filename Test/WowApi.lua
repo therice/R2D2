@@ -721,6 +721,7 @@ function Minimap:HookScript(event, fn)
 
 end
 
+bit = bit32
 _G.bit = bit32
 
 _G.tInvert = function(tbl)
