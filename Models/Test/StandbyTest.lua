@@ -4,7 +4,7 @@ local Models, Util
 
 describe("Standby Model", function()
     setup(function()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../Test/TestSetup.lua'))(this, {})
         Models = R2D2.components.Models
         Util = R2D2.Libs.Util
     end)

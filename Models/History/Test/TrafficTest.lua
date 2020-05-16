@@ -5,8 +5,8 @@ local history = {}
 
 describe("History - Traffic Model", function()
     setup(function()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
-        loadfile('TrafficTestData.lua')()
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/TrafficTestData.lua'))()
         Traffic = R2D2.components.Models.History.Traffic
         TrafficStatistics = R2D2.components.Models.History.TrafficStatistics
         Util = R2D2.Libs.Util

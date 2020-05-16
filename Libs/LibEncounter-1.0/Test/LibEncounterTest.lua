@@ -5,7 +5,7 @@ local encounter, util
 describe("LibItemUtil", function()
     setup(function()
         _G.LibEncounter_Testing = true
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../../Test/TestSetup.lua'))(this, {})
         encounter, _ = LibStub('LibEncounter-1.0', true)
         util, _ = LibStub('LibUtil-1.1', true)
     end)

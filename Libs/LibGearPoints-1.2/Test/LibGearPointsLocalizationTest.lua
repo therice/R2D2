@@ -5,8 +5,8 @@ local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match(
 local gearPoints
 describe("LibGearPoints (localized to 'deDE')", function()
     setup(function()
-        loadfile('LibGearPointsTestUtil.lua')()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(
+        loadfile(pl.abspath(pl.dirname(this) .. '/LibGearPointsTestUtil.lua'))()
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../../Test/TestSetup.lua'))(
                 this,
                 {
                     function() SetLocale("deDE") end

@@ -1,0 +1,10 @@
+return {
+  _all = {
+    coverage = false,
+    ['ROOT'] = {'.'},
+  },
+  default = {
+    verbose = true,
+    pattern = {'.*Test.lua$'}
+  },
+}

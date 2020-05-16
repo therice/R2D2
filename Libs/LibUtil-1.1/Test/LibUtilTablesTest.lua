@@ -6,8 +6,8 @@ local Util
 describe("LibUtil", function()
     setup(function()
         _G.LibUtil_Testing = true
-        loadfile('LibUtilTestData.lua')()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/LibUtilTestData.lua'))()
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../../Test/TestSetup.lua'))(this, {})
         Util, _ = LibStub('LibUtil-1.1')
     end)
     teardown(function()

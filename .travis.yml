@@ -3,9 +3,13 @@ language: minimal
 addons:
   apt:
     packages:
+      - luajit
       - luarocks
 
-install: luarocks install --local luacheck
+install:
+  - luarocks install --local luacheck
+  - luarocks install --local luafilesystem
+  - luarocks install --local busted
 
 before_script:
   - /home/travis/.luarocks/bin/luacheck . --no-color -q

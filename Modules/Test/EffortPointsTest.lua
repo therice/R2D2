@@ -4,7 +4,7 @@ local ep
 
 describe("EffortPoints", function()
     setup(function()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../Test/TestSetup.lua'))(this, {})
         R2D2:OnInitialize()
         ep = R2D2:GetModule("EffortPoints")
         ep:OnInitialize()

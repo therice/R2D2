@@ -5,8 +5,8 @@ local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match(
 local gearPoints, aceDb
 describe("LibGearPoints", function()
     setup(function()
-        loadfile('LibGearPointsTestUtil.lua')()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/LibGearPointsTestUtil.lua'))()
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../../Test/TestSetup.lua'))(this, {})
         gearPoints, _ = LibStub('LibGearPoints-1.2')
         aceDb, _ = LibStub('AceDB-3.0')
     end)

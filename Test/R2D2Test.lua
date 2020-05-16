@@ -1,19 +1,10 @@
 local pl = require('pl.path')
 local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match("@(.*)$"))
 
-local function byte2bin(n)
-    local t, d = {}, 0
-    d = math.log(n)/math.log(2) -- binary logarithm
-    for i=math.floor(d+1),0,-1 do
-        t[#t+1] = math.floor(n / 2^i)
-         n = n % 2^i
-    end
-    return #t > 0 and table.concat(t) or '00'
-end
 
 describe("R2D2", function()
     setup(function()
-        loadfile(pl.abspath(pl.abspath('.') .. '/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this).. '/TestSetup.lua'))(this, {})
         R2D2:OnInitialize()
         R2D2:OnEnable()
     end)

@@ -36,7 +36,7 @@ function Before()
     local name = pl.basename(caller):match("(.*).lua$")
     print("Caller -> FILE(" .. caller .. ") PATH(" .. path .. ") NAME(" .. name .. ")")
     _G.R2D2_Testing = true
-    logFile = io.open(pl.abspath('.') .. '/' .. name .. '.log', 'w')
+    logFile = io.open(pl.abspath(path) .. '/' .. name .. '.log', 'w')
     _G.R2D2_Testing_GetLogFile = function() return logFile end
 end
 
