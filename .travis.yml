@@ -13,6 +13,7 @@ install:
 
 before_script:
   - /home/travis/.luarocks/bin/luacheck . --no-color -q
+  - /home/travis/.luarocks/bin/busted .
   - sudo apt-get update
   - sudo apt-get -y install jq
 
