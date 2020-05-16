@@ -1,5 +1,8 @@
 language: minimal
 
+env:
+  - LUA=lua5.1
+
 addons:
   apt:
     packages:
