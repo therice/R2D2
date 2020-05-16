@@ -10,13 +10,12 @@ addons:
       - luarocks
 
 install:
-  - luarocks install --local --verbose luacheck
-  - luarocks install --local --verbose luafilesystem
-  - luarocks install --local --verbose busted
-  - luarocks install --local --verbose xml2lua
-  - luarocks install --local --verbose penlight
-  - luarocks install --local --verbose bit32
-  - luarocks install --local --verbose bitlib
+  - luarocks install --local --lua-version=5.1 luacheck
+  - luarocks install --local --lua-version=5.1 luafilesystem
+  - luarocks install --local --lua-version=5.1 busted
+  - luarocks install --local --lua-version=5.1 xml2lua
+  - luarocks install --local --lua-version=5.1 penlight
+  - luarocks install --local --lua-version=5.1 bitlib
 
 before_script:
   - /home/travis/.luarocks/bin/luacheck . --no-color -q

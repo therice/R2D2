@@ -721,8 +721,9 @@ function Minimap:HookScript(event, fn)
 
 end
 
-bit = bit32
-_G.bit = bit32
+require('bit')
+
+_G.bit = bit
 
 _G.tInvert = function(tbl)
 	local inverted = {};
@@ -768,7 +769,7 @@ _G.string.trim = function(s)
 	return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
-_G.loadstring = load
+--_G.loadstring = load
 _G.strfind = string.find
 _G.gsub = string.gsub
 _G.date = os.date
