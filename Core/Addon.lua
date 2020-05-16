@@ -201,7 +201,7 @@ end
 -- for an option)
 function R2D2:ConfigTableChanged(moduleName, val)
     Logging:Debug("ConfigTableChanged('%s') : %s", moduleName, Util.Objects.ToString(val))
-    -- need to serialize the values, as AceBucket (if used on other end) only groups by a signle value
+    -- need to serialize the values, as AceBucket (if used on other end) only groups by a single value
     self:SendMessage(AddOn.Constants.Messages.ConfigTableChanged, self:Serialize(moduleName, val))
 end
 

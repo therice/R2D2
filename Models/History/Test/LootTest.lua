@@ -4,7 +4,7 @@ local Loot, Util
 
 describe("History - Loot Model", function()
     setup(function()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../../Test/TestSetup.lua'))(this, {})
         R2D2:OnInitialize()
         R2D2:OnEnable()
         Loot = R2D2.components.Models.History.Loot
@@ -21,7 +21,7 @@ describe("History - Loot Model", function()
             assert(entry:FormattedTimestamp() ~= nil)
             assert(entry.id:match("(%d+)-(%d+)"))
         end)
-        it("from instant", function()
+        it("from instant #travisignore", function()
             local entry = Loot(1585928063)
             assert(entry:FormattedTimestamp() == "04/03/2020 09:34:23")
             assert(entry.id:match("1585928063-(%d+)"))

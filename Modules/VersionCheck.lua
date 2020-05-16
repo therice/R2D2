@@ -83,7 +83,7 @@ end
 
 function VersionCheck:OnCommReceived(prefix, serializedMsg, dist, sender)
     if prefix == name then
-        local success, command, data = AddOn:Deserialize(serializedMsg)
+        local success, command, data = AddOn:ProcessReceived(serializedMsg)
         if success and command == AddOn.Constants.Commands.VersionCheckReply then
             if listOfNames[data[1]] then
                 local name, class, guildRank, v, m = unpack(data)

@@ -5,6 +5,9 @@ local Objects   = Util.Objects
 local L         = AddOn.components.Locale
 local Models    = AddOn.components.Models
 local ItemUtil  = AddOn.Libs.ItemUtil
+local Compress  = AddOn.Libs.Compress
+
+local AddOnEncodeTable = Compress:GetAddonEncodeTable()
 
 function AddOn:GetAnnounceChannel(channel)
     local C = AddOn.Constants
@@ -35,7 +38,7 @@ end
 --- scrubs passed value for transmission over the wire
 -- specifically, entries that are modeled as classes via LibClass
 -- need to have their functions removed as not serializable
--- when they are received, they will be reconstitued into the appropriate class
+-- when they are received, they will be reconstituted into the appropriate class
 local function ScrubValue(value)
     local vt = type(value)
 
@@ -64,6 +67,59 @@ function AddOn.ScrubData(...)
     return scrubbed
 end
 
+
+function AddOn:PrepareForSend(command, ...)
+    local serialized = self:Serialize(command, self.ScrubData(...))
+    local encodedTable = Util.Tables.Temp()
+    
+    for _, alg in Util.Objects.Each({'CompressHuffman', 'CompressLZW', 'Store'}) do
+        Util.Tables.Push(encodedTable, AddOnEncodeTable:Encode(Compress[alg](Compress, serialized)))
+    end
+    
+    local minIndex, minLen = -1, math.huge
+    for i = #encodedTable, 1, -1 do
+        local test = Compress:Decompress(AddOnEncodeTable:Decode(encodedTable[i]))
+        Logging:Trace("PrepareForSend(%d) : length '%d' valid '%s'", i, #encodedTable[i], tostring(test == serialized ))
+        if test and test == serialized and #encodedTable[i] < minLen then
+            minLen = #encodedTable[i]
+            minIndex = i
+        end
+    end
+    
+    Logging:Debug("PrepareForSend() : Best compression at index '%d' with length '%d'", minIndex, minLen)
+    
+    local data = encodedTable[minIndex]
+    Util.Tables.ReleaseTemp(encodedTable)
+    return data
+end
+
+function AddOn:ProcessReceived(msg)
+    if not msg then
+        Logging:Error("ProcessReceived() : No message was provided")
+        return false
+    end
+    
+    local decoded = AddOnEncodeTable:Decode(msg)
+    if not decoded then
+        Logging:Error("ProcessReceived() : Message could not be decoded")
+        return false
+    end
+    
+    local decompressed, err = Compress:Decompress(decoded)
+    if not decompressed then
+        Logging:Warn("ProcessReceived() : Message could not be decompressed - will retry with no compression. '%s'", err)
+        
+        -- try again with "no compression" tacked on to beginning
+        decompressed, err = Compress:Decompress(Compress:Store(decoded))
+        if not decompressed then
+            Logging:Warn("ProcessReceived() : Message could not be decompressed (with explicit no compression). '%s'",
+                         err)
+            return false
+        end
+    end
+    
+    return self:Deserialize(decompressed)
+end
 
 function AddOn:SendCommand(target, command, ...)
     local C = AddOn.Constants
@@ -171,7 +227,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
     local C = AddOn.Constants
 
     if prefix == C.name then
-        local success, command, data = self:Deserialize(serializedMsg)
+        local success, command, data = self:ProcessReceived(serializedMsg)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
                       tostring(success), tostring(command), tostring(sender), tostring(dist),
                       Util.Objects.ToString(data, 3)

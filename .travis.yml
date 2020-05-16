@@ -1,14 +1,26 @@
 language: minimal
 
+env:
+  - LUA=lua5.1
+
 addons:
   apt:
     packages:
+      - luajit
       - luarocks
 
-install: luarocks install --local luacheck
+install:
+  - luarocks install --local --lua-version=5.1 luacheck
+  - luarocks install --local --lua-version=5.1 luafilesystem
+  - luarocks install --local --lua-version=5.1 busted
+  - luarocks install --local --lua-version=5.1 xml2lua
+  - luarocks install --local --lua-version=5.1 penlight
+  - luarocks install --local --lua-version=5.1 bitlib
 
 before_script:
   - /home/travis/.luarocks/bin/luacheck . --no-color -q
+  - eval `luarocks --lua-version=5.1 path`
+  - /home/travis/.luarocks/bin/busted --lua=lua5.1 .
   - sudo apt-get update
   - sudo apt-get -y install jq
 

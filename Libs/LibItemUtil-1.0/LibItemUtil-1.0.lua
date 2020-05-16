@@ -400,9 +400,10 @@ ClassCanUse(PRIEST) : Classes=4294967295 EquipLoc=[Helm of Endless Rage], TypeId
 --]]
 function lib:ClassCanUse(class, classesFlag, equipLoc, typeId, subTypeId)
     Logging:Trace("ClassCanUse(%s) : Classes=%s EquipLoc=%s, TypeId=%s, SubTypeId=%s",
-            class, classesFlag, equipLoc or 'nil' or 'nil', typeId or 'nil', subTypeId or 'nil')
+            class, classesFlag, tostring(equipLoc), tostring(typeId), tostring(subTypeId))
 
     local classId = self.ClassTagNameToId[class]
+    --Logging:Trace("ClassCanUse(%s) : ClassId=%s", class, classId)
     -- if the classes flag, parsed from tooltip, doesn't contain the class id then it cannot be used
     if bit.band(classesFlag, bit.lshift(1, classId-1)) == 0 then
         return false

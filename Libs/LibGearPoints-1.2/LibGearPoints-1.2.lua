@@ -122,7 +122,7 @@ function lib:SetScalingConfig(config)
         local parts = {strsplit('_', equipLoc)}
         if #parts == 1 then
             if type(scaling) == 'number' or type(scaling) == 'table' then
-                Logging:Trace("SetScalingConfig(SET) : equipLoc=%s scaling=%s", equipLoc, scaling)
+                Logging:Trace("SetScalingConfig(SET) : equipLoc=%s scaling=%s", equipLoc, ToStringFn(scaling))
                 ScalingConfig[equipLoc] = scaling
             else
                 Logging:Trace("SetScalingConfig(IGNORE_1) : ignoring equipLoc=%s scaling=%s type=%s", equipLoc,  ToStringFn(scaling), type(scaling))

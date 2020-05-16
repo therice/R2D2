@@ -5,7 +5,7 @@ local logging
 describe("LibLogging", function()
     setup(function()
         _G.LibLogging_Testing = true
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../../Test/TestSetup.lua'))(this, {})
         logging, _ = LibStub('LibLogging-1.0')
     end)
     teardown(function()

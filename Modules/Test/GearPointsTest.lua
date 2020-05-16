@@ -5,7 +5,7 @@ local libGp
 
 describe("GearPoints", function()
     setup(function()
-        loadfile(pl.abspath(pl.abspath('.') .. '/../../Test/TestSetup.lua'))(this, {})
+        loadfile(pl.abspath(pl.dirname(this) .. '/../../Test/TestSetup.lua'))(this, {})
         libGp = LibStub('LibGearPoints-1.2')
         R2D2:OnInitialize()
         gp = R2D2:GetModule("GearPoints")

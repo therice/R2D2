@@ -721,7 +721,9 @@ function Minimap:HookScript(event, fn)
 
 end
 
-_G.bit = bit32
+require('bit')
+
+_G.bit = bit
 
 _G.tInvert = function(tbl)
 	local inverted = {};
@@ -767,6 +769,7 @@ _G.string.trim = function(s)
 	return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
+--_G.loadstring = load
 _G.strfind = string.find
 _G.gsub = string.gsub
 _G.date = os.date
@@ -803,6 +806,10 @@ string.split = _G.strsplit
 _G.strsub = string.sub
 _G.strbyte = string.byte
 _G.strchar = string.char
+
+-- this isn't functionally correct
+_G.debugprofilestop = function() return 0 end
+
 
 -- https://wowwiki.fandom.com/wiki/API_GetItemInfo
 -- https://wowwiki.fandom.com/wiki/ItemString
