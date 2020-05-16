@@ -49,7 +49,7 @@ describe("Loot History", function()
     end)
     
     describe("builds history", function()
-        it("from db (test data)", function()
+        it("from db (test data) #travisignore", function()
             local StubSt = Class('StubSt')
             function StubSt:initialize()
                 self.data = {}
