@@ -20,7 +20,7 @@ install:
 
 before_script:
   - /home/travis/.luarocks/bin/luacheck . --no-color -q
-  - /home/travis/.luarocks/bin/busted .
+  - /home/travis/.luarocks/bin/busted --lua=lua5.1 .
   - sudo apt-get update
   - sudo apt-get -y install jq
 
