@@ -321,38 +321,46 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 Logging:Trace("VersionCheck(%s, %s)", Util.Objects.ToString(v), Util.Objects.ToString(mode))
                 
                 local VC = self:VersionCheckModule()
-                local version = Models.SemanticVersion(v)
-                VC:TrackVersion(
-                        self:UnitName(sender),
-                        version,
-                        AddOn.Mode():reconstitute(mode)
-                )
-                if dist == "GUILD" then sender = C.guild end
-                self:SendCommand(sender, C.Commands.VersionCheckReply , self.playerName, self.playerClass, self.guildRank, self.version, self.mode)
+                local success, version = Models.SemanticVersion.Create(v)
+                if success then
+                    VC:TrackVersion(
+                            self:UnitName(sender),
+                            version,
+                            AddOn.Mode():reconstitute(mode)
+                    )
+                    if dist == "GUILD" then sender = C.guild end
+                    self:SendCommand(sender, C.Commands.VersionCheckReply , self.playerName, self.playerClass, self.guildRank, self.version, self.mode)
         
-                if self.versionCheckComplete then return end
-    
-                local verCheck = VC.CheckVersion(self.version, version)
-                if verCheck == C.VersionStatus.OutOfDate then
-                    self:PrintOutOfDateVersionWarning(version)
+                    if self.versionCheckComplete then return end
+        
+                    local verCheck = VC.CheckVersion(self.version, version)
+                    if verCheck == C.VersionStatus.OutOfDate then
+                        self:PrintOutOfDateVersionWarning(version)
+                    end
+                else
+                    Logging:Warn("VersionCheck - Invalid version '%s'", Objects.ToString(v))
                 end
             elseif command == C.Commands.VersionCheckReply then
                 local name, _, _, v, mode = unpack(data)
                 if not name then Logging:Warn("VersionCheckReply without name from %s", sender)  end
                 local VC = self:VersionCheckModule()
-                local version = Models.SemanticVersion(v)
                 
-                VC:TrackVersion(
-                        self:UnitName(sender),
-                        version,
-                        AddOn.Mode():reconstitute(mode)
-                )
-    
-                if self.versionCheckComplete then return end
-                
-                local verCheck = VC.CheckVersion(self.version, version)
-                if verCheck == C.VersionStatus.OutOfDate then
-                    self:PrintOutOfDateVersionWarning(version)
+                local success, version = Models.SemanticVersion.Create(v)
+                if success then
+                    VC:TrackVersion(
+                            self:UnitName(sender),
+                            version,
+                            AddOn.Mode():reconstitute(mode)
+                    )
+        
+                    if self.versionCheckComplete then return end
+        
+                    local verCheck = VC.CheckVersion(self.version, version)
+                    if verCheck == C.VersionStatus.OutOfDate then
+                        self:PrintOutOfDateVersionWarning(version)
+                    end
+                else
+                    Logging:Warn("VersionCheckReply - Invalid version '%s'", Objects.ToString(v))
                 end
             elseif command == C.Commands.ReRoll then
                 AddOn:Print(format(L["player_requested_reroll"], self.Ambiguate(sender)))
