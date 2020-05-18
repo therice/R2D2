@@ -112,7 +112,13 @@ function Award:initialize(data)
 end
 
 function Award:GetSubjectOriginText()
-    return Award.TypeIdToSubject[self.subjectType]
+    local text = Award.TypeIdToSubject[self.subjectType]
+    local subjectCount = Util.Tables.Count(self.subjects)
+    
+    if self.subjectType ~= Award.SubjectType.Character and subjectCount ~= 0 then
+        text = text .. "(" .. subjectCount .. ")"
+    end
+    return text
 end
 
 function Award:SetSubjects(type, ...)
