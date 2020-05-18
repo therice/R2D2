@@ -618,7 +618,6 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
             local totals = se:CalculateTotals()
             for _, resource in pairs({Award.ResourceType.Ep, Award.ResourceType.Gp}) do
                 local decorator = UI.ColoredDecorator(AddOn.GetResourceTypeColor(resource))
-                
                 tip:AddDoubleLine(
                         decorator:decorate(Strings.Upper(Award.TypeIdToResource[resource])),
                         CountDecorator:decorate(tostring(totals.awards[resource].count)) .. ' / ' ..

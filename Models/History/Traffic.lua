@@ -1,5 +1,6 @@
 local _, AddOn = ...
 local Util = AddOn.Libs.Util
+local Logging = AddOn.Libs.Logging
 local Objects = Util.Objects
 local Tables = Util.Tables
 local Class = AddOn.Libs.Class
@@ -78,6 +79,12 @@ end
 
 function TrafficStatistics:GetOrAdd(name)
     local entry
+    
+    --Logging:Debug("GetOrAdd(%s) : %s", name,  AddOn:UnitName(name))
+    -- a previous regression existed where names were stored without realm
+    -- so we need to patch up the name to make sure we get the actual data
+    name = AddOn:UnitName(name)
+    
     if not Util.Tables.ContainsKey(self.entries, name) then
         entry = TrafficStatisticsEntry()
         self.entries[name] = entry
@@ -99,10 +106,14 @@ function TrafficStatistics:ProcessEntry(entry)
 end
 
 function TrafficStatisticsEntry:initialize()
-    self.awards = {}
+    self.awards = {
+        [Award.ResourceType.Ep] = {},
+        [Award.ResourceType.Gp] = {},
+    }
     self.totals = {
         awards = {
-        
+            [Award.ResourceType.Ep] = {},
+            [Award.ResourceType.Gp] = {},
         },
         resets = {
             count = 0
