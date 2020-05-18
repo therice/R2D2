@@ -495,6 +495,7 @@ end
 -- Embeds an error tooltip into a frame for use (as needed)
 function UI.EmbedErrorTooltip(module, f)
     f.errorTooltip = CreateFrame( "GameTooltip", "R2D2_" .. module .. "_ErrorTooltip", nil, "GameTooltipTemplate" )
+    f.errorTooltip:SetScale(f:GetScale() * 0.6)
     f.content:SetScript("OnSizeChanged", function()
         f.errorTooltip:SetScale(f:GetScale() * 0.6)
     end)
@@ -508,6 +509,30 @@ function UI.UpdateErrorTooltip(f, errors)
     local errorDeco = ColoredDecorator(1, 0.96, 0.41)
     for _, error in pairs(errors) do
         tip:AddLine(errorDeco:decorate(error))
+    end
+    tip:Show()
+    tip:SetAnchorType("ANCHOR_LEFT", 0, -tip:GetHeight())
+end
+
+-- Embeds a subject tooltip into a frame for use (as needed)
+function UI.EmbedSubjectTooltip(module, f)
+    f.subjectTooltip = CreateFrame( "GameTooltip", "R2D2_" .. module .. "_SubjectTooltip", nil, "GameTooltipTemplate" )
+    f.subjectTooltip:SetScale(f:GetScale() * 0.6)
+    f.content:SetScript("OnSizeChanged", function()
+        f.subjectTooltip:SetScale(f:GetScale() * 0.6)
+    end)
+end
+
+function UI.UpdateSubjectTooltip(f, subjects)
+    local tip = f.subjectTooltip
+    tip:SetOwner(f, "ANCHOR_LEFT")
+    tip:AddLine(ColoredDecorator(0.77, 0.12, 0.23):decorate(L["characters"]))
+    tip:AddLine(" ")
+    
+    for _, subject in pairs(subjects) do
+        tip:AddLine(
+            UI.ColoredDecorator(AddOn.GetClassColor(subject[2]):GetRGB()):decorate(subject[1])
+        )
     end
     tip:Show()
     tip:SetAnchorType("ANCHOR_LEFT", 0, -tip:GetHeight())

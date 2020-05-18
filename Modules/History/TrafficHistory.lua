@@ -402,7 +402,7 @@ function TrafficHistory:GetFrame()
     st:RegisterEvents({
                           ["OnClick"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                               if row then
-                                  if button == "RightButton" and data[realrow].entry.subjectType == Award.SubjectType.Character then
+                                  if button == "RightButton" then
                                       MenuFrame.entry = data[realrow].entry
                                       MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0)
                                   elseif button == "LeftButton" then
@@ -645,10 +645,19 @@ TrafficHistory.RightClickEntries = {
         -- 1 Title, player name
         {
             text = function(_, entry)
-                -- will only be called for an individual character, we filter out other subjects in frame
-                local subject = entry.subjects[1]
+                local displaySubject
+                
+                if entry.subjectType == Award.SubjectType.Character then
+                    local subject = entry.subjects[1]
+                    displaySubject = UI.ColoredDecorator(AddOn.GetClassColor(subject[2]):GetRGB()):decorate(subject[1])
+                else
+                    displaySubject =
+                        UI.ColoredDecorator(AddOn.GetSubjectTypeColor(entry.subjectType):GetRGB())
+                                :decorate(Award.TypeIdToSubject[entry.subjectType])
+                end
+                
                 return format("%s - %s",
-                              UI.ColoredDecorator(AddOn.GetClassColor(subject[2]):GetRGB()):decorate(subject[1]),
+                              displaySubject,
                               entry:FormattedTimestamp()
                 )
             end,
@@ -666,9 +675,23 @@ TrafficHistory.RightClickEntries = {
         {
             text = "Revert",
             value = "REVERT",
+            hidden = function(_, entry) return  entry.subjectType ~= Award.SubjectType.Character end,
             notCheckable = true,
             func = function(_, entry)
                 Dialog:Spawn(AddOn.Constants.Popups.ConfirmRevert, entry)
+            end,
+        },
+        -- 4 Amend
+        {
+            text = "Amend",
+            value = "AMEND",
+            hidden = function(_, entry) return entry.subjectType == Award.SubjectType.Character end,
+            notCheckable = true,
+            func = function(_, entry)
+                -- probably don't want to display the point module to just do an amendment
+                -- but easier for now then rewriting frame to handle this workflow
+                AddOn:CallModule('Points')
+                AddOn:PointsModule():UpdateAmendFrame(entry)
             end,
         },
     },
@@ -818,8 +841,8 @@ function TrafficHistory:CreateFromAward(award, lhEntry)
     
     -- if there was a function specified for callback before sending, invoke it now with the entry
     -- if beforeSend and Objects.IsFunction(beforeSend) then beforeSend(entry) end
-    
     AddOn:SendMessage(C.Messages.TrafficHistorySend, entry, award)
+    
     -- todo : support settings for sending and tracking history
     -- todo : send to guild or group? guild for now
     AddOn:SendCommand(C.guild, C.Commands.TrafficHistoryAdd, entry)

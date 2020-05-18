@@ -235,8 +235,9 @@ function Points:Adjust(award)
     local updates = false
     for _, subject in pairs(award.subjects) do
         local target = GetEntry(subject[1])
-        Logging:Debug("Adjust() : Processing %s", target)
         if target then
+            Logging:Debug("Adjust() : Processing %s", Objects.ToString(target:toTable()))
+            
             apply(target, award.actionType, award.resourceType, award.resourceQuantity)
             -- don't apply to actual officer notes in test mode
             -- it will also fail if we cannot edit officer notes
@@ -271,8 +272,14 @@ function Points:Hide()
         self.frame:Hide()
     end
     
+    self:HideAdjust()
+end
+
+function Points:HideAdjust()
     if self.adjustFrame then
         self.adjustFrame:Hide()
+        self.adjustFrame.errorTooltip:Hide()
+        self.adjustFrame.subjectTooltip:Hide()
     end
 end
 
@@ -512,6 +519,7 @@ function Points:GetAdjustFrame()
     close:SetScript("OnClick",
                     function()
                         f.errorTooltip:Hide()
+                        f.subjectTooltip:Hide()
                         f:Hide()
                     end)
     f.close = close
@@ -532,6 +540,7 @@ function Points:GetAdjustFrame()
     f.adjust = adjust
     
     UI.EmbedErrorTooltip("Points", f)
+    UI.EmbedSubjectTooltip("Points", f)
     
     function f.Validate()
         local validationErrors = {}
@@ -545,7 +554,18 @@ function Points:GetAdjustFrame()
             if subjectType== Award.SubjectType.Character then
                 award:SetSubjects(subjectType, subject)
             else
-                award:SetSubjects(subjectType)
+                if f.subjects and Util.Tables.Count(f.subjects) ~= 0 then
+                    local subjects =
+                        Util(f.subjects):Map(
+                                function(subject)
+                                    return AddOn:UnitName(subject[1])
+                                end
+                        ):Copy()()
+                    -- Logging:Debug("Validate() : %s", Util.Objects.ToString(subjects))
+                    award:SetSubjects(subjectType, unpack(subjects))
+                else
+                    award:SetSubjects(subjectType)
+                end
             end
         end
         
@@ -585,7 +605,7 @@ function Points:GetAdjustFrame()
     return self.adjustFrame
 end
 
-function Points:UpdateAdjustFrame(subjectType, name, resource)
+function Points:UpdateAdjustFrame(subjectType, name, resource, subjects)
     if not self.adjustFrame then return end
     
     local c
@@ -595,7 +615,18 @@ function Points:UpdateAdjustFrame(subjectType, name, resource)
         c = AddOn.GetSubjectTypeColor(subjectType)
     end
     
+    
+    if subjectType ~= Award.SubjectType.Character and subjects then
+        name = name .. "(" .. Util.Tables.Count(subjects) .. ")"
+        self.adjustFrame.subjects = subjects
+        UI.UpdateSubjectTooltip(self.adjustFrame, Util(subjects):Sort(function (a, b) return a[1] < b[1]end):Copy()())
+    else
+        self.adjustFrame.subjectTooltip:Hide()
+        self.adjustFrame.subjects = nil
+    end
+    
     self.adjustFrame.subjectType = subjectType
+    
     
     self.adjustFrame.name:SetText(name)
     self.adjustFrame.name:SetTextColor(c.r, c.g, c.b, c.a)
@@ -611,6 +642,33 @@ function Points:UpdateAdjustFrame(subjectType, name, resource)
     
     if not self.adjustFrame:IsVisible() then self.adjustFrame:Show() end
 end
+
+function Points:UpdateAmendFrame(entry)
+    Logging:Debug("Amend() : %s", Objects.ToString(entry:toTable()))
+    if entry.subjectType == Award.SubjectType.Character then
+        error("Unsupported subject type for amending an award : " .. Award.TypeIdToSubject[entry.subjectType])
+    end
+    
+    if not Objects.In(entry.actionType, Award.ActionType.Add, Award.ActionType.Subtract) then
+        error("Unsupported resource type for amending an award : " .. Award.TypeIdToAction[entry.actionType])
+    end
+    
+    self:UpdateAdjustFrame(
+            entry.subjectType,
+            Award.TypeIdToSubject[entry.subjectType],
+            entry.resourceType,
+            entry.subjects
+    )
+    --
+    -- I don't think we want to provide these values, as it infers it will be updated
+    -- when in fact, it's an entirey new entry with no relation to one being amended
+    -- other than the subjects
+    --
+    -- self.adjustFrame.actionType:SetValue(entry.actionType)
+    -- self.adjustFrame.quantity:SetText(entry.resourceQuantity)
+    self.adjustFrame.desc:SetText(format('Amend \'%s\'', entry.description))
+end
+
 
 
 function Points.AdjustPointsOnShow(frame, award)
@@ -641,7 +699,7 @@ end
 function Points.AwardPopupOnClickYes(frame, award, ...)
     -- Logging:Debug("AwardPopupOnClickYes() : %s", Util.Objects.ToString(award:toTable(), 3))
     Points:Adjust(award)
-    if Points.adjustFrame then Points.adjustFrame:Hide() end
+    Points:HideAdjust()
 end
 
 function Points.AwardPopupOnClickNo(frame, award)

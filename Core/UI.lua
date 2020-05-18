@@ -37,7 +37,7 @@ function AddOn.EmbedMoreInfoWidgets(module, f, fn)
         end
         
         if Util.IsFunction(fn) then
-            Logging:Debug("EmbedMoreInfoWidgets() : Invoking custom function")
+            -- Logging:Debug("EmbedMoreInfoWidgets() : Invoking custom function")
             fn(module, f)
         else
             AddOn.UpdateMoreInfo(module, f)
