@@ -321,8 +321,8 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 Logging:Trace("VersionCheck(%s, %s)", Util.Objects.ToString(v), Util.Objects.ToString(mode))
                 
                 local VC = self:VersionCheckModule()
-                local success, version = Models.SemanticVersion.Create(v)
-                if success then
+                local r, version = Models.SemanticVersion.Create(v)
+                if r then
                     VC:TrackVersion(
                             self:UnitName(sender),
                             version,
@@ -345,8 +345,8 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 if not name then Logging:Warn("VersionCheckReply without name from %s", sender)  end
                 local VC = self:VersionCheckModule()
                 
-                local success, version = Models.SemanticVersion.Create(v)
-                if success then
+                local r, version = Models.SemanticVersion.Create(v)
+                if r then
                     VC:TrackVersion(
                             self:UnitName(sender),
                             version,
