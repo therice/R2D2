@@ -8,7 +8,7 @@ local Tables = Util.Tables
 local Objects = Util.Objects
 local Strings = Util.Strings
 local COpts = AddOn.components.UI.ConfigOptions
-local Award = AddOn.components.Models.History.Award
+local Award = AddOn.components.Models.Award
 local Dialog = AddOn.Libs.Dialog
 
 EP.defaults = {

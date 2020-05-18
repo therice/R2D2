@@ -129,6 +129,13 @@ function SemanticVersion:initialize(major, minor, patch, prerelease, build)
     self.build = build
 end
 
+-- simple wrapper around SemanticVersion creation to allow for handling of
+-- invalid inputs
+function SemanticVersion.Create(major, minor, patch, prerelease, build)
+    return pcall(function ()
+        return SemanticVersion(major, minor, patch, prerelease, build)
+    end)
+end
 
 function SemanticVersion:nextMajor()
     return SemanticVersion:new(self.major + 1, 0, 0)

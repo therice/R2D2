@@ -13,16 +13,26 @@ local Models = AddOn.components.Models
 local Mode = Class('Mode')
 AddOn.Mode = Mode
 
+local function bbit(p) return 2 ^ (p - 1) end
+local function hasbit(x, p) return x % (p + p) >= p end
+local function setbit(x, p) return hasbit(x, p) and x or x + p end
+local function clearbit(x, p) return hasbit(x, p) and x - p or x end
+
+    
 function Mode:initialize()
-    self.bitfield = AddOn.Constants.Modes.Standard
+    self.bitfield = bbit(AddOn.Constants.Modes.Standard)
 end
 
 function Mode:Enable(...)
-    self.bitfield = bit.bor(self.bitfield, ...)
+    for _, p in Util.Objects.Each(...) do
+        self.bitfield = setbit(self.bitfield, p)
+    end
 end
 
 function Mode:Disable(...)
-    self.bitfield = bit.bxor(self.bitfield, ...)
+    for _, p in Util.Objects.Each(...) do
+        self.bitfield = clearbit(self.bitfield, p)
+    end
 end
 
 function Mode:Enabled(flag)

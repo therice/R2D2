@@ -135,6 +135,7 @@ end
 -- this is currently only invoked as part of officer's note changing, nothing else
 function Points:MemberModified(event, name, note)
     -- don't need to remove, it overwrites
+    -- name with be character-realm
     AddEntry(name, Models.PointEntry:FromGuildMember(GuildStorage:GetMember(name)))
     -- Logging:Debug("MemberModified(%s) : '%s'", name, note)
 end
@@ -234,6 +235,7 @@ function Points:Adjust(award)
     local updates = false
     for _, subject in pairs(award.subjects) do
         local target = GetEntry(subject[1])
+        Logging:Debug("Adjust() : Processing %s", target)
         if target then
             apply(target, award.actionType, award.resourceType, award.resourceQuantity)
             -- don't apply to actual officer notes in test mode
