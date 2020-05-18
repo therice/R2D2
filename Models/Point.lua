@@ -135,8 +135,9 @@ function Award:SetSubjects(type, ...)
                 end
             elseif self.subjectType == SubjectType.Raid then
                 for i = 1, GetNumGroupMembers() do
+                    -- the returned player name won't have realm, so convert using UnitName
                     local name = GetRaidRosterInfo(i)
-                    Tables.Push(subjects, name)
+                    Tables.Push(subjects, self:UnitName(name))
                 end
             end
         end
