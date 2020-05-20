@@ -117,7 +117,7 @@ function Self.List(t)
             local l
             for i,v in pairs(t) do
                 if type(i) == "number" then
-                    l = min(l or i, i)
+                    l = math.min(l or i, i)
                 else
                     l = i break
                 end
@@ -128,7 +128,7 @@ function Self.List(t)
     return t
 end
 
--- Check if the table is a continuesly indexed list
+-- Check if the table is a continuously indexed list
 function Self.IsList(t)
     return #t == Self.Count(t)
 end
@@ -813,6 +813,28 @@ function Self.Sort(t, fn)
     fn = fn == true and Fn or Util.Functions.New(fn) or nil
     table.sort(t, fn)
     return t
+end
+
+-- Sort a table which represents an associative array
+-- For example
+--[[
+    t =  {
+        ['test'] = {a=1,b='Zed'},
+        ['foo'] = {a=2,b='Bar'},
+        ['aba'] = {a=100,b='Qre'},
+    }
+    
+    fn = function (a,b) return a[2].b < b[2].b end
+    
+    would yield
+    
+    {{'foo', {a = 2, b = 'Bar'}}, {'aba', {a = 100, b = 'Qre'}}, {'test', {a = 1, b = 'Zed'}}}
+--]]
+function Self.ASort(t, fn)
+    local sorted = Self.New()
+    for k, v in pairs(t) do table.insert(sorted,{k,v}) end
+    Self.Sort(sorted, fn)
+    return sorted
 end
 
 -- Sort a table of tables by given table keys and default values
