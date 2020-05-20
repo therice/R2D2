@@ -1,5 +1,5 @@
 local _, AddOn = ...
-local Points = AddOn:NewModule("Points", "AceHook-3.0", "AceEvent-3.0")
+local Points = AddOn:NewModule("Points", "AceHook-3.0", "AceEvent-3.0", "AceTimer-3.0")
 local Logging = AddOn.components.Logging
 local L = AddOn.components.Locale
 local UI = AddOn.components.UI
@@ -183,7 +183,13 @@ function Points:RevertAdjust(entry)
 end
 
 function Points:Adjust(award)
-    -- Logging:Debug("%s", Objects.ToString(award:toTable()))
+    
+    if not GuildStorage:IsStateCurrent() then
+        Logging:Debug("Adjust() : GuildStorage state is not current, scheduling for near future and returning")
+        return self:ScheduleTimer("Adjust", 1, award)
+    else
+        Logging:Trace("Adjust() : GuildStorage state is current, proceeding")
+    end
     
     -- local function for forming operation on target
     local function apply(target, action, type, amount)
@@ -236,8 +242,7 @@ function Points:Adjust(award)
     for _, subject in pairs(award.subjects) do
         local target = GetEntry(subject[1])
         if target then
-            Logging:Debug("Adjust() : Processing %s", Objects.ToString(target:toTable()))
-            
+            -- Logging:Debug("Adjust() : Processing %s", Objects.ToString(target:toTable()))
             apply(target, award.actionType, award.resourceType, award.resourceQuantity)
             -- don't apply to actual officer notes in test mode
             -- it will also fail if we cannot edit officer notes
@@ -252,10 +257,7 @@ function Points:Adjust(award)
             Logging:Warn("Could not locate %s for applying %s. Possibly not in guild?", subject[1], Objects.ToString(award:toTable()))
         end
     end
-    
-    -- trigger the updated notes to be written, not sure if better way
-    if updates then GuildRoster() end
-    
+
     -- announce what was done
     local check, _ = pcall(function() AddOn:SendAnnouncement(award:ToAnnouncement(), AddOn.Constants.group) end)
     if not check then Logging:Warn("Award() : Unable to announce adjustment") end
@@ -800,18 +802,58 @@ function Points.DecayOnShow(frame, awards)
     )
 end
 
+
+
 function Points.DecayOnClickYes(frame, awards, ...)
-    for _, award in pairs(awards) do
-        Points:Adjust(award)
+    Logging:Trace("DecayOnClickYes(%d)", #awards)
+    
+    if #awards == 0 then return end
+    
+    -- we do decay in multiple awards, one for EP and one for GP
+    -- if we try to do them too quickly, the updates to player's officer note won't
+    -- be written yet and could encounter a conflict
+    --
+    -- therefore, this function will managed that via performing adjustment
+    -- and waiting for callbacks to determine that all have been completed before
+    -- moving to next award
+    local function adjust(awards, index)
+        Logging:Trace("adjust() : %d / %d", #awards, index)
+        
+        -- we make no checks on index vs award count in callback, so check here
+        if index <= #awards then
+            local award = awards[index]
+            Logging:Debug("adjust() : Processing %s", Objects.ToString(award.resourceType))
+            
+            local updated, expected = 0, Util.Tables.Count(award.subjects)
+            -- register callback with GuildStorage for notification when the officer note has been written
+            -- keep track of updates and then when it matches the expected count, de-register callback
+            -- and move on to next award
+            GuildStorage.RegisterCallback(
+                    Points,
+                    GuildStorage.Events.GuildOfficerNoteWritten,
+                    function(event, state)
+                        updated = updated + 1
+                        Logging:Debug("%s : %d/%d", tostring(event), tostring(updated), tostring(expected))
+                        if updated == expected then
+                            Logging:Trace("Unregistering GuildStorage.Events.GuildOfficerNoteWritten and moving to award %d", index + 1)
+                            GuildStorage.UnregisterCallback(Points, GuildStorage.Events.GuildOfficerNoteWritten)
+                            adjust(awards, index + 1)
+                        end
+                    end
+            )
+            
+            Points:Adjust(award)
+        else
+            if Points.decayFrame then Points.decayFrame:Hide() end
+        end
     end
     
-    if Points.decayFrame then Points.decayFrame:Hide() end
+    adjust(awards, 1)
 end
 
 function Points.DecayOnClickNo(frame, awards)
     -- intentional no-op
 end
-
 
 function Points.RevertOnShow(frame, entry)
     UI.DecoratePopup(frame)
