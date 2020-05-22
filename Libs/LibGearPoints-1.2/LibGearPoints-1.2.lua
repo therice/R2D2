@@ -285,10 +285,10 @@ function lib:GetValue(item)
 
     if equipLoc == "CUSTOM_SCALE" then
         -- this will error out until support the custom scale attribute for custom items
-        return self:CalculateFromScale(customItem.s1, nil, ilvl, rarity), "", ilvl
+        return self:CalculateFromScale(customItem.scale, ilvl, rarity), "Custom Scale", ilvl
     elseif equipLoc == "CUSTOM_GP" then
         -- this will error out until support the custom GP attribute for custom items
-        return customItem.gp, "", ilvl
+        return customItem.gp, "Custom GP", ilvl
     else
         return self:CalculateFromEquipmentLocation(equipLoc, itemSubClass, ilvl, rarity)
     end

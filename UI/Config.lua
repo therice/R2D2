@@ -11,6 +11,17 @@ AddOn.components.Config = Config
 AddOn.Libs.AceConfigDialog:SetDefaultSize("R2D2",  850, 700)
 
 function Config.SetupOptions()
+    -- use a function to allow for dynamic updating of configuration options as needed
+    AddOn.Libs.AceConfig:RegisterOptionsTable(
+            "R2D2",
+            function (uiType, uiName, appName)
+                Logging:Trace("Building configuration options for '%s', '%s', '%s'", tostring(uiType), tostring(uiName), tostring(appName))
+                return Config.BuildOptions()
+            end
+    )
+end
+
+function Config.BuildOptions()
     local Options = Util.Tables.Copy(AddOn.Options)
     -- setup some basic configuration options that don't belong to any module (but the add-on itself)
     Options.args = {
@@ -63,8 +74,6 @@ function Config.SetupOptions()
         }
     }
 
-    AddOn.Libs.AceConfig:RegisterOptionsTable("R2D2", Options)
-
     local moduleTable = {}
     for name, module in AddOn:IterateModules() do
         moduleTable[name] = module
@@ -73,8 +82,20 @@ function Config.SetupOptions()
     -- Setup options for each module that defines them.
     for name, m in Objects.Each(moduleTable) do
         Logging:Debug("Config.SetupOptions() : Examining Module Entry '%s'", name)
+        
+        local options
+        if m['BuildConfigOptions'] ~= nil then
+            Logging:Trace("Config.SetupOptions(%s) : invoking 'BuildConfigOptions' on module to generate options", name)
+            options = m:BuildConfigOptions()
+        elseif m.options then
+            Logging:Trace("Config.SetupOptions(%s) : obtaining options directly from module attribute", name)
+            options = m.options
+        else
+            Logging:Trace("Config.SetupOptions(%s) : no configuration options for module", name)
+        end
+        
         -- If the module has an options instance
-        if m.options then
+        if options then
             if m.options.args and (not m.options.ignore_enable_disable) then
                 -- Set all options under this module as disabled when the module is disabled.
                 for n, o in pairs(m.options.args) do
@@ -82,7 +103,7 @@ function Config.SetupOptions()
                     if o.disabled then
                         local old_disabled = o.disabled
                         o.disabled = function(i)
-                            return old_disabled(i) or m:IsDisabled()
+                            return Objects.IsFunction(old_disabled) and old_disabled(i) or m:IsDisabled()
                         end
                     else
                         o.disabled = "IsDisabled"
@@ -101,21 +122,23 @@ function Config.SetupOptions()
                 }
             end
 
-            if m.options.name then
-                local childGroups = m.options.childGroups and m.options.childGroups or 'tree'
-                Logging:Debug("Config:SetupOptions() : Registering option arguments with name %s", name)
+            if options.name then
+                local childGroups = options.childGroups and options.childGroups or 'tree'
+                Logging:Trace("Config:SetupOptions() : Registering option arguments with name %s", name)
                 Options.args[name]= {
                     handler = m,
                     order = 100,
                     type = 'group',
                     childGroups = childGroups,
-                    name = m.options.name,
-                    desc = m.options.desc,
-                    args = m.options.args,
+                    name = options.name,
+                    desc = options.desc,
+                    args = options.args,
                     get = "GetDbValue",
                     set = "SetDbValue",
                 }
             end
         end
     end
+    
+    return Options
 end

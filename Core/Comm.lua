@@ -107,7 +107,7 @@ function AddOn:ProcessReceived(msg)
     
     local decompressed, err = Compress:Decompress(decoded)
     if not decompressed then
-        Logging:Warn("ProcessReceived() : Message could not be decompressed - will retry with no compression. '%s'", err)
+        Logging:Trace("ProcessReceived() : Message could not be decompressed - will retry with no compression. '%s'", err)
         
         -- try again with "no compression" tacked on to beginning
         decompressed, err = Compress:Decompress(Compress:Store(decoded))

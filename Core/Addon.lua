@@ -118,6 +118,12 @@ function R2D2:OnEnable()
     self.mode:Enable(R2D2.Constants.Modes.Persistence)
     --@end-debug@
     
+    self.realmName = select(2, UnitFullName(self.Constants.player))
+    self.playerName = self:UnitName(self.Constants.player)
+    self.playerFaction = UnitFactionGroup(self.Constants.player)
+    
+    Logging:Debug("OnEnable(%s) : Faction '%s'", self:GetName(), self.playerFaction)
+    
     for name, module in self:IterateModules() do
         Logging:Debug("OnEnable(%s) - Examining module (startup) '%s'", self:GetName(), name)
         
@@ -126,12 +132,7 @@ function R2D2:OnEnable()
             module:Enable()
         end
     end
-
-    self.realmName = select(2, UnitFullName(self.Constants.player))
-    self.playerName = self:UnitName(self.Constants.player)
-    self.playerFaction = UnitFactionGroup(self.Constants.player)
-
-    Logging:Debug("OnEnable(%s) : Faction '%s'", self:GetName(), self.playerFaction)
+    
     -- register events
     for event, method in pairs(self.Events) do
         self:RegisterEvent(event, method)
@@ -247,6 +248,9 @@ end
 
 function R2D2:Config()
     if AddOn.Libs.AceConfigDialog.OpenFrames[name] then
+        -- todo : hook this into the close button on config frame as well
+        local gpm = AddOn:GearPointsCustomModule()
+        if gpm.addItemFrame then gpm.addItemFrame:Hide() end
         AddOn.Libs.AceConfigDialog:Close(name)
     else
         AddOn.Libs.AceConfigDialog:Open(name)

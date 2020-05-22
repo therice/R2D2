@@ -75,7 +75,7 @@ end
 -- https://wow.gamepedia.com/API_GetItemInfo
 function Item:FromGetItemInfo(item)
     local name, link, rarity, ilvl, _, type, subType, _, equipLoc, texture, _,
-    typeId, subTypeId, bindType, _, _, _ = GetItemInfo(item)
+        typeId, subTypeId, bindType, _, _, _ = GetItemInfo(item)
     local id = link and ItemUtil:ItemLinkToId(link)
     if name then
         -- check to see if a custom item has been setup for the id

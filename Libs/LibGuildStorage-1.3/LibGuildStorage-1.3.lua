@@ -72,14 +72,15 @@ lib.Events = {
     Initialized              =   "Initialized",
     StateChanged             =   "StateChanged",
     GuildInfoChanged         =   "GuildInfoChanged",
+    GuildNameChanged         =   "GuildNameChanged",
     GuildOfficerNoteChanged  =   "GuildNoteChanged",
     GuildOfficerNoteConflict =   "GuildNoteConflict",
     GuildOfficerNoteWritten  =   "GuildOfficerNoteWritten",
     GuildMemberDeleted       =   "GuildMemberDeleted",
 }
 
-local state, initialized, index, cache, guildInfo =
-    States.StaleAwaitingUpdate, false, nil, {}, nil
+local state, initialized, index, cache, guildInfo, guildName =
+    States.StaleAwaitingUpdate, false, nil, {}, nil, nil
 
 
 local GuildStorageEntry = Class('GuildStorageEntry')
@@ -122,6 +123,10 @@ end
 
 function lib:GetState()
     return state
+end
+
+function lib:GetGuildName()
+    return guildName
 end
 
 function lib:IsStateCurrent()
@@ -243,7 +248,14 @@ local function OnUpdate()
     end
     
     if index == 1 then
-        local newGuildInfo = GetGuildInfoText() or ""
+    
+        local newGuildName = GetGuildInfo("player") or nil
+        if newGuildName ~= guildName then
+            guildName = newGuildName
+            callbacks:Fire(lib.Events.GuildNameChanged)
+        end
+        
+        local newGuildInfo = GetGuildInfoText() or nil
         if newGuildInfo ~= guildInfo then
             guildInfo = newGuildInfo
             callbacks:Fire(lib.Events.GuildInfoChanged)

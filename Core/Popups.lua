@@ -145,3 +145,22 @@ Dialog:Register(AddOn.Constants.Popups.ConfirmRevert, {
     hide_on_escape = true,
     show_while_dead = true,
 })
+
+
+Dialog:Register(AddOn.Constants.Popups.ConfirmDeleteItem, {
+    text = "something_went_wrong",
+    on_show = AddOn:GearPointsCustomModule().DeleteItemOnShow,
+    buttons = {
+        {
+            text = _G.YES,
+            on_click = AddOn:GearPointsCustomModule().DeleteItemOnClickYes,
+        },
+        {
+            text = _G.NO,
+            on_click = AddOn:GearPointsCustomModule().DeleteItemOnClickNo
+        },
+    },
+    hide_on_escape = true,
+    show_while_dead = true,
+})
+

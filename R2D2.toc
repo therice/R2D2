@@ -3,7 +3,7 @@
 ## Notes: R2D2 - EPGP AddOn for World of Warcraft
 ## Author: Gnomechomsky-Atiesh
 ## Version: @project-version@
-## SavedVariables: R2D2_DB, R2D2_LootDB, R2D2_TrafficDB
+## SavedVariables: R2D2_DB, R2D2_LootDB, R2D2_TrafficDB, R2D2_CustomItems
 ## X-AddonName: R2D2
 ## X-InterfaceName: R2D2 Classic
 

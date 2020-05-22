@@ -25,6 +25,11 @@ function AddOn:GearPointsModule()
     return self:GetModule("GearPoints")
 end
 
+function AddOn:GearPointsCustomModule()
+    return self:GetModule("GearPointsCustom")
+end
+
+
 function AddOn:EffortPointsModule()
     return self:GetModule("EffortPoints")
 end

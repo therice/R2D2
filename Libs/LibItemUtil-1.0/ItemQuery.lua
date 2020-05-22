@@ -11,8 +11,8 @@ end
 function lib:GET_ITEM_INFO_RECEIVED(event, item, success)
     Logging:Trace("GET_ITEM_INFO_RECEIVED(%s) : success=%s", tostring(item), tostring(success))
     if success then
-        item_id = tonumber(item)
-        callback_fn = itemQueue[item_id]
+        local item_id = tonumber(item)
+        local callback_fn = itemQueue[item_id]
 
         if callback_fn then
             Logging:Trace("GET_ITEM_INFO_RECEIVED(%s) : invoking callback", tostring(item))
