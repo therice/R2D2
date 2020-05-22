@@ -238,7 +238,6 @@ function Points:Adjust(award)
     AddOn:TrafficHistoryModule():CreateFromAward(award, lhEntry)
     
     -- subject is a tuple of (name, class)
-    local updates = false
     for _, subject in pairs(award.subjects) do
         local target = GetEntry(subject[1])
         if target then
@@ -249,7 +248,6 @@ function Points:Adjust(award)
             if (not AddOn:TestModeEnabled() and AddOn:PersistenceModeEnabled()) and CanEditOfficerNote() then
                 -- todo : we probably need to see if this is successful, otherwise could be lost
                 GuildStorage:SetOfficeNote(target.name, target:ToNote())
-                updates = true
             else
                 Logging:Debug("Points:Adjust() : Skipping adjustment of EPGP for '%s'", target.name)
             end
