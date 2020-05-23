@@ -98,7 +98,7 @@ end
 
 function CompressedDb:del(key, index)
     if Util.Objects.IsEmpty(index) then
-        tremove(self.db, key)
+        self.db[key] = nil
     else
         local v = self:get(key)
         if not Util.Objects.IsTable(v) then

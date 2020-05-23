@@ -319,7 +319,7 @@ function LootHistory.SetCellDelete(rowFrame, frame, data, cols, row, realrow, co
             
             local charHistory = history:get(name)
             if #charHistory == 0 then
-                Logging:Debug("Last LootHistory entry deleted, removing %s", name)
+                Logging:Debug("Last LootHistory entry deleted, removing %s", tostring(name))
                 history:del(name)
             end
         else
