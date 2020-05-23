@@ -41,6 +41,21 @@ function Sync:Hide()
     end
 end
 
+function Sync:AddHandler(name, desc, send, receive)
+    if _G.R2D2_Testing then return end
+    
+    if Util.Strings.IsEmpty(name) then error("AddHandler() : must provide name") end
+    if Util.Strings.IsEmpty(desc) then error("AddHandler() : must provide description") end
+    if not Util.Objects.IsFunction(send) then error("AddHandler() : must provide a function for send()") end
+    if not Util.Objects.IsFunction(receive) then error("AddHandler() : must provide a function for receive()") end
+    
+    self.handlers[name] = {
+        desc = desc,
+        send = send,
+        receive = receive,
+    }
+end
+
 function Sync:HandlersSelect()
     return Util(self.handlers)
             :Map(function (e) return e.desc end)
@@ -82,19 +97,6 @@ function Sync:AvailableSyncTargets()
     Logging:Trace("%s", Util.Objects.ToString(targets))
     
     return targets
-end
-
-function Sync:AddHandler(name, desc, send, receive)
-    if Util.Strings.IsEmpty(name) then error("AddHandler() : must provide name") end
-    if Util.Strings.IsEmpty(desc) then error("AddHandler() : must provide description") end
-    if not Util.Objects.IsFunction(send) then error("AddHandler() : must provide a function for send()") end
-    if not Util.Objects.IsFunction(receive) then error("AddHandler() : must provide a function for receive()") end
-    
-    self.handlers[name] = {
-        desc = desc,
-        send = send,
-        receive = receive,
-    }
 end
 
 function Sync:GetFrame()
