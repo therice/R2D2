@@ -467,7 +467,6 @@ function ML:OnInitialize()
     self.db = AddOn.db:RegisterNamespace(self:GetName(), ML.defaults)
     -- setup the additional configuration options once DB has been established
     ConfigureOptionsFromDb(self.db.profile)
-    
     -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(self.db.namespaces, 2))
     -- Logging:Debug("OnInitialize(%s)", Util.Objects.ToString(ML.defaults, 6))
     --[[
@@ -504,6 +503,7 @@ function ML:OnInitialize()
                 }
                 
     --]]
+    AddOn:SyncModule():AddHandler(self:GetName(), format("%s %s", L['ml'], L['settings']), function () end, function() end)
 end
 
 function ML:EnableOnStartup()

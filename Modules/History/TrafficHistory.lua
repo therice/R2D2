@@ -141,6 +141,7 @@ function TrafficHistory:OnInitialize()
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.TrafficHistoryFilter, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
+    AddOn:SyncModule():AddHandler(self:GetName(), L['traffic_history'], function () end, function() end)
 end
 
 function TrafficHistory:OnEnable()

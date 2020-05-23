@@ -78,7 +78,7 @@ function Config.BuildOptions()
 
     -- Setup options for each module that defines them.
     for name, m in Objects.Each(moduleTable) do
-        Logging:Debug("Config.SetupOptions() : Examining Module Entry '%s'", name)
+        Logging:Trace("Config.SetupOptions() : Examining Module Entry '%s'", name)
         
         local options
         if m['BuildConfigOptions'] ~= nil then

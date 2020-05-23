@@ -169,6 +169,7 @@ end
 function EP:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), EP.defaults)
+    AddOn:SyncModule():AddHandler(self:GetName(), format("%s %s", L['ep'], L['settings']), function () end, function() end)
 end
 
 function EP:OnEnable()
