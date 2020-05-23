@@ -14,7 +14,7 @@ local ST = AddOn.Libs.ScrollingTable
 Standby.defaults = {
     profile = {
         enabled     = false,
-        standby_pct = 0.80,
+        standby_pct = 0.75,
         verify_after_each_award = false,
     }
 }
