@@ -13,6 +13,16 @@ function Widget:New(parent, name)
     eb.Background:SetPoint("BOTTOMRIGHT")
     eb:SetFontObject("ChatFontNormal")
     eb:SetTextInsets(4, 4, 0, 0)
+    -- Add key down handler to allow for propagation of ESC for handling closure
+    eb:SetScript("OnKeyDown",
+                  function(self, key)
+                      if key == "ESCAPE" then
+                          self:SetPropagateKeyboardInput(true)
+                      else
+                          self:SetPropagateKeyboardInput(false)
+                      end
+                  end
+    )
     return eb
 end
 

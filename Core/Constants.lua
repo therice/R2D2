@@ -111,6 +111,7 @@ AddOn.Constants = {
         ConfirmAbort            =   name .. "_ConfigAbort",
         ConfirmAward            =   name .. "_ConfirmAward",
         ConfirmDecayPoints      =   name .. "_ConfirmDecayPoints",
+        ConfirmDeleteItem       =   name .. "_ConfirmDeleteItem",
         ConfirmReannounceItems  =   name .. "_ConfirmReannounceItems",
         ConfirmRevert           =   name .. "_ConfirmRevert",
         ConfirmUsage            =   name .. "_ConfirmUsage",

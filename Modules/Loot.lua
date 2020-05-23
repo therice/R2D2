@@ -36,7 +36,6 @@ function Loot:OnDisable()
     self:CancelAllTimers()
 end
 
-
 function Loot:EnableOnStartup()
     return false
 end
@@ -151,7 +150,7 @@ end
 function Loot:GetFrame()
     if self.frame then return self.frame end
     -- Logging:Trace("GetFrame() : creating loot frame")
-    self.frame = UI:CreateFrame("R2D2_LootFrame", "Loot", L["r2d2_loot_frame"], 250, 375)
+    self.frame = UI:CreateFrame("R2D2_LootFrame", "Loot", L["r2d2_loot_frame"], 250, 375, false)
     self.frame.itemTooltip = UI:CreateGameTooltip("Loot", self.frame.content)
     return self.frame
 end

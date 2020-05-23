@@ -316,13 +316,16 @@ end
 -- @param title The title text.
 -- @param width The width of the title frame, defaults to 250.
 -- @param height Height of the frame, defaults to 325.
+-- @param hookConfig should the frame be hooked into respecting configuration frame (hide/show if present). defaults to true
 -- @return The frame object.
-function UI:CreateFrame(name, module, title, width, height)
+function UI:CreateFrame(name, module, title, width, height, hookConfig)
     local f = CreateFrame("Frame", name, UIParent)
     local storage = AddOn.db.profile.ui[module]
-
+    local hookIt = Util.Objects.IsNil(hookConfig) and true or hookConfig
+    
     f:Hide()
     f:SetFrameStrata("DIALOG")
+    f:SetToplevel(true)
     f:SetWidth(450)
     f:SetHeight(height or 325)
     f:SetScale(storage.scale or 1.1)
@@ -331,6 +334,57 @@ function UI:CreateFrame(name, module, title, width, height)
     f:RestorePosition()
     f:MakeDraggable()
     f:SetScript("OnMouseWheel", function(f,delta) if IsControlKeyDown() then Window.OnMouseWheel(f,delta) end end)
+    f:HookScript("OnShow",
+                 function()
+                     f.restoreConfig = hookIt and AddOn.HideConfig()
+                 end
+    )
+    f:HookScript("OnHide",
+                 function()
+                     if f.restoreConfig then
+                         AddOn.ShowConfig()
+                         f.restoreConfig = false
+                     end
+                 end
+    )
+    f:SetScript("OnKeyDown",
+                function(self, key)
+                    Logging:Trace("OnKeyDown(%s) : %s", self:GetName(), key)
+                    if key == "ESCAPE" then
+                        self:SetPropagateKeyboardInput(false)
+                        
+                        -- Attempt to locate the appropriate button and click it, one of
+                        --      close
+                        --      abort
+                        --      cancel
+                        local function closeOrCancel()
+                            local button
+                            if self.close then
+                                button = self.close
+                            elseif self.abort then
+                                button = self.abort
+                            elseif self.cancel then
+                                button = self.cancel
+                            end
+    
+                            if button and button:IsShown() then
+                                Logging:Trace("OnKeyDown(): Closing via %s", button:GetName())
+                                button:Click()
+                                return true
+                            else
+                                return false
+                            end
+                        end
+    
+                        if not closeOrCancel() then
+                            Logging:Trace("OnKeyDown(): Closing via Hide()")
+                            self:Hide()
+                        end
+                    else
+                        self:SetPropagateKeyboardInput(true)
+                    end
+                end
+    )
 
     local tf = CreateFrame("Frame", "R2D2_UI_"..module.."_Title", f)
     tf:SetToplevel(true)
@@ -526,7 +580,7 @@ end
 function UI.UpdateSubjectTooltip(f, subjects)
     local tip = f.subjectTooltip
     tip:SetOwner(f, "ANCHOR_LEFT")
-    tip:AddLine(ColoredDecorator(0.77, 0.12, 0.23):decorate(L["characters"]))
+    tip:AddLine(ColoredDecorator(1, 1, 1):decorate(L["characters"]))
     tip:AddLine(" ")
     
     for _, subject in pairs(subjects) do

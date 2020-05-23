@@ -65,8 +65,8 @@ GP.defaults = {
             weaponoffh_comment_1    = DisplayName.OffHWeapon,
             holdable_scale_1        = 0.5,
             holdable_comment_1      = _G.INVTYPE_HOLDABLE,
-            -- Bows, Guns, Crossbows
-            ranged_scale_1          = 2,
+            -- Bows, Crossbows, Guns (could split them up if merited, but they all seems to be considered equal)
+            ranged_scale_1          = 1.5,
             ranged_comment_1        = _G.INVTYPE_RANGED,
             wand_scale_1            = 0.5,
             wand_comment_1          = GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_WAND),
@@ -123,8 +123,6 @@ GP.defaults = {
 
 GP.DefaultAwardColor = GP.defaults.profile.award_scaling.ms_need.color
 
--- Logging:Debug("DefaultAwardColor = %s", Util.Objects.ToString(GP.DefaultAwardColor))
-
 -- These are arguments for configuring options via UI
 -- See UI/Config.lua
 GP.options = {
@@ -161,6 +159,17 @@ GP.options = {
     }
 }
 
+-- mappings from slot to description for ones that are more complex/nuanced than a single
+-- constant
+local EquipmentSlotDescription = {
+    ['ranged'] =
+        Util.Strings.Join(', ',
+          GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_BOWS),
+          GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_CROSSBOW),
+          GetItemSubClassInfo(LE_ITEM_CLASS_WEAPON, LE_ITEM_WEAPON_GUNS)
+        )
+}
+
 do
     local awardScalingDefaults = GP.defaults.profile.award_scaling
     -- capture a reference to GP configuration option's arguments
@@ -177,11 +186,12 @@ do
 
     -- iterate the keys in alphabetical order
     for _, key in Objects.Each(Tables.Sort(Tables.Keys(scalingDefaults))) do
+        -- e.g ranged_comment_1, ranged_comment_1
         local parts = {strsplit('_', key)}
-        -- only deal with key(s) that have 3 parts and contain 'scale' and 'comment
+        -- only deal with key(s) that have 3 parts and contain 'scale' and 'comment'
         if #parts == 3 and Objects.In(parts[2], 'scale', 'comment') then
-            local slot = parts[1]
-            local slot_input = parts[2] -- this will be the slot name, e.g. 'weapon', 'ranged', 'head'
+            local slot = parts[1] -- this will be the slot name, e.g. 'weapon', 'ranged', 'head'
+            local slot_input = parts[2] -- this will be the input name, e.g. 'scale', 'comment'
             local slotTable = slotArgs[slot] or Tables.New()
 
             if slot_input == 'scale' then
@@ -202,19 +212,25 @@ do
     local gpargs = GP.options.args
 
     local order = 42
-    -- todo : this is going to sort by slot and not the display name, maybe cleanup when done
-    for _, slot in Objects.Each(Tables.Sort(Tables.Keys(slotArgs))) do
-        local displayname = slotArgs[slot].displayname
+    for _, slotArray in pairs(Tables.ASort(slotArgs, function(a,b) return a[2].displayname < b[2].displayname end)) do
+        local slot = slotArray[1]
+        local displayname = slotArray[2].displayname
+        local description =  L["item_slot_with_name"]:format(displayname)
+        if EquipmentSlotDescription[slot] then
+            description = EquipmentSlotDescription[slot]
+        end
+        
         gpargs[slot] = {
             order = order,
             type = "group",
             name = displayname,
-            desc = L["item_slot_with_name"]:format(displayname),
+            desc = description,
             -- the mapping of keys to include the 'scaling.' prefix is to map into the db properly
             -- not everything needs prefixed, but these won't be stored (e.g. help)
             args =  Tables.MapKeys(Tables.CopyUnselect(slotArgs[slot], 'displayname'),  function(key) return 'slot_scaling.'..key end)
         }
         order = order + 1
+        
     end
 
     Tables.Release(slotArgs)
@@ -225,6 +241,7 @@ function GP:OnInitialize()
     -- replace the library string representation function with our utility (more detail)
     LibGP:SetToStringFn(Objects.ToString)
     self.db = AddOn.db:RegisterNamespace(self:GetName(), GP.defaults)
+    AddOn:SyncModule():AddHandler(self:GetName(), format("%s %s", L['gp'], L['settings']), function () end, function() end)
 end
 
 function GP:OnEnable()

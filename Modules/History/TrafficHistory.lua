@@ -141,6 +141,7 @@ function TrafficHistory:OnInitialize()
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.TrafficHistoryFilter, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
+    AddOn:SyncModule():AddHandler(self:GetName(), L['traffic_history'], function () end, function() end)
 end
 
 function TrafficHistory:OnEnable()
@@ -532,11 +533,11 @@ function TrafficHistory:GetFrame()
     local close = UI:CreateButton(_G.CLOSE, f.content)
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -100)
     close:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = close
+    f.close = close
     
     
     local filter = UI:CreateButton(_G.FILTER, f.content)
-    filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+    filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     f.filter = filter
     MSA_DropDownMenu_Initialize(filter, self.FilterMenu)
@@ -589,7 +590,7 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
         tip:AddLine(Award.TypeIdToSubject[entry.subjectType], color.r, color.g, color.b)
         tip:AddLine(" ")
         local subjectCount = Tables.Count(entry.subjects)
-        tip:AddDoubleLine("Players", subjectCount)
+        tip:AddDoubleLine(L["members"], subjectCount)
         tip:AddLine(" ")
         local shown = 0
         

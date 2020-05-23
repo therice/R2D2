@@ -1,10 +1,11 @@
-local _, AddOn = ...
-local Logging   = AddOn.Libs.Logging
-local L         = AddOn.components.Locale
-local Util      = AddOn.Libs.Util
-local UI        = AddOn.components.UI
-local Class     = AddOn.Libs.Class
-local Models    = AddOn.components.Models
+local AddOnName, AddOn = ...
+local Logging = AddOn.Libs.Logging
+local L = AddOn.components.Locale
+local Util = AddOn.Libs.Util
+local UI = AddOn.components.UI
+local Class = AddOn.Libs.Class
+local Models = AddOn.components.Models
+local ACD = AddOn.Libs.AceConfigDialog
 
 --@param module the module name (for determining settings associated with more info)
 --@param f the frame to which to add widgets
@@ -54,8 +55,6 @@ function AddOn.EmbedMoreInfoWidgets(module, f, fn)
 end
 
 function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
-    local moreInfo, lootStats = AddOn:MoreInfoSettings(module)
-    
     local name
     if data and row then
         name = data[row].name
@@ -64,22 +63,21 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
         name = selection and f.st:GetRow(selection).name or nil
     end
     
-    -- Logging:Debug("UpdateMoreInfo(%s, %s)", tostring(name), tostring(moreInfo))
-    
     -- if there is a GP display value, update it to reflect candidates response
     if f.gp and gpSupplier and Util.Objects.IsFunction(gpSupplier) then
         local gpText = gpSupplier(name)
         f.gp:SetText("GP: " .. (gpText and gpText or "UNKNOWN"))
     end
     
+    local moreInfo, lootStats = AddOn:MoreInfoEnabled(module), nil
     if not moreInfo or not name then
         return f.moreInfo:Hide()
+    else
+        lootStats = AddOn:LootHistoryModule():GetStatistics()
     end
     
     local color = AddOn.GetClassColor(classSupplier and classSupplier(name) or "")
-    -- Logging:Debug("UpdateMoreInfo : %s", Util.Objects.ToString(color))
     local tip = f.moreInfo
-    -- Logging:Debug("MoreInfo = %s", tostring(tip))
     tip:SetOwner(f, "ANCHOR_RIGHT")
     tip:AddLine(AddOn.Ambiguate(name), color.r, color.g, color.b)
     
@@ -96,7 +94,7 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
         end
         tip:AddLine(" ")
         tip:AddLine(_G.TOTAL)
-        for k, v in pairs(charStats.responses) do
+        for _, v in pairs(charStats.responses) do
             if v[3] then r,g,b = unpack(v[3],1,3) end
             tip:AddDoubleLine(v[1], v[2], r or 1,g or 1,b or 1, r or 1,g or 1,b or 1)
         end
@@ -110,6 +108,36 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
     tip:Show()
     tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
 end
+
+local function ConfigFrame()
+    local f = ACD.OpenFrames[AddOnName]
+    return not Util.Objects.IsNil(f), f
+end
+
+function AddOn.ToggleConfig()
+    if ConfigFrame() then
+        AddOn.HideConfig()
+    else
+        AddOn.ShowConfig()
+    end
+end
+
+function AddOn.ShowConfig()
+    ACD:Open(AddOnName)
+end
+
+function AddOn.HideConfig()
+    local _, f = ConfigFrame()
+    if f then
+        local gpm = AddOn:GearPointsCustomModule()
+        if gpm.addItemFrame then gpm.addItemFrame:Hide() end
+        ACD:Close(AddOnName)
+        return true
+    end
+    
+    return false
+end
+
 
 -- bet we can use AceBucket for this
 local UpdateHandler = Class('UpdateHandler')

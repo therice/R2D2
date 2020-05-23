@@ -17,12 +17,36 @@ function AddOn:CallModule(module)
     self:EnableModule(module)
 end
 
+function AddOn:IsModuleEnabled(module)
+    Logging:Debug("IsModuleEnabled(%s)", module)
+    local m = self:GetModule(module)
+    return m and m:IsEnabled()
+end
+
+function AddOn:YieldModule(module)
+    Logging:Debug("YieldModule(%s)", module)
+    self:DisableModule(module)
+end
+
+function AddOn:ToggleModule(module)
+    Logging:Debug("ToggleModule(%s)", module)
+    if self:IsModuleEnabled(module) then
+        self:YieldModule(module)
+    else
+        self:CallModule(module)
+    end
+end
+
 function AddOn:MasterLooterModule()
     return self:GetModule("MasterLooter")
 end
 
 function AddOn:GearPointsModule()
     return self:GetModule("GearPoints")
+end
+
+function AddOn:GearPointsCustomModule()
+    return self:GetModule("GearPointsCustom")
 end
 
 function AddOn:EffortPointsModule()
@@ -60,6 +84,11 @@ end
 function AddOn:TrafficHistoryModule()
     return self:GetModule("TrafficHistory")
 end
+
+function AddOn:SyncModule()
+    return self:GetModule("Sync")
+end
+
 
 function AddOn:ModuleSettings(name)
     return AddOn.db.profile.modules[name]
@@ -404,6 +433,7 @@ function AddOn:OnEvent(event, ...)
         -- https://wow.gamepedia.com/ENCOUNTER_END
         -- ENCOUNTER_END: encounterID, "encounterName", difficultyID, groupSize, success
         self.encounter = Models.Encounter(...)
+        Logging:Debug("EncounterEnd() : %s", Util.Objects.ToString(self.encounter:toTable()))
         -- if master looter, need to check for EP
         if AddOn.isMasterLooter then
             self:EffortPointsModule():OnEncounterEnd(self.encounter)

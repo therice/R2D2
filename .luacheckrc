@@ -74,6 +74,7 @@ read_globals = {
 	"GetItemFamily",
 	"GetItemInfo",
 	"GetItemInfoInstant",
+	"GetItemQualityColor",
 	"GetItemStats",
 	"GetItemSubClassInfo",
 	"GetLocale",
@@ -198,6 +199,7 @@ read_globals = {
 	"RANK",
 	"REQUEST_ROLL",
 	"ROLL",
+	"SHIELDSLOT",
 
 }
 

@@ -547,7 +547,7 @@ end
 function LootAllocate:GetFrame()
     if self.frame then return self.frame end
 
-    local f =  UI:CreateFrame("R2D2_LootAllocate", "LootAllocate", L["r2d2_loot_allocate_frame"], 250, 420)
+    local f =  UI:CreateFrame("R2D2_LootAllocate", "LootAllocate", L["r2d2_loot_allocate_frame"], 250, 420, false)
     function f.UpdateScrollingTable()
         -- if already created, hide and drop reference
         if f.st then
@@ -676,7 +676,7 @@ function LootAllocate:GetFrame()
             self:Hide()
         end
     end)
-    f.abortBtn = b1
+    f.abort = b1
     
     -- more info widgets
     AddOn.EmbedMoreInfoWidgets(self:GetName(), f)
@@ -1372,12 +1372,12 @@ function LootAllocate:Update(forceUpdate)
     if AddOn.isMasterLooter then
         -- Update close button text
         if active then
-            self.frame.abortBtn:SetText(L["abort"])
+            self.frame.abort:SetText(L["abort"])
         else
-            self.frame.abortBtn:SetText(_G.CLOSE)
+            self.frame.abort:SetText(_G.CLOSE)
         end
     else
-        self.frame.abortBtn:SetText(_G.CLOSE)
+        self.frame.abort:SetText(_G.CLOSE)
     end
 
     if #self.frame.st.filtered < #self.frame.st.data then

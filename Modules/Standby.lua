@@ -14,7 +14,7 @@ local ST = AddOn.Libs.ScrollingTable
 Standby.defaults = {
     profile = {
         enabled     = false,
-        standby_pct = 0.80,
+        standby_pct = 0.75,
         verify_after_each_award = false,
     }
 }
@@ -191,7 +191,7 @@ function Standby:GetFrame()
     local close = UI:CreateButton(_G.CLOSE, f.content)
     close:SetPoint("RIGHT", f.moreInfoBtn, "LEFT", -10, 0)
     close:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = close
+    f.close = close
     
     f:SetWidth(st.frame:GetWidth() + 20)
     return f

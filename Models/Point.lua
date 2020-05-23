@@ -143,7 +143,7 @@ function Award:SetSubjects(type, ...)
                 for i = 1, GetNumGroupMembers() do
                     -- the returned player name won't have realm, so convert using UnitName
                     local name = GetRaidRosterInfo(i)
-                    Tables.Push(subjects, self:UnitName(name))
+                    Tables.Push(subjects, AddOn:UnitName(name))
                 end
             end
         end
@@ -196,12 +196,13 @@ function Award:ToAnnouncement()
     if Util.Objects.In(self.actionType, ActionType.Add, ActionType.Subtract) then
         -- "X EP added to name"
         return format(
-                "%d %s %s %s %s",
+                "%d %s %s %s %s (%s)",
                 self.resourceQuantity,
                 resource,
                 Award.TypeIdToAction[self.actionType]:lower() .. "ed", -- added, subtracted
                 self.actionType == ActionType.Add and "to" or "from",
-                subject
+                subject,
+                self.description and self.description or "N/A"
         )
     elseif self.actionType == ActionType.Decay then
         -- "Decayed EP for Guild by X%"

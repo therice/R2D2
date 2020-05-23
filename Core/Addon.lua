@@ -60,6 +60,7 @@ function R2D2:OnInitialize()
         {cmd = "version", desc = L["chat_commands_version"]},
         {cmd = "looth", desc = L["chat_commands_looth"]},
         {cmd = "traffich", desc = L["chat_commands_traffich"]},
+        {cmd = "sync", desc = L["chat_commands_sync"]},
         {cmd = "standby", desc = L["chat_commands_standby"]},
         -- development intentionally not documented
     }
@@ -118,6 +119,12 @@ function R2D2:OnEnable()
     self.mode:Enable(R2D2.Constants.Modes.Persistence)
     --@end-debug@
     
+    self.realmName = select(2, UnitFullName(self.Constants.player))
+    self.playerName = self:UnitName(self.Constants.player)
+    self.playerFaction = UnitFactionGroup(self.Constants.player)
+    
+    Logging:Debug("OnEnable(%s) : Faction '%s'", self:GetName(), self.playerFaction)
+    
     for name, module in self:IterateModules() do
         Logging:Debug("OnEnable(%s) - Examining module (startup) '%s'", self:GetName(), name)
         
@@ -126,12 +133,7 @@ function R2D2:OnEnable()
             module:Enable()
         end
     end
-
-    self.realmName = select(2, UnitFullName(self.Constants.player))
-    self.playerName = self:UnitName(self.Constants.player)
-    self.playerFaction = UnitFactionGroup(self.Constants.player)
-
-    Logging:Debug("OnEnable(%s) : Faction '%s'", self:GetName(), self.playerFaction)
+    
     -- register events
     for event, method in pairs(self.Events) do
         self:RegisterEvent(event, method)
@@ -246,11 +248,7 @@ function R2D2:Test(count)
 end
 
 function R2D2:Config()
-    if AddOn.Libs.AceConfigDialog.OpenFrames[name] then
-        AddOn.Libs.AceConfigDialog:Close(name)
-    else
-        AddOn.Libs.AceConfigDialog:Open(name)
-    end
+    R2D2.ToggleConfig()
 end
 
 function R2D2:Version(showOutOfDateClients)
@@ -279,8 +277,10 @@ function R2D2:ChatCommand(msg)
         self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then
         self:Version(args[1])
-    elseif cmd == 'standby' or cmd == "bench"then
+    elseif cmd == 'standby' or cmd == "bench" then
         self:CallModule("Standby")
+    elseif cmd == 'sync' then
+        self:CallModule("Sync")
     elseif cmd == 'dev' then
         local flag = R2D2.Constants.Modes.Develop
         if self.mode:Enabled(flag) then

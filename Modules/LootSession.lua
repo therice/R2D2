@@ -136,7 +136,7 @@ end
 
 function LootSession:GetFrame()
     if self.frame then return self.frame end
-    local f = UI:CreateFrame("R2D2_LootSession", "LootSession", L["r2d2_loot_session_frame"], 260)
+    local f = UI:CreateFrame("R2D2_LootSession", "LootSession", L["r2d2_loot_session_frame"], 260, 325, false)
 
     -- start button
     local start = UI:CreateButton(_G.START, f.content)
@@ -175,13 +175,13 @@ function LootSession:GetFrame()
         ML.lootTable = {}
         self:Disable()
     end)
-    f.closeBtn = cancel
+    f.cancel = cancel
 
     --f.lootStatus = UI:New("Text", f.content, " ")
     --f.lootStatus:SetTextColor(1,1,1,1) -- White for now
     --f.lootStatus:SetHeight(20)
     --f.lootStatus:SetWidth(75)
-    --f.lootStatus:SetPoint("LEFT", f.closeBtn, "RIGHT", 13, 1)
+    --f.lootStatus:SetPoint("LEFT", f.cancel, "RIGHT", 13, 1)
     --f.lootStatus:SetScript("OnLeave", UI.HideTooltip)
     --f.lootStatus.text:SetJustifyH("LEFT")
 

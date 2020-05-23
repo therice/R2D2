@@ -40,7 +40,7 @@ lib.frame:SetScript(
 local SendAddonMessage = _G.SendAddonMessage
 if ChatThrottleLib then
     SendAddonMessage = function(...)
-        ChatThrottleLib:SendAddonMessage("ALERT", MessagePrefix, ...)
+        ChatThrottleLib:SendAddonMessage("ALERT", MAJOR_VERSION, ...)
     end
 end
 
@@ -56,11 +56,11 @@ lib.States = States
 local StateNames = tInvert(States)
 
 local StateTransitions = {
-    [States.Stale]                  = { States.Current, States.PersistingChanges, States.StaleAwaitingUpdate },
-    [States.StaleAwaitingUpdate]    = { States.Stale, States.PendingChanges },
-    [States.Current]                = { States.PendingChanges, States.PersistingChanges, States.Stale },
-    [States.PendingChanges]         = { States.StaleAwaitingUpdate },
-    [States.PersistingChanges]      = { States.StaleAwaitingUpdate },
+    [States.Stale]                  = { [States.Current] = true, [States.PersistingChanges] = true, [States.StaleAwaitingUpdate] = true },
+    [States.StaleAwaitingUpdate]    = { [States.Stale] = true, [States.PendingChanges] = true },
+    [States.Current]                = { [States.PendingChanges] = true, [States.PersistingChanges] = true, [States.Stale] = true },
+    [States.PendingChanges]         = { [States.StaleAwaitingUpdate] = true },
+    [States.PersistingChanges]      = { [States.StaleAwaitingUpdate] = true },
 }
 
 local Messages = {
@@ -72,13 +72,15 @@ lib.Events = {
     Initialized              =   "Initialized",
     StateChanged             =   "StateChanged",
     GuildInfoChanged         =   "GuildInfoChanged",
+    GuildNameChanged         =   "GuildNameChanged",
     GuildOfficerNoteChanged  =   "GuildNoteChanged",
     GuildOfficerNoteConflict =   "GuildNoteConflict",
+    GuildOfficerNoteWritten  =   "GuildOfficerNoteWritten",
     GuildMemberDeleted       =   "GuildMemberDeleted",
 }
 
-local state, initialized, index, cache, guildInfo =
-    States.StaleAwaitingUpdate, false, nil, {}, nil
+local state, initialized, index, cache, guildInfo, guildName =
+    States.StaleAwaitingUpdate, false, nil, {}, nil, nil
 
 
 local GuildStorageEntry = Class('GuildStorageEntry')
@@ -113,10 +115,18 @@ function SetState(value)
         Logging:Trace("State change from '%s' to '%s'", StateNames[state], StateNames[value])
         state = value
         if value == States.PendingChanges then
-            SendAddonMessage(MAJOR_VERSION, Messages.ChangesPending, "GUILD")
+            SendAddonMessage(Messages.ChangesPending, "GUILD")
         end
         callbacks:Fire(lib.Events.StateChanged, state)
     end
+end
+
+function lib:GetState()
+    return state
+end
+
+function lib:GetGuildName()
+    return guildName
 end
 
 function lib:IsStateCurrent()
@@ -217,8 +227,6 @@ function lib:GUILD_ROSTER_UPDATE(canRequestRosterUpdate)
 end
 
 local function OnUpdate()
-    local start = debugprofilestop()
-    
     if state == States.Current then return end
     
     if state == States.StaleAwaitingUpdate then
@@ -226,12 +234,28 @@ local function OnUpdate()
         return
     end
     
+    local start = debugprofilestop()
+    
     local guildMemberCount = GetNumGuildMembers()
-    if guildMemberCount == 0 then return end
-    if not index or index >= guildMemberCount then index = 1 end
+    if guildMemberCount == 0 then
+        Logging:Trace("No Guild Members, exiting...")
+        return
+    end
+    
+    if not index or index >= guildMemberCount then
+        Logging:Trace("Re-setting index to 1 => %d", tostring(index))
+        index = 1
+    end
     
     if index == 1 then
-        local newGuildInfo = GetGuildInfoText() or ""
+    
+        local newGuildName = GetGuildInfo("player") or nil
+        if newGuildName ~= guildName then
+            guildName = newGuildName
+            callbacks:Fire(lib.Events.GuildNameChanged)
+        end
+        
+        local newGuildInfo = GetGuildInfoText() or nil
         if newGuildInfo ~= guildInfo then
             guildInfo = newGuildInfo
             callbacks:Fire(lib.Events.GuildInfoChanged)
@@ -240,9 +264,12 @@ local function OnUpdate()
     
     Logging:Trace("Current index = %d, Guild Member Count = %d", index and index or -1, guildMemberCount)
     local lastIndex = math.min(index + 100, guildMemberCount)
-    if not initialized then lastIndex = guildMemberCount end
-    Logging:Trace("Processing guild members from %d to %s", index, lastIndex)
+    if not initialized then
+        Logging:Trace("Setting lastIndex to %d", guildMemberCount)
+        lastIndex = guildMemberCount
+    end
     
+    Logging:Trace("Processing guild members from %d to %s", index, lastIndex)
     for i = index, lastIndex do
         local name, rank, rankIndex, _, class, _, _, officerNote, _, _, classTag = GetGuildRosterInfo(i)
         -- The Rank Index starts at 0, add 1 to correspond with the index
@@ -251,7 +278,7 @@ local function OnUpdate()
     
         if name then
             local entry = lib:GetMember(name)
-            -- Logging:Debug("BEFORE(%s) = %s", name, Util.Objects.ToString(entry))
+            -- Logging:Trace("BEFORE(%s) = %s", name, Util.Objects.ToString(entry))
             if not entry then
                 entry = GuildStorageEntry(name, class, classTag, rank, rankIndex, officerNote)
                 cache[name] = entry
@@ -262,15 +289,17 @@ local function OnUpdate()
                 entry.classTag = classTag
             end
             entry.seen = true
-    
-            -- Logging:Debug("AFTER(%s) = %s", name, Util.Objects.ToString(entry))
+            
+            -- Logging:Trace("AFTER(%s) = %s", name, Util.Objects.ToString(entry))
             
             if entry.officerNote ~= officerNote then
                 entry.officerNote = officerNote
                 if initialized then
+                    Logging:Trace("Firing Events.GuildOfficerNoteChanged for %s", name)
                     callbacks:Fire(lib.Events.GuildOfficerNoteChanged, name, officerNote)
                 end
                 if entry:HasPendingOfficerNote() then
+                    Logging:Trace("Firing Events.GuildOfficerNoteConflict for %s", name)
                     callbacks:Fire(lib.Events.GuildOfficerNoteConflict, name, officerNote, entry.officerNote, entry.pendingOfficerNote)
                 end
             end
@@ -278,42 +307,50 @@ local function OnUpdate()
             if entry:HasPendingOfficerNote() then
                 Logging:Trace("Writing note '%s' for '%s'", entry.pendingOfficerNote, entry.name)
                 GuildRosterSetOfficerNote(i, entry.pendingOfficerNote)
+                local note = entry.pendingOfficerNote
                 entry.pendingOfficerNote = nil
+                Logging:Trace("Firing Events.GuildOfficerNoteWritten for %s", name)
+                callbacks:Fire(lib.Events.GuildOfficerNoteWritten, name, note)
             end
         end
     end
     
     index = lastIndex
+    Logging:Trace("(%s / %d) %d >= %d", tostring(initialized), state, index, guildMemberCount)
     if index >= guildMemberCount then
         for name, entry in pairs(cache) do
             if entry.seen then
                 entry.seen = nil
             else
                 cache[name] = nil
+                Logging:Trace("Firing Events.GuildMemberDeleted for %s", name)
                 callbacks:Fire(lib.Events.GuildMemberDeleted, name)
             end
         end
     
         if not initialized then
             for name, entry in pairs(cache) do
+                Logging:Trace("Firing Events.GuildOfficerNoteChanged for %s", name)
                 callbacks:Fire(lib.Events.GuildOfficerNoteChanged, name, entry.officerNote)
             end
             initialized = true
             callbacks:Fire(lib.Events.Initialized)
         end
-    
+        
         if state == States.Stale then
             SetState(States.Current)
-        elseif state == States.ChangesPending then
+        elseif state == States.PendingChanges then
+            Logging:Trace("State is States.ChangesPending - checking pending count")
             local pendingCount = Util.Tables.CountFn(cache,
                 function(entry)
                    if entry.pendingOfficerNote then return 1 else return 0 end
                 end
             )
-    
+            Logging:Trace("Pending Count = %d", pendingCount)
             if pendingCount == 0 then
                 SetState(States.StaleAwaitingUpdate)
-                SendAddonMessage(MAJOR_VERSION, Messages.ChangesWritten, "GUILD")
+                Logging:Trace("Firing Messages.ChangesWritten")
+                SendAddonMessage(Messages.ChangesWritten, "GUILD")
             end
         end
     end

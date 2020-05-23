@@ -247,7 +247,7 @@ function VersionCheck:GetFrame()
     local b3 = UI:CreateButton(_G.CLOSE, f.content)
     b3:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 10)
     b3:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = b3
+    f.close = b3
     
     local st = ST:CreateST(self.scrollCols, 12, 20, nil, f.content)
     st.frame:SetPoint("TOPLEFT",f,"TOPLEFT",10,-35)

@@ -61,5 +61,19 @@ describe("LibUtil", function()
             
             print(Util.Objects.ToString(copy))
         end)
+        it("sorts associatively", function()
+            local t = {
+                ['test'] = {a=1,b='Zed'},
+                ['foo'] = {a=2,b='Bar'},
+                ['aba'] = {a=100, b = 'Qre'},
+            }
+            
+            local t2 = Util.Tables.ASort(t, function (a,b) return a[2].b < b[2].b end)
+            local idx = 1
+            for _, v in pairs(t2) do
+                assert(v[1] == (idx == 1 and 'foo' or idx == 2 and 'aba' or idx == 3 and 'test' or nil))
+                idx = idx + 1
+            end
+        end)
     end)
 end)

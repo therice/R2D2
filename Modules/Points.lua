@@ -1,5 +1,5 @@
 local _, AddOn = ...
-local Points = AddOn:NewModule("Points", "AceHook-3.0", "AceEvent-3.0")
+local Points = AddOn:NewModule("Points", "AceHook-3.0", "AceEvent-3.0", "AceTimer-3.0")
 local Logging = AddOn.components.Logging
 local L = AddOn.components.Locale
 local UI = AddOn.components.UI
@@ -183,7 +183,13 @@ function Points:RevertAdjust(entry)
 end
 
 function Points:Adjust(award)
-    -- Logging:Debug("%s", Objects.ToString(award:toTable()))
+    
+    if not GuildStorage:IsStateCurrent() then
+        Logging:Debug("Adjust() : GuildStorage state is not current, scheduling for near future and returning")
+        return self:ScheduleTimer("Adjust", 1, award)
+    else
+        Logging:Trace("Adjust() : GuildStorage state is current, proceeding")
+    end
     
     -- local function for forming operation on target
     local function apply(target, action, type, amount)
@@ -232,19 +238,16 @@ function Points:Adjust(award)
     AddOn:TrafficHistoryModule():CreateFromAward(award, lhEntry)
     
     -- subject is a tuple of (name, class)
-    local updates = false
     for _, subject in pairs(award.subjects) do
         local target = GetEntry(subject[1])
         if target then
-            Logging:Debug("Adjust() : Processing %s", Objects.ToString(target:toTable()))
-            
+            -- Logging:Debug("Adjust() : Processing %s", Objects.ToString(target:toTable()))
             apply(target, award.actionType, award.resourceType, award.resourceQuantity)
             -- don't apply to actual officer notes in test mode
             -- it will also fail if we cannot edit officer notes
             if (not AddOn:TestModeEnabled() and AddOn:PersistenceModeEnabled()) and CanEditOfficerNote() then
                 -- todo : we probably need to see if this is successful, otherwise could be lost
                 GuildStorage:SetOfficeNote(target.name, target:ToNote())
-                updates = true
             else
                 Logging:Debug("Points:Adjust() : Skipping adjustment of EPGP for '%s'", target.name)
             end
@@ -252,10 +255,7 @@ function Points:Adjust(award)
             Logging:Warn("Could not locate %s for applying %s. Possibly not in guild?", subject[1], Objects.ToString(award:toTable()))
         end
     end
-    
-    -- trigger the updated notes to be written, not sure if better way
-    if updates then GuildRoster() end
-    
+
     -- announce what was done
     local check, _ = pcall(function() AddOn:SendAnnouncement(award:ToAnnouncement(), AddOn.Constants.group) end)
     if not check then Logging:Warn("Award() : Unable to announce adjustment") end
@@ -371,6 +371,8 @@ function Points:GetFrame()
                                   return false
                               end,
                           })
+        
+        
         -- show moreInfo on mouseover
         st:RegisterEvents({
                               ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
@@ -395,7 +397,7 @@ function Points:GetFrame()
                                   return false
                               end
                           })
-    
+        
         st:SetFilter(Points.FilterFunc)
         st:EnableSelection(true)
         f.st = st
@@ -409,11 +411,11 @@ function Points:GetFrame()
     local close = UI:CreateButton(_G.CLOSE, f.content)
     close:SetPoint("RIGHT", f.moreInfoBtn, "LEFT", -10, 0)
     close:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = close
+    f.close = close
     
     -- filter
     local filter = UI:CreateButton(_G.FILTER, f.content)
-    filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+    filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     filter:SetScript("OnEnter", function() UI:CreateTooltip(L["deselect_responses"]) end)
     filter:SetScript("OnLeave", function() UI:HideTooltip() end)
@@ -619,7 +621,13 @@ function Points:UpdateAdjustFrame(subjectType, name, resource, subjects)
     if subjectType ~= Award.SubjectType.Character and subjects then
         name = name .. "(" .. Util.Tables.Count(subjects) .. ")"
         self.adjustFrame.subjects = subjects
-        UI.UpdateSubjectTooltip(self.adjustFrame, Util(subjects):Sort(function (a, b) return a[1] < b[1]end):Copy()())
+        UI.UpdateSubjectTooltip(
+            self.adjustFrame,
+            Util(subjects)
+                :Sort(function (a, b) return a[1] < b[1] end)
+                :Map(function(e) return { AddOn.Ambiguate(e[1]), e[2] } end)
+                :Copy()()
+        )
     else
         self.adjustFrame.subjectTooltip:Hide()
         self.adjustFrame.subjects = nil
@@ -800,18 +808,58 @@ function Points.DecayOnShow(frame, awards)
     )
 end
 
+
+
 function Points.DecayOnClickYes(frame, awards, ...)
-    for _, award in pairs(awards) do
-        Points:Adjust(award)
+    Logging:Trace("DecayOnClickYes(%d)", #awards)
+    
+    if #awards == 0 then return end
+    
+    -- we do decay in multiple awards, one for EP and one for GP
+    -- if we try to do them too quickly, the updates to player's officer note won't
+    -- be written yet and could encounter a conflict
+    --
+    -- therefore, this function will managed that via performing adjustment
+    -- and waiting for callbacks to determine that all have been completed before
+    -- moving to next award
+    local function adjust(awards, index)
+        Logging:Trace("adjust() : %d / %d", #awards, index)
+        
+        -- we make no checks on index vs award count in callback, so check here
+        if index <= #awards then
+            local award = awards[index]
+            Logging:Debug("adjust() : Processing %s", Objects.ToString(award.resourceType))
+            
+            local updated, expected = 0, Util.Tables.Count(award.subjects)
+            -- register callback with GuildStorage for notification when the officer note has been written
+            -- keep track of updates and then when it matches the expected count, de-register callback
+            -- and move on to next award
+            GuildStorage.RegisterCallback(
+                    Points,
+                    GuildStorage.Events.GuildOfficerNoteWritten,
+                    function(event, state)
+                        updated = updated + 1
+                        Logging:Debug("%s : %d/%d", tostring(event), tostring(updated), tostring(expected))
+                        if updated == expected then
+                            Logging:Trace("Unregistering GuildStorage.Events.GuildOfficerNoteWritten and moving to award %d", index + 1)
+                            GuildStorage.UnregisterCallback(Points, GuildStorage.Events.GuildOfficerNoteWritten)
+                            adjust(awards, index + 1)
+                        end
+                    end
+            )
+            
+            Points:Adjust(award)
+        else
+            if Points.decayFrame then Points.decayFrame:Hide() end
+        end
     end
     
-    if Points.decayFrame then Points.decayFrame:Hide() end
+    adjust(awards, 1)
 end
 
 function Points.DecayOnClickNo(frame, awards)
     -- intentional no-op
 end
-
 
 function Points.RevertOnShow(frame, entry)
     UI.DecoratePopup(frame)

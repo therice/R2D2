@@ -52,21 +52,21 @@ EP.defaults = {
                 -- Onyxia
                 ['10184'] = 12,
                 -- Razorgore
-                ['12435'] = 14,
+                ['12435'] = 20,
                 -- Vaelastrasz
-                ['13020'] = 14,
+                ['13020'] = 20,
                 -- Broodlord
-                ['12017'] = 14,
+                ['12017'] = 20,
                 -- Firemaw,
-                ['11983'] = 14,
+                ['11983'] = 20,
                 -- Ebonroc
-                ['14601'] = 14,
+                ['14601'] = 20,
                 -- Flamegor
-                ['11981'] = 14,
+                ['11981'] = 20,
                 -- Chromaggus
-                ['14020'] = 17,
+                ['14020'] = 24,
                 -- Nefarian
-                ['11583'] = 20,
+                ['11583'] = 28,
             }
         },
     }
@@ -169,6 +169,7 @@ end
 function EP:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.db:RegisterNamespace(self:GetName(), EP.defaults)
+    AddOn:SyncModule():AddHandler(self:GetName(), format("%s %s", L['ep'], L['settings']), function () end, function() end)
 end
 
 function EP:OnEnable()
@@ -193,11 +194,13 @@ function EP:OnEncounterEnd(encounter)
     local creatureId = Encounter:GetEncounterCreatureId(encounter.id)
     if creatureId then
         local creatureEp = self.db.profile.raid.creatures[tostring(creatureId)]
+        local success = encounter:IsSuccess()
+        
         -- have EP and either victory or defeat with awarding of defeat EP
-        if creatureEp and (encounter.success or (not encounter.success and awardDefeat)) then
+        if creatureEp and (success or (not success and awardDefeat)) then
             creatureEp = tonumber(creatureEp)
             -- if defeat, scale EP based upon defeat percentage
-            if not encounter.success then
+            if not success then
                 creatureEp = math.floor(creatureEp * self.db.profile.raid.award_defeat_pct)
             end
             
@@ -207,11 +210,11 @@ function EP:OnEncounterEnd(encounter)
             award:SetAction(Award.ActionType.Add)
             award:SetResource(Award.ResourceType.Ep, creatureEp)
             award.description = format(
-                    encounter.success and L["award_n_ep_for_boss_victory"] or L["award_n_ep_for_boss_defeat"],
+                    success and L["award_n_ep_for_boss_victory"] or L["award_n_ep_for_boss_defeat"],
                     creatureEp, encounter.name
             )
     
-            if (encounter.success and autoAwardVictory) or (not encounter.success and autoAwardDefeat) then
+            if (success and autoAwardVictory) or (not success and autoAwardDefeat) then
                 AddOn:PointsModule():Adjust(award)
             else
                 Dialog:Spawn(AddOn.Constants.Popups.ConfirmAdjustPoints, award)
@@ -225,7 +228,7 @@ function EP:OnEncounterEnd(encounter)
                 award:SetAction(Award.ActionType.Add)
                 award:SetResource(Award.ResourceType.Ep, math.floor(creatureEp * awardPct))
                 award.description = L["standby"] .. ' : ' .. format(
-                        encounter.success and L["award_n_ep_for_boss_victory"] or L["award_n_ep_for_boss_defeat"],
+                        success and L["award_n_ep_for_boss_victory"] or L["award_n_ep_for_boss_defeat"],
                         creatureEp, encounter.name
                 )
                 

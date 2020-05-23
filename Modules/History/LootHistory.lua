@@ -37,6 +37,7 @@ LootHistory.defaults = {
 
 local ROW_HEIGHT, NUM_ROWS = 20, 15
 local MenuFrame, FilterMenu, selectedDate, selectedName, selectedInstance, moreInfo
+local stats = {stale = true, value = nil}
 
 function LootHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -104,6 +105,7 @@ function LootHistory:OnInitialize()
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
     self.moreInfo = CreateFrame( "GameTooltip", "R2D2_" .. self:GetName() .. "_MoreInfo", nil, "GameTooltipTemplate" )
+    AddOn:SyncModule():AddHandler(self:GetName(), L['loot_history'], function () end, function() end)
 end
 
 function LootHistory:OnEnable()
@@ -318,7 +320,7 @@ function LootHistory.SetCellDelete(rowFrame, frame, data, cols, row, realrow, co
             
             local charHistory = history:get(name)
             if #charHistory == 0 then
-                Logging:Debug("Last LootHistory entry deleted, removing %s", name)
+                Logging:Debug("Last LootHistory entry deleted, removing %s", tostring(name))
                 history:del(name)
             end
         else
@@ -468,11 +470,11 @@ function LootHistory:GetFrame()
     local close = UI:CreateButton(_G.CLOSE, f.content)
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -100)
     close:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = close
+    f.close = close
     
     local moreInfoBtn = CreateFrame("Button", nil, f.content, "UIPanelButtonTemplate")
     moreInfoBtn:SetSize(25, 25)
-    moreInfoBtn:SetPoint("BOTTOMRIGHT", f.closeBtn , "TOPRIGHT", 0, 10)
+    moreInfoBtn:SetPoint("BOTTOMRIGHT", f.close, "TOPRIGHT", 0, 10)
     moreInfoBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
     moreInfoBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
     moreInfoBtn:SetScript("OnClick", function(button)
@@ -499,7 +501,7 @@ function LootHistory:GetFrame()
     end)
     
     local filter = UI:CreateButton(_G.FILTER, f.content)
-    filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+    filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     f.filter = filter
     MSA_DropDownMenu_Initialize(filter, self.FilterMenu)
@@ -753,6 +755,7 @@ function LootHistory:AddEntry(winner, entry)
     else
         history:put(winner, {entry:toTable()})
     end
+    stats.stale = true
 end
 
 function LootHistory:CreateFromAward(award)
@@ -795,17 +798,21 @@ function LootHistory:GetStatistics()
     Logging:Trace("GetStatistics()")
     local check, ret = pcall(
             function()
-                local stats = Models.History.LootStatistics()
-                
-                local c_pairs = CDB.static.pairs
-                for name, data in c_pairs(self:GetHistory()) do
-                    for i = #data, 1, -1 do
-                        stats:ProcessEntry(name, data[i], i)
+                if stats.stale or Objects.IsNil(stats.value) then
+                    local s = Models.History.LootStatistics()
+        
+                    local c_pairs = CDB.static.pairs
+                    for name, data in c_pairs(self:GetHistory()) do
+                        for i = #data, 1, -1 do
+                            s:ProcessEntry(name, data[i], i)
+                        end
                     end
+                    
+                    stats.stale = false
+                    stats.value = s
                 end
-    
-                -- Logging:Debug("GetStatistics() : %s", Util.Objects.ToString(stats, 10))
-                return stats
+                
+                return stats.value
             end
     )
     
