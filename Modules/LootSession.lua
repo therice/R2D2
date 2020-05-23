@@ -136,7 +136,7 @@ end
 
 function LootSession:GetFrame()
     if self.frame then return self.frame end
-    local f = UI:CreateFrame("R2D2_LootSession", "LootSession", L["r2d2_loot_session_frame"], 260)
+    local f = UI:CreateFrame("R2D2_LootSession", "LootSession", L["r2d2_loot_session_frame"], 260, 325, false)
 
     -- start button
     local start = UI:CreateButton(_G.START, f.content)

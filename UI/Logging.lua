@@ -74,7 +74,7 @@ end
 function LoggingUI:GetFrame()
     if self.frame then return self.frame end
 
-    local frame = UI:CreateFrame("R2D2_LoggingWindow", "LoggingUI", "Logging")
+    local frame = UI:CreateFrame("R2D2_LoggingWindow", "LoggingUI", "Logging", nil, nil, false)
     frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
     frame:SetWidth(750)
     frame:SetHeight(400)

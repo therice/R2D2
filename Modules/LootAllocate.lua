@@ -547,7 +547,7 @@ end
 function LootAllocate:GetFrame()
     if self.frame then return self.frame end
 
-    local f =  UI:CreateFrame("R2D2_LootAllocate", "LootAllocate", L["r2d2_loot_allocate_frame"], 250, 420)
+    local f =  UI:CreateFrame("R2D2_LootAllocate", "LootAllocate", L["r2d2_loot_allocate_frame"], 250, 420, false)
     function f.UpdateScrollingTable()
         -- if already created, hide and drop reference
         if f.st then

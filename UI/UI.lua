@@ -316,11 +316,13 @@ end
 -- @param title The title text.
 -- @param width The width of the title frame, defaults to 250.
 -- @param height Height of the frame, defaults to 325.
+-- @param hookConfig should the frame be hooked into respecting configuration frame (hide/show if present). defaults to true
 -- @return The frame object.
-function UI:CreateFrame(name, module, title, width, height)
+function UI:CreateFrame(name, module, title, width, height, hookConfig)
     local f = CreateFrame("Frame", name, UIParent)
     local storage = AddOn.db.profile.ui[module]
-
+    local hookIt = Util.Objects.IsNil(hookConfig) and true or hookConfig
+    
     f:Hide()
     f:SetFrameStrata("DIALOG")
     f:SetToplevel(true)
@@ -332,6 +334,19 @@ function UI:CreateFrame(name, module, title, width, height)
     f:RestorePosition()
     f:MakeDraggable()
     f:SetScript("OnMouseWheel", function(f,delta) if IsControlKeyDown() then Window.OnMouseWheel(f,delta) end end)
+    f:HookScript("OnShow",
+                 function()
+                     f.restoreConfig = hookIt and AddOn.HideConfig()
+                 end
+    )
+    f:HookScript("OnHide",
+                 function()
+                     if f.restoreConfig then
+                         AddOn.ShowConfig()
+                         f.restoreConfig = false
+                     end
+                 end
+    )
 
     local tf = CreateFrame("Frame", "R2D2_UI_"..module.."_Title", f)
     tf:SetToplevel(true)

@@ -132,8 +132,12 @@ function AddOn.HideConfig()
         local gpm = AddOn:GearPointsCustomModule()
         if gpm.addItemFrame then gpm.addItemFrame:Hide() end
         ACD:Close(AddOnName)
+        return true
     end
+    
+    return false
 end
+
 
 -- bet we can use AceBucket for this
 local UpdateHandler = Class('UpdateHandler')

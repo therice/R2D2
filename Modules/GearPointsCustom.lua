@@ -253,7 +253,7 @@ end
 function GpCustom:GetAddItemFrame()
     if self.addItemFrame then return self.addItemFrame end
     
-    local f = UI:CreateFrame("R2D2_Add_Custom_Item", "AddCustomItem", L["r2d2_add_custom_item_frame"], 150, 200)
+    local f = UI:CreateFrame("R2D2_Add_Custom_Item", "AddCustomItem", L["r2d2_add_custom_item_frame"], 150, 200, false)
     f:SetWidth(225)
     f:SetPoint("TOPRIGHT", ACD.OpenFrames[AddOnName].frame, "TOPLEFT", 150)
     
