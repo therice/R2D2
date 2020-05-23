@@ -23,7 +23,7 @@ function Encounter:initialize(...)
 end
 
 function Encounter:IsSuccess()
-    return self.success or false
+    return self.success and (self.success == 1)
 end
 
 Encounter.None = Encounter(nil, _G.UNKNOWN, nil, nil)

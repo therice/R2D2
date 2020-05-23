@@ -371,6 +371,8 @@ function Points:GetFrame()
                                   return false
                               end,
                           })
+        
+        
         -- show moreInfo on mouseover
         st:RegisterEvents({
                               ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
@@ -395,7 +397,7 @@ function Points:GetFrame()
                                   return false
                               end
                           })
-    
+        
         st:SetFilter(Points.FilterFunc)
         st:EnableSelection(true)
         f.st = st
@@ -619,7 +621,13 @@ function Points:UpdateAdjustFrame(subjectType, name, resource, subjects)
     if subjectType ~= Award.SubjectType.Character and subjects then
         name = name .. "(" .. Util.Tables.Count(subjects) .. ")"
         self.adjustFrame.subjects = subjects
-        UI.UpdateSubjectTooltip(self.adjustFrame, Util(subjects):Sort(function (a, b) return a[1] < b[1]end):Copy()())
+        UI.UpdateSubjectTooltip(
+            self.adjustFrame,
+            Util(subjects)
+                :Sort(function (a, b) return a[1] < b[1] end)
+                :Map(function(e) return { AddOn.Ambiguate(e[1]), e[2] } end)
+                :Copy()()
+        )
     else
         self.adjustFrame.subjectTooltip:Hide()
         self.adjustFrame.subjects = nil

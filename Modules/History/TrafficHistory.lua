@@ -589,7 +589,7 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
         tip:AddLine(Award.TypeIdToSubject[entry.subjectType], color.r, color.g, color.b)
         tip:AddLine(" ")
         local subjectCount = Tables.Count(entry.subjects)
-        tip:AddDoubleLine("Players", subjectCount)
+        tip:AddDoubleLine(L["members"], subjectCount)
         tip:AddLine(" ")
         local shown = 0
         

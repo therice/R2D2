@@ -60,6 +60,7 @@ function R2D2:OnInitialize()
         {cmd = "version", desc = L["chat_commands_version"]},
         {cmd = "looth", desc = L["chat_commands_looth"]},
         {cmd = "traffich", desc = L["chat_commands_traffich"]},
+        {cmd = "sync", desc = L["chat_commands_sync"]},
         {cmd = "standby", desc = L["chat_commands_standby"]},
         -- development intentionally not documented
     }
@@ -283,8 +284,10 @@ function R2D2:ChatCommand(msg)
         self:Test(tonumber(args[1]) or 1)
     elseif cmd == 'version' or cmd == "v" or cmd == "ver" then
         self:Version(args[1])
-    elseif cmd == 'standby' or cmd == "bench"then
+    elseif cmd == 'standby' or cmd == "bench" then
         self:CallModule("Standby")
+    elseif cmd == 'sync' then
+        self:CallModule("Sync")
     elseif cmd == 'dev' then
         local flag = R2D2.Constants.Modes.Develop
         if self.mode:Enabled(flag) then

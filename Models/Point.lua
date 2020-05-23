@@ -143,7 +143,7 @@ function Award:SetSubjects(type, ...)
                 for i = 1, GetNumGroupMembers() do
                     -- the returned player name won't have realm, so convert using UnitName
                     local name = GetRaidRosterInfo(i)
-                    Tables.Push(subjects, self:UnitName(name))
+                    Tables.Push(subjects, AddOn:UnitName(name))
                 end
             end
         end

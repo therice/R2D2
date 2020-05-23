@@ -409,6 +409,7 @@ function AddOn:OnEvent(event, ...)
         -- https://wow.gamepedia.com/ENCOUNTER_END
         -- ENCOUNTER_END: encounterID, "encounterName", difficultyID, groupSize, success
         self.encounter = Models.Encounter(...)
+        Logging:Debug("EncounterEnd() : %s", Util.Objects.ToString(self.encounter:toTable()))
         -- if master looter, need to check for EP
         if AddOn.isMasterLooter then
             self:EffortPointsModule():OnEncounterEnd(self.encounter)

@@ -526,7 +526,7 @@ end
 function UI.UpdateSubjectTooltip(f, subjects)
     local tip = f.subjectTooltip
     tip:SetOwner(f, "ANCHOR_LEFT")
-    tip:AddLine(ColoredDecorator(0.77, 0.12, 0.23):decorate(L["characters"]))
+    tip:AddLine(ColoredDecorator(1, 1, 1):decorate(L["characters"]))
     tip:AddLine(" ")
     
     for _, subject in pairs(subjects) do

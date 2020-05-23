@@ -37,6 +37,7 @@ LootHistory.defaults = {
 
 local ROW_HEIGHT, NUM_ROWS = 20, 15
 local MenuFrame, FilterMenu, selectedDate, selectedName, selectedInstance, moreInfo
+local stats = {stale = true, value = nil}
 
 function LootHistory:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
@@ -753,6 +754,7 @@ function LootHistory:AddEntry(winner, entry)
     else
         history:put(winner, {entry:toTable()})
     end
+    stats.stale = true
 end
 
 function LootHistory:CreateFromAward(award)
@@ -795,17 +797,21 @@ function LootHistory:GetStatistics()
     Logging:Trace("GetStatistics()")
     local check, ret = pcall(
             function()
-                local stats = Models.History.LootStatistics()
-                
-                local c_pairs = CDB.static.pairs
-                for name, data in c_pairs(self:GetHistory()) do
-                    for i = #data, 1, -1 do
-                        stats:ProcessEntry(name, data[i], i)
+                if stats.stale or Objects.IsNil(stats.value) then
+                    local s = Models.History.LootStatistics()
+        
+                    local c_pairs = CDB.static.pairs
+                    for name, data in c_pairs(self:GetHistory()) do
+                        for i = #data, 1, -1 do
+                            s:ProcessEntry(name, data[i], i)
+                        end
                     end
+                    
+                    stats.stale = false
+                    stats.value = s
                 end
-    
-                -- Logging:Debug("GetStatistics() : %s", Util.Objects.ToString(stats, 10))
-                return stats
+                
+                return stats.value
             end
     )
     
