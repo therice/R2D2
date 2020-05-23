@@ -469,11 +469,11 @@ function LootHistory:GetFrame()
     local close = UI:CreateButton(_G.CLOSE, f.content)
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -100)
     close:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = close
+    f.close = close
     
     local moreInfoBtn = CreateFrame("Button", nil, f.content, "UIPanelButtonTemplate")
     moreInfoBtn:SetSize(25, 25)
-    moreInfoBtn:SetPoint("BOTTOMRIGHT", f.closeBtn , "TOPRIGHT", 0, 10)
+    moreInfoBtn:SetPoint("BOTTOMRIGHT", f.close, "TOPRIGHT", 0, 10)
     moreInfoBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
     moreInfoBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
     moreInfoBtn:SetScript("OnClick", function(button)
@@ -500,7 +500,7 @@ function LootHistory:GetFrame()
     end)
     
     local filter = UI:CreateButton(_G.FILTER, f.content)
-    filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+    filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     f.filter = filter
     MSA_DropDownMenu_Initialize(filter, self.FilterMenu)

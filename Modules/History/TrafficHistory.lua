@@ -532,11 +532,11 @@ function TrafficHistory:GetFrame()
     local close = UI:CreateButton(_G.CLOSE, f.content)
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -100)
     close:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = close
+    f.close = close
     
     
     local filter = UI:CreateButton(_G.FILTER, f.content)
-    filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+    filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     f.filter = filter
     MSA_DropDownMenu_Initialize(filter, self.FilterMenu)

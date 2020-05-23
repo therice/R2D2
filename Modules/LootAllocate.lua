@@ -676,7 +676,7 @@ function LootAllocate:GetFrame()
             self:Hide()
         end
     end)
-    f.abortBtn = b1
+    f.abort = b1
     
     -- more info widgets
     AddOn.EmbedMoreInfoWidgets(self:GetName(), f)
@@ -1372,12 +1372,12 @@ function LootAllocate:Update(forceUpdate)
     if AddOn.isMasterLooter then
         -- Update close button text
         if active then
-            self.frame.abortBtn:SetText(L["abort"])
+            self.frame.abort:SetText(L["abort"])
         else
-            self.frame.abortBtn:SetText(_G.CLOSE)
+            self.frame.abort:SetText(_G.CLOSE)
         end
     else
-        self.frame.abortBtn:SetText(_G.CLOSE)
+        self.frame.abort:SetText(_G.CLOSE)
     end
 
     if #self.frame.st.filtered < #self.frame.st.data then

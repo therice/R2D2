@@ -36,7 +36,6 @@ function Loot:OnDisable()
     self:CancelAllTimers()
 end
 
-
 function Loot:EnableOnStartup()
     return false
 end

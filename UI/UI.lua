@@ -347,6 +347,44 @@ function UI:CreateFrame(name, module, title, width, height, hookConfig)
                      end
                  end
     )
+    f:SetScript("OnKeyDown",
+                function(self, key)
+                    Logging:Trace("OnKeyDown(%s) : %s", self:GetName(), key)
+                    if key == "ESCAPE" then
+                        self:SetPropagateKeyboardInput(false)
+                        
+                        -- Attempt to locate the appropriate button and click it, one of
+                        --      close
+                        --      abort
+                        --      cancel
+                        local function closeOrCancel()
+                            local button
+                            if self.close then
+                                button = self.close
+                            elseif self.abort then
+                                button = self.abort
+                            elseif self.cancel then
+                                button = self.cancel
+                            end
+    
+                            if button and button:IsShown() then
+                                Logging:Trace("OnKeyDown(): Closing via %s", button:GetName())
+                                button:Click()
+                                return true
+                            else
+                                return false
+                            end
+                        end
+    
+                        if not closeOrCancel() then
+                            Logging:Trace("OnKeyDown(): Closing via Hide()")
+                            self:Hide()
+                        end
+                    else
+                        self:SetPropagateKeyboardInput(true)
+                    end
+                end
+    )
 
     local tf = CreateFrame("Frame", "R2D2_UI_"..module.."_Title", f)
     tf:SetToplevel(true)

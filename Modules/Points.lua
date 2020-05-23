@@ -411,11 +411,11 @@ function Points:GetFrame()
     local close = UI:CreateButton(_G.CLOSE, f.content)
     close:SetPoint("RIGHT", f.moreInfoBtn, "LEFT", -10, 0)
     close:SetScript("OnClick", function() self:Disable() end)
-    f.closeBtn = close
+    f.close = close
     
     -- filter
     local filter = UI:CreateButton(_G.FILTER, f.content)
-    filter:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+    filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     filter:SetScript("OnEnter", function() UI:CreateTooltip(L["deselect_responses"]) end)
     filter:SetScript("OnLeave", function() UI:HideTooltip() end)
