@@ -248,14 +248,7 @@ function R2D2:Test(count)
 end
 
 function R2D2:Config()
-    if AddOn.Libs.AceConfigDialog.OpenFrames[name] then
-        -- todo : hook this into the close button on config frame as well
-        local gpm = AddOn:GearPointsCustomModule()
-        if gpm.addItemFrame then gpm.addItemFrame:Hide() end
-        AddOn.Libs.AceConfigDialog:Close(name)
-    else
-        AddOn.Libs.AceConfigDialog:Open(name)
-    end
+    R2D2.ToggleConfig()
 end
 
 function R2D2:Version(showOutOfDateClients)

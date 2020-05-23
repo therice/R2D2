@@ -17,6 +17,26 @@ function AddOn:CallModule(module)
     self:EnableModule(module)
 end
 
+function AddOn:IsModuleEnabled(module)
+    Logging:Debug("IsModuleEnabled(%s)", module)
+    local m = self:GetModule(module)
+    return m and m:IsEnabled()
+end
+
+function AddOn:YieldModule(module)
+    Logging:Debug("YieldModule(%s)", module)
+    self:DisableModule(module)
+end
+
+function AddOn:ToggleModule(module)
+    Logging:Debug("ToggleModule(%s)", module)
+    if self:IsModuleEnabled(module) then
+        self:YieldModule(module)
+    else
+        self:CallModule(module)
+    end
+end
+
 function AddOn:MasterLooterModule()
     return self:GetModule("MasterLooter")
 end
@@ -28,7 +48,6 @@ end
 function AddOn:GearPointsCustomModule()
     return self:GetModule("GearPointsCustom")
 end
-
 
 function AddOn:EffortPointsModule()
     return self:GetModule("EffortPoints")

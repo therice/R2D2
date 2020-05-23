@@ -323,6 +323,7 @@ function UI:CreateFrame(name, module, title, width, height)
 
     f:Hide()
     f:SetFrameStrata("DIALOG")
+    f:SetToplevel(true)
     f:SetWidth(450)
     f:SetHeight(height or 325)
     f:SetScale(storage.scale or 1.1)

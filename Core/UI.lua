@@ -1,10 +1,11 @@
-local _, AddOn = ...
-local Logging   = AddOn.Libs.Logging
-local L         = AddOn.components.Locale
-local Util      = AddOn.Libs.Util
-local UI        = AddOn.components.UI
-local Class     = AddOn.Libs.Class
-local Models    = AddOn.components.Models
+local AddOnName, AddOn = ...
+local Logging = AddOn.Libs.Logging
+local L = AddOn.components.Locale
+local Util = AddOn.Libs.Util
+local UI = AddOn.components.UI
+local Class = AddOn.Libs.Class
+local Models = AddOn.components.Models
+local ACD = AddOn.Libs.AceConfigDialog
 
 --@param module the module name (for determining settings associated with more info)
 --@param f the frame to which to add widgets
@@ -93,7 +94,7 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
         end
         tip:AddLine(" ")
         tip:AddLine(_G.TOTAL)
-        for k, v in pairs(charStats.responses) do
+        for _, v in pairs(charStats.responses) do
             if v[3] then r,g,b = unpack(v[3],1,3) end
             tip:AddDoubleLine(v[1], v[2], r or 1,g or 1,b or 1, r or 1,g or 1,b or 1)
         end
@@ -106,6 +107,32 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
     
     tip:Show()
     tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
+end
+
+local function ConfigFrame()
+    local f = ACD.OpenFrames[AddOnName]
+    return not Util.Objects.IsNil(f), f
+end
+
+function AddOn.ToggleConfig()
+    if ConfigFrame() then
+        AddOn.HideConfig()
+    else
+        AddOn.ShowConfig()
+    end
+end
+
+function AddOn.ShowConfig()
+    ACD:Open(AddOnName)
+end
+
+function AddOn.HideConfig()
+    local _, f = ConfigFrame()
+    if f then
+        local gpm = AddOn:GearPointsCustomModule()
+        if gpm.addItemFrame then gpm.addItemFrame:Hide() end
+        ACD:Close(AddOnName)
+    end
 end
 
 -- bet we can use AceBucket for this
