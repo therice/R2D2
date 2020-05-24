@@ -164,3 +164,20 @@ Dialog:Register(AddOn.Constants.Popups.ConfirmDeleteItem, {
     show_while_dead = true,
 })
 
+Dialog:Register(AddOn.Constants.Popups.ConfirmSync, {
+    text = L['incoming_sync_request'],
+    on_show = AddOn:SyncModule().ConfirmSyncOnShow,
+    buttons = {
+        {
+            text = _G.YES,
+            on_click = AddOn:SyncModule().OnSyncAccept,
+        },
+        {
+            text = _G.NO,
+            on_click = AddOn:SyncModule().OnSyncDelcine
+        },
+    },
+    hide_on_escape = true,
+    show_while_dead = true,
+})
+

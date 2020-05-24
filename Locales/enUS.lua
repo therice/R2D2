@@ -111,6 +111,7 @@ L["considerations"] = "Considerations"
 L["contact"] = "Contact"
 L["custom_scale"] = "Custom Scale"
 L["custom_gp"] = "Custom GP"
+L["data_received"] = "Data received"
 L["date"] = "Date"
 L["decay"] = "Decay"
 L["decay_on_d"] = "Decay on %s"
@@ -154,6 +155,8 @@ L["greater_than_min"] = "Greater than minimum"
 L["g1"] = "g1"
 L["g2"] = "g2"
 L["in"] = "In"
+L["incoming_sync_request"] = "Incoming synchronization request"
+L["incoming_sync_message"] = "Accept %s data synchronization from %s?"
 L["instance"] = "Instance"
 L["invalid_item_id"] = "Item Id must be a number"
 L["is_not_active_in_this_raid"] = "NOT active in this raid"
@@ -300,9 +303,30 @@ L["status"] = "Status"
 L["status_texts"] = "Status texts"
 L["subject"] = "Subject"
 L["sync"] = "Sync"
+L["sync_complete"] = "Synchronization complete"
+L["sync_desc"] = "Opens synchronization interface, allowing for syncing settings between guild or group members"
+L["sync_detailed_description"] = [[
+1. Both of you should have the sync frame open (/r2d2 sync)
+2. Select the type of data you want to send
+3. Select the player you want to receive the data
+4. Hit 'Sync' - you'll now see a status bar with the data being sent.
+
+This window needs to be open to initiate a sync,
+but closing the window won't stop a sync in progress.
+
+Targets include online guild and group members.]]
+L["sync_error"] = "Data synchronization of '%s' to %s failed, please try again"
+L["sync_header"] = "How-to synchronize"
+L["sync_receipt_compelete"] = "Successfully received '%s' from %s"
+L["sync_response_declined"] = "%s declined your synchronization request"
+L["sync_response_unavailable"] = "%s has not opened the synchronization window (/r2d2 sync)"
+L["sync_response_unsupported"] = "%s cannot receive %s"
+L["sync_rate_exceeded"] = "Too many synchronization attempts in past %d seconds"
+L["sync_starting"] = "Initiating synchronization of '%s' to %s"
+L["sync_target_not_specified"] = "You must select a target for synchronization"
+L["sync_type_not_specified"] = "You must select a type of synchronization"
 L["sync_type"] = "Sync Type"
 L["sync_target"] = "Sync Target (send to)"
-L["sync_desc"] = "Opens synchronization interface, allowing for syncing settings between guild or group members"
 L["test"] = "test"
 L["test_desc"] = "Click to emulate the master looting of items for yourself and anyone in your raid (equivalent to /r2d2 test #)"
 L["Test"] = "Test"

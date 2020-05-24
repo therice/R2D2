@@ -105,7 +105,7 @@ function LootHistory:OnInitialize()
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
     self.moreInfo = CreateFrame( "GameTooltip", "R2D2_" .. self:GetName() .. "_MoreInfo", nil, "GameTooltipTemplate" )
-    AddOn:SyncModule():AddHandler(self:GetName(), L['loot_history'], function () end, function() end)
+    AddOn:SyncModule():AddHandler(self:GetName(), L['loot_history'], function () return self.db.factionrealm end, function(data) end)
 end
 
 function LootHistory:OnEnable()

@@ -75,5 +75,16 @@ describe("LibUtil", function()
                 idx = idx + 1
             end
         end)
+        it("copys, maps, and flips", function()
+            local t =  {
+                Declined    = { 1, 'declined' },
+                Unavailable = { 2, 'unavailable' },
+                Unsupported = { 3, 'unsupported' },
+            }
+    
+            print(Util.Objects.ToString(t))
+            local t2 = Util(t):Copy():Map(function (e) return e[1] end):Flip()()
+            print(Util.Objects.ToString(t2))
+        end)
     end)
 end)

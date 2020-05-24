@@ -51,6 +51,10 @@ AddOn.Constants = {
         StandbyPing             =   "StandbyPing",
         StandbyPingAck          =   "StandbyPingAck",
         StartHandleLoot         =   "StartHandleLoot",
+        Sync                    =   "Sync",
+        SyncACK                 =   "SyncACK",
+        SyncNACK                =   "SyncNACK",
+        SyncSYN                 =   "SyncSYN",
         TrafficHistoryAdd       =   "TrafficHistoryAdd",
         VersionCheck            =   "VersionCheck",
         VersionCheckReply       =   "VersionCheckReply",
@@ -114,6 +118,7 @@ AddOn.Constants = {
         ConfirmDeleteItem       =   name .. "_ConfirmDeleteItem",
         ConfirmReannounceItems  =   name .. "_ConfirmReannounceItems",
         ConfirmRevert           =   name .. "_ConfirmRevert",
+        ConfirmSync             =   name .. "_ConfirmSync",
         ConfirmUsage            =   name .. "_ConfirmUsage",
     },
 

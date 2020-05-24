@@ -230,7 +230,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
         local success, command, data = self:ProcessReceived(serializedMsg)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
                       tostring(success), tostring(command), tostring(sender), tostring(dist),
-                      Util.Objects.ToString(data, 3)
+                      Util.Objects.ToString(data, 1)
         )
 
         if success then
@@ -426,6 +426,14 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 if TH:IsEnabled() then
                     TH:BuildData()
                 end
+            elseif command == C.Commands.SyncSYN then
+                AddOn:SyncModule():SyncSYNReceived(unpack(data))
+            elseif command == C.Commands.SyncACK then
+                AddOn:SyncModule():SyncACKReceived(unpack(data))
+            elseif command == C.Commands.SyncNACK then
+                AddOn:SyncModule():SyncNACKReceived(unpack(data))
+            elseif command == C.Commands.Sync then
+                AddOn:SyncModule():SyncDataReceived(unpack(data))
             end
         end
     end
