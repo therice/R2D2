@@ -436,6 +436,11 @@ function GetGuildInfo(unit)
 	return "The Black Watch", "Quarter Master", 1, nil
 end
 
+
+function GetNumGuildMembers()
+	return 0
+end
+
 function GetRealmName()
 	return "Atiesh"
 end
