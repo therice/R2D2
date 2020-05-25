@@ -303,7 +303,7 @@ L["status"] = "Status"
 L["status_texts"] = "Status texts"
 L["subject"] = "Subject"
 L["sync"] = "Sync"
-L["sync_complete"] = "Synchronization complete"
+L["sync_complete"] = "|cFFB0E0E6%s|r Synchronization complete"
 L["sync_desc"] = "Opens synchronization interface, allowing for syncing settings between guild or group members"
 L["sync_detailed_description"] = [[
 1. Both of you should have the sync frame open (/r2d2 sync)
@@ -317,12 +317,12 @@ but closing the window won't stop a sync in progress.
 Targets include online guild and group members.]]
 L["sync_error"] = "Data synchronization of '%s' to %s failed, please try again"
 L["sync_header"] = "How-to synchronize"
-L["sync_receipt_compelete"] = "Successfully received '%s' from %s"
+L["sync_receipt_compelete"] = "|cFFB0E0E6%s|r Successfully received '%s' from %s"
 L["sync_response_declined"] = "%s declined your synchronization request"
 L["sync_response_unavailable"] = "%s has not opened the synchronization window (/r2d2 sync)"
 L["sync_response_unsupported"] = "%s cannot receive %s"
 L["sync_rate_exceeded"] = "Too many synchronization attempts in past %d seconds"
-L["sync_starting"] = "Initiating synchronization of '%s' to %s"
+L["sync_starting"] = "|cFFB0E0E6%s|r Initiating synchronization of '%s' to %s"
 L["sync_target_not_specified"] = "You must select a target for synchronization"
 L["sync_type_not_specified"] = "You must select a type of synchronization"
 L["sync_type"] = "Sync Type"

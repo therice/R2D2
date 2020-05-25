@@ -121,6 +121,16 @@ local ModulePrototype = {
     end,
     GetDbValue = GetDbValue,
     SetDbValue = SetDbValue,
+    ImportData = function(self, data)
+        Logging:Debug("ImportData(%s)", self:GetName())
+        if not self.db then return end
+        
+        for k, v in pairs(data) do
+            self.db.profile[k]  = v
+        end
+    
+        AddOn:ConfigTableChanged(self:GetName())
+    end
 }
 
 -- by default, try to use any associated db instance to determine if enabled

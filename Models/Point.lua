@@ -140,10 +140,63 @@ function Award:SetSubjects(type, ...)
                     Tables.Push(subjects, name)
                 end
             elseif self.subjectType == SubjectType.Raid then
+                --[[
+                    GetInstanceInfo() in Iron Forge (not in group/raid and not in an instance/dungeon)
+                    
+                    #{GetInstanceInfo()} == 9
+                    
+                    'Eastern Kingdoms' (zoneName)
+                    none (instanceType)
+                    0 (difficultyID)
+                    0 (difficultyName)
+                    0 (maxPlayers)
+                    false (dynamicDifficulty)
+                    0 (isDynamic)
+                    0 (instanceMapID)
+                    nil (instanceGroupSize)
+                    
+                    https://wowwiki.fandom.com/wiki/API_GetInstanceInfo
+                    
+                    zoneName, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty,
+                        isDynamic, instanceMapID, instanceGroupSize = GetInstanceInfo()
+				                    
+                --]]
+                local instanceName, _, _, _, _, _, _, instanceId = GetInstanceInfo()
+                local function IsOnlineAndInInstance(zone, online)
+                    local function InZone()
+                        -- zone can be nil under certain conditions, if nil then ignore it
+                        if Util.Strings.IsSet(zone) then
+                            -- likely redundant since passing in online parameter
+                            if Util.Strings.Equal(zone, "Offline") then return false end
+                            
+                            return Util.Strings.Equal(instanceName, zone) or
+                                   Util.Strings.Equal(GetRealZoneText(instanceId), zone)
+                        end
+                        
+                        return true
+                    end
+                    
+                    -- online is a number, with 1 being online and otherwise nil
+                    return online == 1 and InZone()
+                end
+                
                 for i = 1, GetNumGroupMembers() do
                     -- the returned player name won't have realm, so convert using UnitName
-                    local name = GetRaidRosterInfo(i)
-                    Tables.Push(subjects, AddOn:UnitName(name))
+                    -- https://wow.gamepedia.com/API_GetRaidRosterInfo
+                    local name, _, _, _, _, _, zone, online = GetRaidRosterInfo(i)
+                    
+                    Logging:Debug("SetSubjects(%s) : online=%s zone=%s", tostring(name), tostring(online), tostring(zone))
+                    
+                    -- be extra careful and use pcall to trap any errors in the evaluation
+                    -- if it fails, we'll add the player by default
+                    local check, add = pcall(function() return IsOnlineAndInInstance(zone, online) end)
+                    if check and not add then
+                        Logging:Debug("SetSubjects() : Omitting %s from award, online=%s zone=%s",
+                                      tostring(name), tostring(online), tostring(zone)
+                        )
+                    else
+                        Tables.Push(subjects, AddOn:UnitName(name))
+                    end
                 end
             end
         end

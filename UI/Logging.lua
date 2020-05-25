@@ -45,13 +45,13 @@ LoggingUI.options = {
         -- function COpts.Select(name, order, descr, values, get, set, extra)
         logThreshold = COpts.Select(L['logging_threshold'], 3, L['logging_threshold_desc'],
                 {
-                    [1] = Logging.Level.Disabled,
-                    [2] = Logging.Level.Trace,
-                    [3] = Logging.Level.Debug,
-                    [4] = Logging.Level.Info,
-                    [5] = Logging.Level.Warn,
-                    [6] = Logging.Level.Error,
-                    [7] = Logging.Level.Fatal,
+                    [Logging:GetThreshold(Logging.Level.Disabled)] = Logging.Level.Disabled,
+                    [Logging:GetThreshold(Logging.Level.Fatal)]    = Logging.Level.Fatal,
+                    [Logging:GetThreshold(Logging.Level.Error)]    = Logging.Level.Error,
+                    [Logging:GetThreshold(Logging.Level.Warn)]     = Logging.Level.Warn,
+                    [Logging:GetThreshold(Logging.Level.Info)]     = Logging.Level.Info,
+                    [Logging:GetThreshold(Logging.Level.Debug)]    = Logging.Level.Debug,
+                    [Logging:GetThreshold(Logging.Level.Trace)]    = Logging.Level.Trace,
                 },
                 function() return Logging:GetRootThreshold() end,
                 function(_, logThreshold)

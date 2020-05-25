@@ -25,14 +25,43 @@ describe("LibLogging", function()
             end
         end)
     end)
+    --[[
+    lib.Level = {
+    Disabled    = "Disabled",
+    Trace       = "Trace",
+    Debug       = "Debug",
+    Info        = "Info",
+    Warn        = "Warn",
+    Error       = "Error",
+    Fatal       = "Fatal"
+}
+    --]]
     describe("root threshold", function()
         it("can be specified", function()
             logging:SetRootThreshold(logging.Level.Info)
             assert(logging:GetRootThreshold() == logging:GetThreshold(logging.Level.Info))
+            assert(not logging:IsEnabledFor(logging.Level.Trace))
+            assert(not logging:IsEnabledFor(logging.Level.Debug))
+            assert(logging:IsEnabledFor(logging.Level.Info))
+            assert(logging:IsEnabledFor(logging.Level.Warn))
+            assert(logging:IsEnabledFor(logging.Level.Error))
+            assert(logging:IsEnabledFor(logging.Level.Fatal))
             logging:Enable()
             assert(logging:GetRootThreshold()== logging:GetThreshold(logging.Level.Debug))
+            assert(not logging:IsEnabledFor(logging.Level.Trace))
+            assert(logging:IsEnabledFor(logging.Level.Debug))
+            assert(logging:IsEnabledFor(logging.Level.Info))
+            assert(logging:IsEnabledFor(logging.Level.Warn))
+            assert(logging:IsEnabledFor(logging.Level.Error))
+            assert(logging:IsEnabledFor(logging.Level.Fatal))
             logging:Disable()
             assert(logging:GetRootThreshold()== logging:GetThreshold(logging.Level.Disabled))
+            assert(not logging:IsEnabledFor(logging.Level.Trace))
+            assert(not logging:IsEnabledFor(logging.Level.Debug))
+            assert(not logging:IsEnabledFor(logging.Level.Info))
+            assert(not logging:IsEnabledFor(logging.Level.Warn))
+            assert(not logging:IsEnabledFor(logging.Level.Error))
+            assert(not  logging:IsEnabledFor(logging.Level.Fatal))
         end)
     end)
     describe("write output to", function()
@@ -46,8 +75,12 @@ describe("LibLogging", function()
             logging:SetWriter(CaptureOutput)
             logging:Log(logging.Level.Info, "InfoTest")
             assert.matches("INFO.*(LibLoggingTest.lua.*): InfoTest",logging_output)
+            logging_output = ""
             logging:Debug("DebugTest")
             assert.matches("DEBUG.*(LibLoggingTest.lua.*): DebugTest",logging_output)
+            logging_output = ""
+            logging:Trace("TraceTest")
+            assert(logging_output == '')
             logging:ResetWriter()
         end)
     end)

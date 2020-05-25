@@ -230,7 +230,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
         local success, command, data = self:ProcessReceived(serializedMsg)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
                       tostring(success), tostring(command), tostring(sender), tostring(dist),
-                      Util.Objects.ToString(data, 1)
+                      Logging:IsEnabledFor(Logging.Level.Trace) and Util.Objects.ToString(data, 1) or '[omitted]'
         )
 
         if success then

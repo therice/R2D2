@@ -26,7 +26,7 @@ function AddOn:UnitIsUnit(unit1, unit2)
     if strfind(unit2, "-", nil, true) ~= nil then
         unit2 = Ambiguate(unit2, "short")
     end
-    -- v2.3.3 There's problems comparing non-ascii characters of different cases using UnitIsUnit()
+    -- There's problems comparing non-ascii characters of different cases using UnitIsUnit()
     -- I.e. UnitIsUnit("Potdisc", "potdisc") works, but UnitIsUnit("Æver", "æver") doesn't.
     -- Since I can't find a way to ensure consistent returns from UnitName(), just lowercase units here
     -- before passing them.

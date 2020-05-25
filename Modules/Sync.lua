@@ -318,6 +318,11 @@ function Sync:SyncSYNReceived(sender, type)
     end
 end
 
+local function GetDateTime()
+    return date("%m/%d/%y %H:%M:%S", time())
+end
+
+
 function Sync:SyncACKReceived(sender, type)
     Logging:Debug("SyncACKReceived() : %s, %s", sender, type)
     local stream = self:GetStream(sender)
@@ -327,7 +332,7 @@ function Sync:SyncACKReceived(sender, type)
     end
     SendSyncData(sender, type)
     self:DropStream(sender)
-    AddOn:Print(format(L['sync_starting'], type, sender))
+    AddOn:Print(format(L['sync_starting'], GetDateTime(), type, sender))
 end
 
 function Sync:SyncNACKReceived(sender, type, responseId)
@@ -347,7 +352,7 @@ function Sync:SyncDataReceived(sender, type, data)
     else
         Logging:Warn("SyncDataReceived() : unsupported type %s from %s", type, sender)
     end
-    AddOn:Print(format(L['sync_receipt_compelete'], type, sender))
+    AddOn:Print(format(L['sync_receipt_compelete'], GetDateTime(), type, sender))
 end
 
 function Sync.OnSyncAccept(_, data)
@@ -378,7 +383,7 @@ function Sync:OnDataTransmit(num, total)
     )
     
     if num == total then
-        AddOn:Print(L["sync_complete"])
+        AddOn:Print(format(L["sync_complete"], GetDateTime()))
         Logging:Debug("OnDataTransmit() : Data transmission complete")
     end
 end

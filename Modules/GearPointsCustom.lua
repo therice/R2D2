@@ -118,15 +118,6 @@ function GpCustom:OnDisable()
     ItemUtil:ResetCustomItems()
 end
 
-function GpCustom:ImportData(data)
-    Logging:Debug("ImportData()")
-    for k, v in pairs(data) do
-        self.db.profile[k]  = v
-    end
-    
-    AddOn:ConfigTableChanged(self:GetName())
-end
-
 function GpCustom:AddDefaultCustomItems()
     local config = self.db.profile
     if not config.custom_items then
