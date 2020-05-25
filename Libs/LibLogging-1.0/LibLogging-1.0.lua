@@ -9,19 +9,19 @@ local _TEST = _G.LibLogging_Testing
 
 -- Basic constants for use with library, with a mapping to hierarchy key
 lib.Level = {
-    Disabled    = "Disabled",
     Trace       = "Trace",
     Debug       = "Debug",
     Info        = "Info",
     Warn        = "Warn",
     Error       = "Error",
-    Fatal       = "Fatal"
+    Fatal       = "Fatal",
+    Disabled    = "Disabled",
 }
 -- local reference for ease of use
 local Level = lib.Level
 
 -- Establish hierarchy of levels
-local LevelHierarchy = {"Disabled", "Trace", "Debug", "Info", "Warn", "Error", "Fatal"}
+local LevelHierarchy = {"Disabled", "Fatal", "Error", "Warn", "Info", "Debug", "Trace"}
 local MaxLevels = #LevelHierarchy
 for i=1,MaxLevels do
     LevelHierarchy[LevelHierarchy[i]] = i
@@ -29,12 +29,12 @@ end
 
 local LevelColors = {
     "",
-    "|cFF90EE90TRACE:|r",
-    "|cFF20B2AADEBUG:|r",
-    "|cFF808000INFO:|r",
-    "|cFFFFA500WARN:|r",
-    "|cFFFF0000ERROR:|r",
     "|cFF8B0000FATAL:|r",
+    "|cFFFF0000ERROR:|r",
+    "|cFFFFA500WARN:|r",
+    "|cFF808000INFO:|r",
+    "|cFF20B2AADEBUG:|r",
+    "|cFF90EE90TRACE:|r",
 }
 
 -- validates specified level is of correct type and within valid range
@@ -63,9 +63,6 @@ end
 
 -- expose some internal functionality for purposes of tests
 if _TEST then
-    function lib:GetThreshold(level)
-        return GetThreshold(level)
-    end
 
     function lib:GetMinThreshold()
         return LevelHierarchy[LevelHierarchy[1]]
@@ -78,6 +75,10 @@ end
 
 -- a numeric value mapping on to level
 local RootThreshold = GetThreshold(Level.Disabled)
+
+function lib:GetThreshold(level)
+    return GetThreshold(level)
+end
 
 function lib:GetRootThreshold()
     return RootThreshold
@@ -93,6 +94,13 @@ end
 
 function lib:Disable()
     self:SetRootThreshold(Level.Disabled)
+end
+
+-- @return boolean indicating if messages logged at the specified level would be written to logging output based upon
+-- logger threshold
+function lib:IsEnabledFor(level)
+    -- print(tostring(level) .. ' (' .. GetThreshold(level)  .. ') == '  .. LevelHierarchy[RootThreshold] .. '(' .. RootThreshold .. ')')
+    return GetThreshold(level) <= RootThreshold
 end
 
 local Writer
@@ -120,7 +128,7 @@ end
 local function Log(writer, level, fmt, ...)
     -- don't log if specified level is filtered by our root threshold
     local levelThreshold = GetThreshold(level)
-    if levelThreshold < RootThreshold then return end
+    if levelThreshold > RootThreshold then return end
     writer(string.format("%s [%s] (%s): " .. fmt,
                          LevelColors[levelThreshold],
                          "|cFFFFFACD" .. GetDateTime() .. "|r",

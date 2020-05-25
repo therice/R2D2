@@ -8,6 +8,7 @@ local Util = AddOn.Libs.Util
 local UI = AddOn.components.UI
 local Date = AddOn.components.Models.Date
 
+
 local VersionZero = SemanticVersion(0,0,0,0)
 local guildRanks, listOfNames, verTestCandidates, mostRecentVersion = {}, {}, {}, VersionZero
 
@@ -258,6 +259,10 @@ function VersionCheck:GetFrame()
 end
 
 function VersionCheck:TrackVersion(name, version, mode)
+    if version and (mostRecentVersion < version) then
+        mostRecentVersion = version
+    end
+    
     verTestCandidates[name] = {
         version,
         mode,
@@ -267,11 +272,13 @@ end
 
 function VersionCheck:PrintOutOfDateClients()
     local outOfDate, isGrouped = {}, IsInGroup()
+    local mostRecent = (mostRecentVersion > AddOn.version) and mostRecentVersion or AddOn.version
+    
     for name, data in pairs(verTestCandidates) do
         if (isGrouped and AddOn.candidates[name]) or not isGrouped then
             local version, _, _ = data[1], data[2], data[3]
-            if version < AddOn.version then
-                Util.Tables.Push(AddOn:GetUnitClassColoredName(name) .. ' : ' .. tostring(version))
+            if version < mostRecent then
+                Util.Tables.Push(outOfDate, AddOn:GetUnitClassColoredName(name) .. ' : ' .. tostring(version))
             end
         end
     end
@@ -283,6 +290,32 @@ function VersionCheck:PrintOutOfDateClients()
         end
     else
         AddOn:Print(L["everyone_up_to_date"])
+    end
+    
+    local notInstalled = {}
+    -- show who doesn't have the add-on installed, either in group or guild
+    if isGrouped then
+        for i = 1, GetNumGroupMembers() do
+            local name, _, _, _, _, _, _, online = GetRaidRosterInfo(i)
+            if online and not verTestCandidates[name] and not (name == AddOn.playerName) then
+                Util.Tables.Push(notInstalled, AddOn:GetUnitClassColoredName(name) .. '')
+            end
+        end
+    elseif IsInGuild() then
+        GuildRoster()
+        for i = 1, GetNumGuildMembers() do
+            local name, _, _,_,_,_,_,_, online,_, class = GetGuildRosterInfo(i)
+            if online and not verTestCandidates[name] and not (name == AddOn.playerName) then
+                Util.Tables.Push(notInstalled, AddOn:GetUnitClassColoredName(name) .. '')
+            end
+        end
+    end
+    
+    if Util.Tables.Count(notInstalled) > 0 then
+        AddOn:Print(L["the_following_are_not_installed"])
+        for _, v in pairs(notInstalled) do
+            AddOn:Print(v)
+        end
     end
 end
 

@@ -241,7 +241,12 @@ function GP:OnInitialize()
     -- replace the library string representation function with our utility (more detail)
     LibGP:SetToStringFn(Objects.ToString)
     self.db = AddOn.db:RegisterNamespace(self:GetName(), GP.defaults)
-    AddOn:SyncModule():AddHandler(self:GetName(), format("%s %s", L['gp'], L['settings']), function () end, function() end)
+    AddOn:SyncModule():AddHandler(
+            self:GetName(),
+            format("%s %s", L['gp'], L['settings']),
+            function() return self.db.profile end,
+            function(data) self:ImportData(data) end
+    )
 end
 
 function GP:OnEnable()

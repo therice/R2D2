@@ -109,9 +109,9 @@ function CompressedDb:del(key, index)
     end
 end
 
-function CompressedDb:insert(value)
-    Util.Tables.Push(self.db, compress(value))
-end
+--function CompressedDb:insert(value)
+--    Util.Tables.Push(self.db, compress(value))
+--end
 
 function CompressedDb:insert(value, key)
     if Util.Objects.IsEmpty(key) then

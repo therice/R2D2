@@ -141,7 +141,12 @@ function TrafficHistory:OnInitialize()
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.TrafficHistoryFilter, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
-    AddOn:SyncModule():AddHandler(self:GetName(), L['traffic_history'], function () end, function() end)
+    AddOn:SyncModule():AddHandler(
+            self:GetName(),
+            L['traffic_history'],
+            function () return self:GetDataForSync() end,
+            function(data) self:ImportDataFromSync(data) end
+    )
 end
 
 function TrafficHistory:OnEnable()
@@ -167,6 +172,107 @@ end
 function TrafficHistory:AddEntry(entry)
     self:GetHistory():insert(entry:toTable())
     stats.stale = true
+end
+
+function TrafficHistory:GetDataForSync()
+    Logging:Debug("TrafficHistory:GetDataForSync()")
+    if AddOn:DevModeEnabled() then
+        Logging:Debug("TrafficHistory:GetDataForSync() : %d", Util.Tables.Count(self.db.factionrealm))
+        
+        local db = self.db.factionrealm
+        local send = {}
+        
+        while Util.Tables.Count(send) < math.min(10, Util.Tables.Count(db)) do
+            table.insert(send, Util.Tables.Random(db))
+        end
+        
+        Logging:Debug("TrafficHistory:GetDataForSync() : randomly selected entries count is %d", #send)
+        
+        return send
+    else
+        return self.db.factionrealm
+    end
+end
+
+function TrafficHistory:ImportDataFromSync(data)
+    Logging:Debug("TrafficHistory:ImportDataFromSync() : current history count is %d, import history count is %d",
+                  Util.Tables.Count(self.db.factionrealm),
+                  Util.Tables.Count(data)
+    )
+    local persist = not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()
+    
+    if Util.Tables.Count(data) > 0 then
+        local c_pairs = CDB.static.pairs
+        
+        -- make a copy of current history and sort it by timestamp
+        -- will take a one time hit here, but will make searching able to be short circuited when
+        -- timestamp of existing history is past any import entry
+        local orderedHistory = {}
+        for _, e in c_pairs(self.history) do table.insert(orderedHistory, e) end
+        Util.Tables.Sort(orderedHistory, function(a, b) return a.timestamp < b.timestamp end)
+    
+        local function FindExistingEntry(importe)
+            for i , e in pairs(orderedHistory) do
+                -- if we've gone further into future than import record, it won't be found
+                if e.timestamp > importe.timestamp then
+                    Logging:Debug(
+                        "TrafficHistory:ImportDataFromSync() : current history ts '%d' is after import ts '%d', aborting search...",
+                         e.timestamp, importe.timestamp
+                    )
+                    break
+                end
+    
+                if e.timestamp == importe.timestamp then
+                    Logging:Debug(
+                        "TrafficHistory:ImportDataFromSync() : current history ts '%d' is equal to import ts '%d', performing final evaluation",
+                        e.timestamp, importe.timestamp
+                    )
+                    
+                    -- possibly too precise checking all of these, but ...
+                    if (e.subjectType == importe.subjectType) and
+                            (e.resourceType == importe.resourceType) and
+                            (e.actionType == importe.actionType) and
+                            (#e.subjects == #importe.subjects) then
+                        return i, e
+                    end
+                end
+            end
+        end
+        
+        local cdb = CDB(data)
+        local imported, skipped = 0, 0
+        for _, entryTable in c_pairs(cdb) do
+            Logging:Debug("TrafficHistory:ImportDataFromSync() : examining import entry %s", Util.Objects.ToString(entryTable))
+            local _, existing = FindExistingEntry(entryTable)
+            if existing then
+                Logging:Debug("TrafficHistory:ImportDataFromSync(%s) : found existing entry in history, skipping...", entryTable.id)
+                skipped = skipped + 1
+            else
+                Logging:Debug("TrafficHistory:ImportDataFromSync(%s) : entry does not exist in history, adding...", entryTable.id)
+                if persist then
+                    self.history:insert(entryTable)
+                end
+                imported = imported + 1
+            end
+        end
+    
+        if imported > 0 then
+            stats.stale = true
+            if self:IsEnabled() and self.frame and self.frame:IsVisible() then
+                self:BuildData()
+            end
+        end
+        
+        Logging:Debug("TrafficHistory:ImportDataFromSync(%s) : imported %s history entries, skipped %d import history entries, new history entry count is %d",
+                      tostring(persist),
+                      imported,
+                      skipped,
+                      Util.Tables.Count(self.db.factionrealm)
+        )
+        AddOn:Print(format(L['import_successful_with_count'], AddOn.GetDateTime(), self:GetName(), imported))
+    else
+        AddOn:Print(format(L['import_successful_with_count'], AddOn.GetDateTime(), self:GetName(), 0))
+    end
 end
 
 function TrafficHistory:Show()

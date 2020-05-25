@@ -323,7 +323,8 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
         local fromMl = AddOn:UnitIsUnit(sender, AddOn.masterLooter)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, fromMl=%s, data=%s,",
                       tostring(success), command, tostring(sender), tostring(dist),
-                      tostring(fromMl), Util.Objects.ToString(data, 3)
+                      tostring(fromMl),
+                      Logging:IsEnabledFor(Logging.Level.Trace) and Util.Objects.ToString(data, 1) or '[omitted]'
         )
         
         if success then

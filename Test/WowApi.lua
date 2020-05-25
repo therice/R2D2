@@ -436,6 +436,11 @@ function GetGuildInfo(unit)
 	return "The Black Watch", "Quarter Master", 1, nil
 end
 
+
+function GetNumGuildMembers()
+	return 0
+end
+
 function GetRealmName()
 	return "Atiesh"
 end
@@ -597,6 +602,11 @@ difftime = os.difftime
 strmatch = string.match
 strlower = string.lower
 strupper = string.upper
+random = math.random
+
+-- need to set random seed and invoke once to avoid non-random behavior
+math.randomseed(os.time())
+math.random()
 
 function ChatFrame_AddMessageEventFilter(event, fn)
 

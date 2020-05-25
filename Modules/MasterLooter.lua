@@ -503,7 +503,12 @@ function ML:OnInitialize()
                 }
                 
     --]]
-    AddOn:SyncModule():AddHandler(self:GetName(), format("%s %s", L['ml'], L['settings']), function () end, function() end)
+    AddOn:SyncModule():AddHandler(
+            self:GetName(),
+            format("%s %s", L['ml'], L['settings']),
+            function() return self.db.profile end,
+            function(data) self:ImportData(data) end
+    )
 end
 
 function ML:EnableOnStartup()
@@ -896,16 +901,16 @@ function ML:CanGiveLoot(slot, item, winner)
         return false, ML.AwardReasons.Failure.LootGone
     elseif lootSlotInfo.locked then
         return false, ML.AwardReasons.Failure.Locked
-    elseif AddOn:UnitIsUnit(winner, "player") and not self:HaveFreeSpaceForItem(item.link) then
-        Logging:Debug("CanGiveLoot(winner=%s) : is winner=%s", tostring(winner), tostring(AddOn:UnitIsUnit(winner, "player")))
+    elseif AddOn:UnitIsUnit(winner, "player") and not self:HaveFreeSpaceForItem(lootSlotInfo.link) then
+        --Logging:Debug("CanGiveLoot(winner=%s) : is winner=%s", tostring(winner), tostring(AddOn:UnitIsUnit(winner, "player")))
         return false, ML.AwardReasons.Failure.MLInventoryFull
-    elseif AddOn:UnitIsUnit(winner, "player") then
+    elseif not AddOn:UnitIsUnit(winner, "player") then
         if lootSlotInfo.quality < GetLootThreshold() then
             return false, ML.AwardReasons.Failure.QualityBelowThreshold
         end
         
         local shortName = Ambiguate(winner, "short"):lower()
-        if not UnitIsInParty(shortName) and not UnitIsInRaid(shortName) then
+        if (not UnitIsInParty(shortName)) and (not UnitIsInRaid(shortName)) then
             return false, ML.AwardReasons.Failure.NotInGroup
         end
     
@@ -928,7 +933,6 @@ function ML:CanGiveLoot(slot, item, winner)
         if select(4, UnitPosition(Ambiguate(winner, "short"))) ~= select(4, UnitPosition("player")) then
             return false, ML.AwardReasons.Failure.OutOfInstance
         end
-        
         
         if not found then
             local bindType = select(14, GetItemInfo(item))
@@ -1533,7 +1537,7 @@ function ML:OnCommReceived(prefix, serializedMsg, dist, sender)
         local success, command, data = AddOn:ProcessReceived(serializedMsg)
         Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s",
                       tostring(success), tostring(command), tostring(sender), tostring(dist),
-                      Util.Objects.ToString(data, 3)
+                      Logging:IsEnabledFor(Logging.Level.Trace) and Util.Objects.ToString(data, 1) or '[omitted]'
         )
         
         -- only ML receives these commands

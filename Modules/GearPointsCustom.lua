@@ -78,7 +78,10 @@ end
 function GpCustom:OnInitialize()
     Logging:Debug("OnInitialize(%s)", self:GetName())
     self.db = AddOn.Libs.AceDB:New('R2D2_CustomItems', GpCustom.defaults, NoGuild)
-    AddOn:SyncModule():AddHandler(self:GetName(), L['gp_custom_sync_text'], function () end, function() end)
+    AddOn:SyncModule():AddHandler(self:GetName(), L['gp_custom_sync_text'],
+                                  function() return self.db.profile end,
+                                  function(data) self:ImportData(data) end
+    )
 end
 
 function GpCustom:OnEnable()

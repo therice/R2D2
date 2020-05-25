@@ -89,7 +89,6 @@ function AddOn:SyncModule()
     return self:GetModule("Sync")
 end
 
-
 function AddOn:ModuleSettings(name)
     return AddOn.db.profile.modules[name]
 end
