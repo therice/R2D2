@@ -235,7 +235,7 @@ function Points:Adjust(award)
     
     -- just one traffic history entry per award, regardless of number of subjects
     -- to which it applied
-    -- AddOn:TrafficHistoryModule():CreateFromAward(award, lhEntry)
+    AddOn:TrafficHistoryModule():CreateFromAward(award, lhEntry)
     
     -- subject is a tuple of (name, class)
     for _, subject in pairs(award.subjects) do

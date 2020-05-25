@@ -88,6 +88,7 @@ read_globals = {
 	"GetNumGroupMembers",
 	"GetNumLootItems",
 	"GetRaidRosterInfo",
+	"GetRealZoneText",
 	"GetSpellBookItemInfo",
 	"GetSpellInfo",
 	"GetTime",
