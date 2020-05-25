@@ -1,7 +1,20 @@
 local pl = require('pl.path')
 local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match("@(.*)$"))
-local LootHistory, Util, Class, CDB
+local LootHistory, Util, Class, CDB, Sync
 
+
+local function NewLootHistoryDb(data)
+    -- need to add random # to end or it will have the same data
+    local db = R2D2.Libs.AceDB:New('R2D2_LootDB' .. random(100), LootHistory.defaults)
+    local count = 0
+    for player, history in pairs(data) do
+        db.factionrealm[player] = history
+        count = count + 1
+    end
+    LootHistory.db = db
+    LootHistory.history = CDB(db.factionrealm)
+    print("New LootHistoryDb with count = " .. count .. " self.db.factionrealm = " .. Util.Tables.Count(LootHistory.db.factionrealm))
+end
 
 describe("Loot History", function()
     setup(function()
@@ -14,16 +27,11 @@ describe("Loot History", function()
         Util = R2D2.Libs.Util
         Class = R2D2.Libs.Class
         CDB = R2D2.components.Models.CompressedDb
+        Sync = R2D2:SyncModule()
+        Sync:OnInitialize()
         LootHistory = R2D2:LootHistoryModule()
         LootHistory:OnInitialize()
-    
-        local db = R2D2.Libs.AceDB:New('R2D2_LootDB', LootHistory.defaults)
-        for player, history in pairs(LootHistoryTestData) do
-            db.factionrealm[player] = history
-        end
-        
-        LootHistory.db = db
-        LootHistory.history = CDB(db.factionrealm)
+        NewLootHistoryDb(LootHistoryTestData2)
     end)
     
     
@@ -43,8 +51,7 @@ describe("Loot History", function()
             for _, _ in c_pairs(history) do
                 count = count + 1
             end
-            print(count)
-            assert(count == 14)
+            assert(count == 33)
         end)
     end)
     
@@ -67,12 +74,21 @@ describe("Loot History", function()
             LootHistory.frame.instance = StubSt()
             LootHistory:BuildData()
 
-
-            assert(Util.Tables.Count(LootHistory.frame.st.data) == 105)
-            assert(Util.Tables.Count(LootHistory.frame.name.data) == 15)
-            assert(Util.Tables.Count(LootHistory.frame.date.data) == 12)
+            --print(Util.Tables.Count(LootHistory.frame.name.data))
+            
+            assert(Util.Tables.Count(LootHistory.frame.st.data) == 97)
+            assert(Util.Tables.Count(LootHistory.frame.name.data) == 34) -- +1 is for the dummy candidate
+            assert(Util.Tables.Count(LootHistory.frame.date.data) == 3)
             assert(Util.Tables.Count(LootHistory.frame.instance.data) == 3)
         end)
     end)
+    
+    describe("imports history", function()
+        it("from sync", function()
+            local handler = Sync.handlers['LootHistory']
+            local data = handler.send()
+            NewLootHistoryDb(LootHistoryTestData1)
+            handler.receive(data)
+        end)
+    end)
 end)
-

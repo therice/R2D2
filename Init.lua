@@ -122,6 +122,8 @@ local ModulePrototype = {
     GetDbValue = GetDbValue,
     SetDbValue = SetDbValue,
     ImportData = function(self, data)
+        local L = AddOn.components.Locale
+        
         Logging:Debug("ImportData(%s)", self:GetName())
         if not self.db then return end
         
@@ -130,6 +132,7 @@ local ModulePrototype = {
         end
     
         AddOn:ConfigTableChanged(self:GetName())
+        AddOn:Print(format(L['import_successful'], AddOn.GetDateTime(), self:GetName()))
     end
 }
 

@@ -344,3 +344,8 @@ function AddOn:IsItemBop(item)
     -- Item binding type: 0 - none; 1 - on pickup; 2 - on equip; 3 - on use; 4 - quest.
     return select(14, GetItemInfo(item)) == LE_ITEM_BIND_ON_ACQUIRE
 end
+
+function AddOn.GetDateTime()
+    return date("%m/%d/%y %H:%M:%S", time())
+end
+

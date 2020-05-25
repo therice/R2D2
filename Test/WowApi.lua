@@ -602,6 +602,11 @@ difftime = os.difftime
 strmatch = string.match
 strlower = string.lower
 strupper = string.upper
+random = math.random
+
+-- need to set random seed and invoke once to avoid non-random behavior
+math.randomseed(os.time())
+math.random()
 
 function ChatFrame_AddMessageEventFilter(event, fn)
 

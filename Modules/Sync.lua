@@ -64,7 +64,7 @@ function Sync:Hide()
 end
 
 function Sync:AddHandler(name, desc, send, receive)
-    if _G.R2D2_Testing then return end
+    if _G.R2D2_Testing and not self.handlers then return end
     
     if Util.Strings.IsEmpty(name) then error("AddHandler() : must provide name") end
     if Util.Strings.IsEmpty(desc) then error("AddHandler() : must provide description") end
@@ -318,11 +318,6 @@ function Sync:SyncSYNReceived(sender, type)
     end
 end
 
-local function GetDateTime()
-    return date("%m/%d/%y %H:%M:%S", time())
-end
-
-
 function Sync:SyncACKReceived(sender, type)
     Logging:Debug("SyncACKReceived() : %s, %s", sender, type)
     local stream = self:GetStream(sender)
@@ -332,7 +327,7 @@ function Sync:SyncACKReceived(sender, type)
     end
     SendSyncData(sender, type)
     self:DropStream(sender)
-    AddOn:Print(format(L['sync_starting'], GetDateTime(), type, sender))
+    AddOn:Print(format(L['sync_starting'], AddOn.GetDateTime(), type, sender))
 end
 
 function Sync:SyncNACKReceived(sender, type, responseId)
@@ -348,11 +343,11 @@ function Sync:SyncDataReceived(sender, type, data)
     self.frame.statusBar.Update(nil, L["data_received"])
     local handler = self.handlers[type]
     if handler then
+        AddOn:Print(format(L['sync_receipt_compelete'], AddOn.GetDateTime(), type, sender))
         handler.receive(data)
     else
         Logging:Warn("SyncDataReceived() : unsupported type %s from %s", type, sender)
     end
-    AddOn:Print(format(L['sync_receipt_compelete'], GetDateTime(), type, sender))
 end
 
 function Sync.OnSyncAccept(_, data)
@@ -383,7 +378,7 @@ function Sync:OnDataTransmit(num, total)
     )
     
     if num == total then
-        AddOn:Print(format(L["sync_complete"], GetDateTime()))
+        AddOn:Print(format(L["sync_complete"], AddOn.GetDateTime()))
         Logging:Debug("OnDataTransmit() : Data transmission complete")
     end
 end
