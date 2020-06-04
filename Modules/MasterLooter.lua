@@ -910,7 +910,7 @@ function ML:CanGiveLoot(slot, item, winner)
         end
         
         local shortName = Ambiguate(winner, "short"):lower()
-        if (not UnitIsInParty(shortName)) and (not UnitIsInRaid(shortName)) then
+        if (not UnitInParty(shortName)) and (not UnitInRaid(shortName)) then
             return false, ML.AwardReasons.Failure.NotInGroup
         end
     
@@ -1645,7 +1645,8 @@ function ML:OnLootSlotCleared(slot, link)
         -- loot success
         if entry and entry.slot == slot then
             self:CancelTimer(entry.timer)
-            self.lootQueue[i] = nil
+            -- self.lootQueue[i] = nil
+            tremove(self.lootQueue, i)
             if entry.callback then
                 entry.callback(true, nil, unpack(entry.args))
             end

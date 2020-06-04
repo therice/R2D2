@@ -118,8 +118,6 @@ read_globals = {
 	"UnitInParty",
 	"UnitInRaid",
 	"UnitIsConnected",
-	"UnitIsInParty",
-	"UnitIsInRaid",
 	"UnitIsUnit",
 	"UnitIsGroupLeader",
 	"UnitFactionGroup",

@@ -141,7 +141,7 @@ function Award:SetSubjects(type, ...)
                 end
             elseif self.subjectType == SubjectType.Raid then
                 --[[
-                    GetInstanceInfo() in Iron Forge (not in group/raid and not in an instance/dungeon)
+                    GetInstanceInfo() in IronForge (not in group/raid and not in an instance/dungeon)
                     
                     #{GetInstanceInfo()} == 9
                     
@@ -161,6 +161,9 @@ function Award:SetSubjects(type, ...)
                         isDynamic, instanceMapID, instanceGroupSize = GetInstanceInfo()
 				                    
                 --]]
+                -- todo : as coded, this is not currently working. need to do some testing in raids to sor out
+                -- UnitExists / UnitIsConnected / UnitPosition
+                -- GetNumGroupMembers vs GetNumRaidMembers
                 local instanceName, _, _, _, _, _, _, instanceId = GetInstanceInfo()
                 local function IsOnlineAndInInstance(zone, online)
                     local function InZone()
@@ -179,6 +182,8 @@ function Award:SetSubjects(type, ...)
                     -- online is a number, with 1 being online and otherwise nil
                     return online == 1 and InZone()
                 end
+    
+                Logging:Debug("SetSubjects() : instanceName=%s instanceId=%s", tostring(instanceName), tostring(instanceId))
                 
                 for i = 1, GetNumGroupMembers() do
                     -- the returned player name won't have realm, so convert using UnitName
@@ -189,7 +194,9 @@ function Award:SetSubjects(type, ...)
                     
                     -- be extra careful and use pcall to trap any errors in the evaluation
                     -- if it fails, we'll add the player by default
-                    local check, add = pcall(function() return IsOnlineAndInInstance(zone, online) end)
+                    -- local check, add = pcall(function() return IsOnlineAndInInstance(zone, online) end)
+                    -- until the check can be addressed, just default to previous behavior (add everyone in raid)
+                    local check, add = true, true
                     if check and not add then
                         Logging:Debug("SetSubjects() : Omitting %s from award, online=%s zone=%s",
                                       tostring(name), tostring(online), tostring(zone)
