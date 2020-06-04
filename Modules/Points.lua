@@ -252,7 +252,7 @@ function Points:Adjust(award)
                 Logging:Debug("Points:Adjust() : Skipping adjustment of EPGP for '%s'", target.name)
             end
         else
-            Logging:Warn("Could not locate %s for applying %s. Possibly not in guild?", subject[1], Objects.ToString(award:toTable()))
+            Logging:Warn("Could not locate %s for applying %s. Possibly not in guild?",  Objects.ToString(subject), Objects.ToString(award:toTable()))
         end
     end
 
@@ -1109,7 +1109,6 @@ function Points.FilterFunc(table, row)
             local playerCheck = not Util.Objects.IsNil(check == _G.PARTY and UnitInParty("player") or UnitInRaid("player"))
             local memberCheck = not Util.Objects.IsNil(check == _G.PARTY and UnitInParty(memberShortName) or UnitInRaid(memberShortName))
             -- Logging:Debug("%s : %s, %s", memberShortName, tostring(playerCheck), tostring(memberCheck))
-            
             if playerCheck then
                 include = memberCheck and ModuleFilters.member_of[check] or not ModuleFilters.member_of[check]
             else

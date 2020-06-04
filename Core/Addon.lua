@@ -115,9 +115,11 @@ function R2D2:OnEnable()
     --@debug@
     -- this enables certain code paths that wouldn't otherwise be available in normal usage
     self.mode:Enable(R2D2.Constants.Modes.Develop)
-    -- this enables flag for persistence of points to officer's notes (safety net)
-    self.mode:Enable(R2D2.Constants.Modes.Persistence)
     --@end-debug@
+    
+    -- this enables flag for persistence of points to officer's notes
+    -- it can be disabled as needed through /r2d2 pm
+    self.mode:Enable(R2D2.Constants.Modes.Persistence)
     
     self.realmName = select(2, UnitFullName(self.Constants.player))
     self.playerName = self:UnitName(self.Constants.player)
