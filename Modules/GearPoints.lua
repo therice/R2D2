@@ -1,5 +1,5 @@
 local _, AddOn = ...
-local GP = AddOn:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0")
+local GP = AddOn:NewModule("GearPoints", "AceHook-3.0", "AceEvent-3.0", "AceBucket-3.0")
 local L = AddOn.components.Locale
 local Logging = AddOn.components.Logging
 local Util = AddOn.Libs.Util
@@ -241,6 +241,7 @@ function GP:OnInitialize()
     -- replace the library string representation function with our utility (more detail)
     LibGP:SetToStringFn(Objects.ToString)
     self.db = AddOn.db:RegisterNamespace(self:GetName(), GP.defaults)
+    self:RegisterBucketMessage(AddOn.Constants.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
     AddOn:SyncModule():AddHandler(
             self:GetName(),
             format("%s %s", L['gp'], L['settings']),
@@ -251,6 +252,16 @@ end
 
 function GP:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
+    self:ConfigureLibGP()
+end
+
+function GP:OnDisable()
+    Logging:Debug("OnDisable(%s)", self:GetName())
+    self:UnregisterAllBuckets()
+end
+
+
+function GP:ConfigureLibGP()
     LibGP:SetScalingConfig(self.db.profile.slot_scaling)
     LibGP:SetFormulaInputs(
             self.db.profile.formula.gp_base,
@@ -259,6 +270,16 @@ function GP:OnEnable()
     )
 end
 
+function GP:ConfigTableChanged(msg)
+    Logging:Debug("ConfigTableChanged() : %s", Util.Objects.ToString(msg))
+    for serializedMsg, _ in pairs(msg) do
+        local success, module, _ = AddOn:Deserialize(serializedMsg)
+        if success and self:GetName() == module then
+            self:ConfigureLibGP()
+            break
+        end
+    end
+end
 -- @param awardReason the reason (string) that an item was awarded (e.g. ms_need)
 -- @return the award_scaling entry for the specified reason
 local function AwardReasonToKey(awardReason)

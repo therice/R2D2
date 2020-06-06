@@ -83,6 +83,8 @@ function R2D2:OnInitialize()
     self.isMasterLooter = false
     -- name of the master looter
     self.masterLooter = ""
+    -- capture looting method for later required checks
+    self.lootMethod = GetLootMethod() or "freeforall"
     -- entries are type Candidate
     self.candidates = {}
     -- should this be a local
@@ -163,6 +165,7 @@ function R2D2:OnEnable()
         self:ScheduleTimer("SendGuildVersionCheck", 2)
     end
     
+    self:CandidateCheck()
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
     self:Print(format(L["chat version"], tostring(self.version)) .. " is now loaded. Thank you for trusting us to handle all your EP/GP needs!")
@@ -190,7 +193,19 @@ function R2D2:OnEnable()
 end
 
 function R2D2:OnDisable()
+    self:UnregisterChatCommand(name:lower())
+    self:UnregisterAllComm()
     self:UnregisterAllEvents()
+end
+
+function R2D2:CandidateCheck()
+    Logging:Debug("CandidateCheck()")
+    local ML = self:MasterLooterModule()
+    if ML.timers and ML.timers.cooldown_candidates then
+        Logging:Debug("CandidateCheck() : Cooldown schedule present, discarding and sending candidates")
+        ML.timers.cooldown_candidates = nil
+        ML:SendCandidates()
+    end
 end
 
 function R2D2:TestModeEnabled()

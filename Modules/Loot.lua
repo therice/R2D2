@@ -71,7 +71,6 @@ end
 
 function Loot:CheckDuplicates(size, offset)
     -- Logging:Trace("CheckDuplicates(%s, %s)", size, offset)
-
     for k = offset + 1, offset + size do
         if not self.items[k].rolled then
             for j = offset + 1, offset + size do
@@ -151,6 +150,18 @@ function Loot:GetFrame()
     if self.frame then return self.frame end
     -- Logging:Trace("GetFrame() : creating loot frame")
     self.frame = UI:CreateFrame("R2D2_LootFrame", "Loot", L["r2d2_loot_frame"], 250, 375, false)
+    -- override default behavior for ESC to not close the loot window
+    -- too easy to make mistakes and not get an opportunity to specify a response
+    self.frame:SetScript(
+            "OnKeyDown",
+            function(self, key)
+                if key == "ESCAPE" then
+                    self:SetPropagateKeyboardInput(false)
+                else
+                    self:SetPropagateKeyboardInput(true)
+                end
+            end
+    )
     self.frame.itemTooltip = UI:CreateGameTooltip("Loot", self.frame.content)
     return self.frame
 end
@@ -470,7 +481,7 @@ do
             entry.timeoutBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
             --entry.timeoutBar:SetStatusBarColor(0.1, 0, 0.6, 0.8)
             --entry.timeoutBar:SetStatusBarColor(0.5, 0.5, 0.5, 1)
-            -- entry.timeoutBar:SetStatusBarColor(1, 0.96, 0.41, 1)
+            --entry.timeoutBar:SetStatusBarColor(1, 0.96, 0.41, 1)
             entry.timeoutBar:SetStatusBarColor(0.00, 1.00, 0.59, 1)
             entry.timeoutBar:SetMinMaxValues(0, 60)
             entry.timeoutBar:SetScript("OnUpdate", function(this, elapsed)

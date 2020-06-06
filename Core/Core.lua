@@ -96,14 +96,16 @@ end
 function AddOn:GetMasterLooter()
     Logging:Debug("GetMasterLooter()")
     local MasterLooterDbCheck = AddOn.Constants.Commands.MasterLooterDbCheck
-
+    local lootMethod, mlPartyId, mlRaidId = GetLootMethod()
+    self.lootMethod = lootMethod
+    Logging:Debug("GetMasterLooter() : Loot Method is '%s'", self.lootMethod)
+    
     -- always the player when testing alone
     if GetNumGroupMembers() == 0 and (self:TestModeEnabled() or self:DevModeEnabled()) then
         self:ScheduleTimer("Timer", 5, MasterLooterDbCheck)
         return true, self.playerName
     end
 
-    local lootMethod, mlPartyId, mlRaidId = GetLootMethod()
     if lootMethod == "master" then
         local name
         -- Someone in raid
@@ -116,11 +118,12 @@ function AddOn:GetMasterLooter()
         elseif mlPartyId then
             name = self:UnitName("party" .. mlPartyId)
         end
-
-        -- Check to see if we have received mldb within 15 secs, otherwise request it
-        self:ScheduleTimer("Timer", 15, MasterLooterDbCheck)
+    
+        Logging:Debug("GetMasterLooter() : ML is '%s'", tostring(name))
         return IsMasterLooter(), name
     end
+    
+    Logging:Warn("GetMasterLooter() : Unsupported loot method '%s'", tostring(self.lootMethod))
     return false, nil
 end
 
@@ -128,11 +131,14 @@ function AddOn:NewMasterLooterCheck()
     Logging:Debug("NewMasterLooterCheck()")
     
     local oldMl = self.masterLooter
+    local oldLm = self.lootMethod
+    
     self.isMasterLooter, self.masterLooter = self:GetMasterLooter()
-    if Util.Strings.IsSet(self.masterLooter) and strfind(self.masterLooter, "Unknown") then
+    self.lootMethod = GetLootMethod()
+    
+    if Util.Strings.IsSet(self.masterLooter) and (Util.Strings.Equal(self.masterLooter, "Unknown") or Util.Strings.Equal(Ambiguate(self.masterLooter, "short"):lower(), _G.UNKNOWNOBJECT:lower())) then
         Logging:Warn("NewMasterLooterCheck() : Unknown Master Looter")
-        self:ScheduleTimer("NewMasterLooterCheck", 2)
-        return
+        return self:ScheduleTimer("NewMasterLooterCheck", 1)
     end
     
     -- We were ML, but no longer, so disable master looter module
@@ -140,16 +146,22 @@ function AddOn:NewMasterLooterCheck()
         self:MasterLooterModule():Disable()
     end
     
-    if self:UnitIsUnit(oldMl, self.masterLooter) then
+    if self:UnitIsUnit(oldMl, self.masterLooter) and Util.Strings.Equal(oldLm, self.lootMethod) then
         Logging:Debug("NewMasterLooterCheck() : No Master Looter change")
         return
     end
     
     -- if self.db.profile.usage.never then return end
     if self:MasterLooterModule():DbValue('usage.never') then return end
+    
     if self.masterLooter == nil then return end
+    
+    -- request ML DB if not received within 15 seconds
+    self:ScheduleTimer("Timer", 15,  AddOn.Constants.Commands.MasterLooterDbCheck)
+    
     -- Someone else has become ML
     if not self.isMasterLooter and self.masterLooter then return end
+    
     -- if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
     if not IsInRaid() and self:MasterLooterModule():DbValue('onlyUseInRaids') then return end
     
@@ -455,9 +467,9 @@ function AddOn:OnEvent(event, ...)
         end
     -- Fired when you a corpse is looted, regardless of whether loot frame is shown
     elseif event == E.LootReady then
+        wipe(self.lootSlotInfo)
         if not IsInInstance() then return end
         if GetNumLootItems() <= 0 then return end
-        wipe(self.lootSlotInfo)
         self.lootOpen = true
         for i = 1, GetNumLootItems() do
             if LootSlotHasItem(i) then
@@ -480,13 +492,13 @@ function AddOn:LootOpened(...)
     if AddOn.isMasterLooter then
         for i =1, GetNumLootItems() do
             local loot = self.lootSlotInfo[i]
-            if (loot and LootSlotHasItem(i)) or (loot and not self:ItemIsItem(loot.link, GetLootSlotLink(i))) then
+            if (not loot and LootSlotHasItem(i)) or (loot and not self:ItemIsItem(loot.link, GetLootSlotLink(i))) then
                 Logging:Debug("LootOpened():  Re-building Loot Slot %d", i)
                 if not self:AddLootSlotInfo(i, ...) then
-                    Logging:Debug("LootOpened() : Uncached items in loot, retrying again...")
-                    local autoloot, attempt = ...
+                    local _, autoloot, attempt = ...
+                    Logging:Warn("LootOpened() : Uncached item (%d) in loot, retrying again (attempt %d) ...", i, attempt or 0)
                     if not attempt then attempt = 1 else attempt = attempt + 1 end
-                    return self:ScheduleTimer("LootOpened", attempt / 10, autoloot, attempt)
+                    return self:ScheduleTimer("LootOpened", attempt / 10, "LOOT_OPENED", autoloot, attempt)
                 end
             end
         end

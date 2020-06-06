@@ -517,6 +517,7 @@ end
 
 function ML:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
+    local C = AddOn.Constants
     -- mapping of candidateName = { class, role, rank }
     -- entries will be of type Candidate.Candidate
     self.candidates = {}
@@ -531,10 +532,10 @@ function ML:OnEnable()
     -- is a session in flight
     self.running = false
     self:RegisterComm(name, "OnCommReceived")
-    self:RegisterEvent(AddOn.Constants.Events.ChatMessageWhisper, "OnEvent")
-    self:RegisterEvent(AddOn.Constants.Events.PlayerRegenEnabled, "OnEvent")
-    self:RegisterBucketEvent(AddOn.Constants.Events.GroupRosterUpdate, 10, "UpdateCandidates")
-    self:RegisterBucketMessage(AddOn.Constants.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
+    self:RegisterEvent(C.Events.ChatMessageWhisper, "OnEvent")
+    self:RegisterEvent(C.Events.PlayerRegenEnabled, "OnEvent")
+    self:RegisterBucketEvent(C.Events.GroupRosterUpdate, 10, "UpdateCandidates")
+    self:RegisterBucketMessage(C.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
 end
 
 function ML:OnDisable()
@@ -550,7 +551,7 @@ end
 -- the msg will be in the format of 'ace serialized message' = 'count of event'
 -- where the deserialized message will be a tuple of 'module of origin' (e.g MasterLooter), 'db key name' (e.g. outOfRaid)
 function ML:ConfigTableChanged(msg)
-     Logging:Debug("ConfigTableChanged() : %s", Util.Objects.ToString(msg))
+    Logging:Debug("ConfigTableChanged() : %s", Util.Objects.ToString(msg))
     if not AddOn.mlDb then return ML:UpdateDb() end
     for serializedMsg, _ in pairs(msg) do
         local success, module, val = AddOn:Deserialize(serializedMsg)
@@ -659,8 +660,8 @@ end
 
 function ML:AddCandidate(name, class, rank, enchant, lvl, ilvl)
     Logging:Trace("AddCandidate(%s, %s, %s, %s, %s, %s)",
-            name, class, rank or 'nil', tostring(enchant),
-            tostring(lvl or 'nil'), tostring(ilvl or 'nil')
+            name, class, tostring(rank), tostring(enchant),
+            tostring(lvl), tostring(ilvl)
     )
     Util.Tables.Insert(self.candidates, name, Models.Candidate:new(name, class, rank, enchant, lvl, ilvl))
 end
@@ -675,12 +676,12 @@ function ML:GetCandidate(name)
 end
 
 function ML:UpdateCandidates(ask)
-    Logging:Trace("UpdateCandidates(%s)", tostring(ask))
-    if type(ask) ~= "boolean" then ask = false end
-
+    Logging:Debug("UpdateCandidates(%s)", tostring(ask))
     local C = AddOn.Constants
-    -- Util.Tables.Copy(self.candidates, function() return true end)
-    local candidates_copy = Util(self.candidates):Copy()()
+    
+    if not Util.Objects.IsBoolean(ask) then ask = false end
+    
+    local candidatesCopy = Util(self.candidates):Copy()()
     local updates = false
 
     for i = 1, GetNumGroupMembers() do
@@ -690,30 +691,30 @@ function ML:UpdateCandidates(ask)
         --
         -- name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole
         --      = GetRaidRosterInfo(raidIndex)
-        local name, _, _, _, _, class, _, _, _, _, _, _  = GetRaidRosterInfo(i)
+        local name, _, _, _, _, class = GetRaidRosterInfo(i)
         if name then
             name = AddOn:UnitName(name)
-            if candidates_copy[name] then
-                -- No need to check for a role change, classic doesn't have it
-                Util.Tables.Remove(candidates_copy, name)
+            -- player already a tracked candidate
+            if Util.Tables.ContainsKey(candidatesCopy, name) then
+                Util.Tables.Remove(candidatesCopy, name)
             else
                 -- ask for their player information
-                if ask then
+                if not ask then
                     AddOn:SendCommand(name, C.Commands.PlayerInfoRequest)
                 end
                 self:AddCandidate(name, class)
                 updates = true
             end
         else
-            Logging:Warn("GetRaidRosterInfo() returned nil for index = %s, retrying after a pause", i)
+            Logging:Warn("UpdateCandidates() : GetRaidRosterInfo() returned nil for index = %d, retrying after a pause", i)
             return self:ScheduleTimer("UpdateCandidates", 1, ask)
         end
     end
 
     -- these folks no longer around (in raid)
-    for n, v in pairs(candidates_copy) do
+    for name, v in pairs(candidatesCopy) do
         if v then
-            self:RemoveCandidate(n)
+            self:RemoveCandidate(name)
             updates = true
         end
     end
@@ -729,29 +730,36 @@ local function SendCandidates()
     local C = AddOn.Constants
     AddOn:SendCommand(C.group, C.Commands.Candidates, ML.candidates)
     ML.timers.send_candidates = nil
+    Logging:Debug("SendCandidates(LOCAL)")
 end
 
 local function OnCandidatesCooldown()
     ML.timers.cooldown_candidates = nil
+    Logging:Debug("OnCandidatesCooldown(LOCAL)")
 end
 
 -- sends candidates to the group no more than every CANDIDATE_SEND_INTERVAL seconds
 function ML:SendCandidates()
     local C = AddOn.Constants
+    Logging:Debug("SendCandidates()")
     -- recently sent one
     if self.timers.cooldown_candidates then
+        Logging:Debug("SendCandidates() : Cooldown schedule present")
         -- we've queued a new one
         if self.timers.send_candidates then
+            Logging:Debug("SendCandidates() : Send schedule present")
             -- do nothing, once current timer expires it will be sent
             return
         -- send the candidates once interval has expired
         else
             local timeRemaining = self:TimeLeft(self.timers.cooldown_candidates)
+            Logging:Debug("SendCandidates() : Send schedule NOT present, scheduling for %d seconds", timeRemaining)
             self.timers.send_candidates = self:ScheduleTimer(SendCandidates, timeRemaining)
             return
         end
     -- no cooldown, send immediately and start the cooldown
     else
+        Logging:Debug("SendCandidates() : Cooldown schedule NOT present, scheduling and sending")
         self.timers.cooldown_candidates = self:ScheduleTimer(OnCandidatesCooldown, CANDIDATE_SEND_COOLDOWN)
         AddOn:SendCommand(C.group, C.Commands.Candidates, self.candidates)
     end
@@ -1372,19 +1380,21 @@ end
 
 
 function ML:StartSession()
-    Logging:Debug("StartSession()")
+    Logging:Debug("StartSession(%s)", tostring(self.running))
     local C = AddOn.Constants
 
+    -- don't being the session pre-maturely
     if not AddOn.candidates[AddOn.playerName] then
         AddOn:Print(L["session_data_sync"])
-        Logging:Debug("Session data not yet available")
-        return
+        return Logging:Debug(
+                "StartSession() : Session data not yet available. %s => %s",
+                AddOn.playerName,
+                Util.Objects.ToString(AddOn.candidates)
+        )
     end
 
     -- only sort if we not currently in-flight
-    --if not self.running then
-    --    self:SortLootTable(self.lootTable)
-    --end
+    -- if not self.running then self:SortLootTable(self.lootTable) end
 
     -- if a session is already running, need to add any new items
     if self.running then
@@ -1602,7 +1612,6 @@ function ML:LootOpened()
                     local quality = item.quality
                     self:ScheduleTimer("HookLootButton", 0.5, i)
                     
-                    -- todo : auto-awarding of items (probably not)
                     -- check if we are allowed to loot item
                     if link and self:CanWeLootItem(link, quality) and quantity > 0 then
                         self:AddItem(link, false, i)
@@ -1616,7 +1625,7 @@ function ML:LootOpened()
             
     
         if #self.lootTable > 0 and not self.running then
-            if self.db.profile.autoStart and self:GetCandidate(AddOn.playerName) then
+            if self.db.profile.autoStart and AddOn.candidates[AddOn.playerName] then
                 self:StartSession()
             else
                 AddOn:CallModule(LS:GetName())
@@ -1785,7 +1794,7 @@ function ML.LootTableCompare(a, b)
     if not a.link then return false end
     if not b.link then return true end
 
-    -- todo : add support for item tokens
+    -- todo : add support for item tokens (will be needed in future)
     local elA = ML.EquipmentLocationSortOrder[a.equipLoc] or math.huge
     local elB = ML.EquipmentLocationSortOrder[b.equipLoc] or math.huge
     if elA ~= elB then
@@ -1794,9 +1803,7 @@ function ML.LootTableCompare(a, b)
     end
 
     -- todo : add support for trinkets
-    --if a.equipLoc == "INVTYPE_TRINKET" and b.equipLoc == "INVTYPE_TRINKET" then
-    --
-    --end
+    --if a.equipLoc == "INVTYPE_TRINKET" and b.equipLoc == "INVTYPE_TRINKET" then end
 
     if a.typeId ~= b.typeId then
         Logging:Trace("LootTableCompare(%s, %s) : %s", a.typeId, b.typeId, tostring(a.typeId > b.typeId))

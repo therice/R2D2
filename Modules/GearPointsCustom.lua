@@ -106,10 +106,14 @@ function GpCustom:PerformEnable()
     
     self.db:SetProfile(GuildStorage:GetGuildName() and GuildStorage:GetGuildName() or NoGuild)
     self:AddDefaultCustomItems()
-    ItemUtil:SetCustomItems(self.db.profile.custom_items)
+    self:ConfigureItemUtil()
     self:RegisterBucketMessage(AddOn.Constants.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
     
     Logging:Debug("OnInitialize(%s) : custom item count = %s", self:GetName(), Tables.Count(self.db.profile.custom_items))
+end
+
+function GpCustom:ConfigureItemUtil()
+    ItemUtil:SetCustomItems(self.db.profile.custom_items)
 end
 
 function GpCustom:OnDisable()
@@ -234,7 +238,13 @@ end
 
 function GpCustom:ConfigTableChanged(msg)
     Logging:Trace("ConfigTableChanged() : '%s", Util.Objects.ToString(msg))
-    ItemUtil:SetCustomItems(self.db.profile.custom_items)
+    for serializedMsg, _ in pairs(msg) do
+        local success, module, _ = AddOn:Deserialize(serializedMsg)
+        if success and self:GetName() == module then
+            self:ConfigureItemUtil()
+            break
+        end
+    end
 end
 
 function GpCustom:OnAddItemClick(...)
