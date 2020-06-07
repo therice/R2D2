@@ -143,23 +143,19 @@ function LootSession:GetFrame()
     start:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
     start:SetScript("OnClick", function()
         if loadingItems then
-            AddOn:Print(L["session_items_not_loaded"])
-            return
+            return AddOn:Print(L["session_items_not_loaded"])
         end
 
         if not ML.lootTable or Util.Tables.Count(ML.lootTable) == 0 then
             AddOn:Print(L["session_no_items"])
-            Logging:Debug("Session cannot be started as there are no items")
-            return
+            return Logging:Debug("Session cannot be started as there are no items")
         end
 
         if not AddOn.candidates[AddOn.playerName] then
             AddOn:Print(L["session_data_sync"])
-            Logging:Debug("Session data not yet available")
-            return
+            return Logging:Debug("Session data not yet available")
         elseif InCombatLockdown() then
-            AddOn:Print(L["session_in_combat"])
-            return
+            return AddOn:Print(L["session_in_combat"])
         else
             ML:StartSession()
         end

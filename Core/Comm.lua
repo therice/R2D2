@@ -67,7 +67,6 @@ function AddOn.ScrubData(...)
     return scrubbed
 end
 
-
 function AddOn:PrepareForSend(command, ...)
     local serialized = self:Serialize(command, self.ScrubData(...))
     local encodedTable = Util.Tables.Temp()
@@ -128,7 +127,8 @@ function AddOn:SendCommand(target, command, ...)
     -- before sending, we scrub to insure it can be serialized
     --
     -- todo : compress and encode
-    local toSend = self:Serialize(command, self.ScrubData(...))
+    -- local toSend = self:Serialize(command, self.ScrubData(...))
+    local toSend = self:PrepareForSend(command, ...)
     local prefix = C.name
 
     Logging:Trace("SendCommand(%s, %s) : %s", target, command, Util.Objects.ToString(toSend))
@@ -388,7 +388,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 if not self.lootTable or #self.lootTable == 0 then
                     Logging:Warn("Received a LootAck without having a loot table")
                     if not self.masterLooter then
-                        Logging:Warn("There is currently no assigned Master Looter")
+                        return Logging:Warn("There is currently no assigned Master Looter")
                     end
                     if not self.reconnectPending then
                         self:SendCommand(self.masterLooter, C.Commands.Reconnect)

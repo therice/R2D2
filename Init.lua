@@ -23,7 +23,7 @@ R2D2.version = GetAddOnMetadata(AddOnName, "Version")
 --@debug@
 -- if local development and not substituted, then use a dummy version
 if R2D2.version == '@project-version@' then
-    R2D2.version = '1-dev'
+    R2D2.version = '1.2-dev'
 end
 --@end-debug@
 
@@ -131,7 +131,10 @@ local ModulePrototype = {
             self.db.profile[k]  = v
         end
     
+        -- fire message that the configuration table has changed (this is handled on per module basis, as necessary)
         AddOn:ConfigTableChanged(self:GetName())
+        -- notify config registry of change as well, this updates configuration UI if displayed
+        AddOn.Libs.AceConfigRegistry:NotifyChange("R2D2")
         AddOn:Print(format(L['import_successful'], AddOn.GetDateTime(), self:GetName()))
     end
 }

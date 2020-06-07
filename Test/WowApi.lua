@@ -559,6 +559,10 @@ function GetNumAddOns()
 	return 0
 end
 
+function GetLootMethod()
+	return "master"
+end
+
 function getglobal(k)
 	return _G[k]
 end

@@ -278,7 +278,7 @@ function LootAllocate:CandidateCheck()
     -- our name isn't present, assume not received
     if not AddOn.candidates[AddOn.playerName] and AddOn.masterLooter then
         local C = AddOn.Constants
-        Logging:Warn("CandidateCheck() : Failed")
+        Logging:Warn("CandidateCheck() : Failed (we are ML and our name is not present on candidate list)")
         AddOn:SendCommand(AddOn.masterLooter, C.Commands.CandidatesRequest)
         self:ScheduleTimer("CandidateCheck", 20)
     end
@@ -416,8 +416,6 @@ function LootAllocate:OnCommReceived(prefix, serializedMsg, dist, sender)
                     self:SetCandidateData(ses, name, "roll", roll)
                 end
                 self:Update()
-            elseif command == C.Commands.ReconnectData and fromMl then
-            
             elseif command == C.Commands.LootTableAdd and fromMl then
                 local oldLen = #lootTable
                 for index, entry in pairs(unpack(data)) do
@@ -451,6 +449,9 @@ function LootAllocate:BuildScrollingTable()
         }
         i = i + 1
     end
+    
+    Logging:Debug("BuildScrollingTable() : Adding %d candidates to table", i)
+    
     self.frame.st:SetData(rows)
 end
 

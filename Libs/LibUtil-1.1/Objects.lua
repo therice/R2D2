@@ -51,7 +51,6 @@ function Self.IsBoolean(obj)
     return type(obj) == 'boolean'
 end
 
-
 -- Check if two values are equal
 function Self.Equals(a, b)
     return a == b

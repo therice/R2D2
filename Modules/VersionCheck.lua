@@ -304,7 +304,7 @@ function VersionCheck:PrintOutOfDateClients()
     elseif IsInGuild() then
         GuildRoster()
         for i = 1, GetNumGuildMembers() do
-            local name, _, _,_,_,_,_,_, online,_, class = GetGuildRosterInfo(i)
+            local name, _, _,_,_,_,_,_, online = GetGuildRosterInfo(i)
             if online and not verTestCandidates[name] and not (name == AddOn.playerName) then
                 Util.Tables.Push(notInstalled, AddOn:GetUnitClassColoredName(name) .. '')
             end

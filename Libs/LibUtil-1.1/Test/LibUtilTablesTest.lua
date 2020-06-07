@@ -86,5 +86,21 @@ describe("LibUtil", function()
             local t2 = Util(t):Copy():Map(function (e) return e[1] end):Flip()()
             print(Util.Objects.ToString(t2))
         end)
+        it("copys without mutate", function()
+            local o = {
+                a = {1, "b", true},
+                b = {2, "c", true},
+                c = {3, "d", false},
+            }
+            local c = Util(o):Copy()()
+            print(Util.Objects.ToString(o))
+            print(Util.Objects.ToString(c))
+            if Util.Tables.ContainsKey(c, "b") then
+                Util.Tables.Remove(c, "b")
+            end
+            print(Util.Objects.ToString(o))
+            print(Util.Objects.ToString(c))
+            
+        end)
     end)
 end)

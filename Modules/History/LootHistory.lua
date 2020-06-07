@@ -339,7 +339,7 @@ function LootHistory:BuildData()
                         end
                     )()
     
-    for name, entry in pairs(AddOn.candidates) do
+    for name, entry in pairs(AddOn.candidates or {}) do
         if not Tables.ContainsKey(nameData, name) then
             nameData[name] = NameClassEntry(name, entry.class)
         end

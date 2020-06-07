@@ -85,12 +85,15 @@ function AddOn:GetPlayerInfo()
     if not enchanting_localized_name then
         enchanting_localized_name = GetSpellInfo(7411)
     end
-    if GetSpellBookItemInfo(enchanting_localized_name) then
-        -- we know enchanting, thus are an enchanter. we don't know our lvl though.
-        enchant = true
-        lvl = "?"
+    for i = 1, GetNumSkillLines() do
+        -- Cycle through all lines under "Skill" tab on char
+        local skillName, _, _, skillRank  = GetSkillLineInfo(i)
+        if skillName == enchanting_localized_name then
+            -- We know enchanting, thus are an enchanter. And will return your lvl.
+            enchant = true
+            lvl = skillRank
+        end
     end
-
     -- GetAverageItemLevel() isn't implemented via provided API
     local ilvl = GetAverageItemLevel()
     return self.playerName, self.playerClass, self.guildRank, enchant, lvl, ilvl
