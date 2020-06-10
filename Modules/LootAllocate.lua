@@ -450,7 +450,7 @@ function LootAllocate:BuildScrollingTable()
         i = i + 1
     end
     
-    Logging:Debug("BuildScrollingTable() : Adding %d candidates to table", i)
+    Logging:Debug("BuildScrollingTable() : Adding %d candidates to table", (i - 1))
     
     self.frame.st:SetData(rows)
 end

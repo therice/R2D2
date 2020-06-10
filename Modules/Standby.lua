@@ -428,7 +428,7 @@ end
 
 function Standby:RemovePlayer(player)
     if self:IsOperationRequired() and player then
-        Standby.roster[player.name] = nil
+        self.roster[player.name] = nil
     end
 end
 
