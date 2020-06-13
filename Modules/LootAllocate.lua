@@ -1494,8 +1494,14 @@ function LootAllocate.SetCellName(rowFrame, frame, data, cols, row, realrow, col
     else
         frame.text:SetText(AddOn.Ambiguate(name))
     end
-    local c = AddOn.GetClassColor(LootAllocate.GetLootTableEntryResponse(session, name).class)
-    frame.text:SetTextColor(c.r, c.g, c.b, c.a)
+    
+    local r = LootAllocate.GetLootTableEntryResponse(session, name)
+    if not r.class then
+        Logging:Warn("SetCellName(%s) : Class attribute unavailable", tostring(name))
+    else
+        local c = AddOn.GetClassColor(r.class)
+        frame.text:SetTextColor(c.r, c.g, c.b, c.a)
+    end
     data[realrow].cols[column].value = name or ""
 end
 

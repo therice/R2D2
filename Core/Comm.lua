@@ -73,7 +73,7 @@ function AddOn:PrepareForSend(command, ...)
     local serialized = self:Serialize(command, self.ScrubData(...))
     local encodedTable = Util.Tables.Temp()
     
-    for _, alg in Util.Objects.Each({'CompressHuffman', 'CompressLZW', 'Store'}) do
+    for _, alg in Util.Objects.Each({'CompressLZW', 'CompressHuffman', 'Store'}) do
         Util.Tables.Push(encodedTable, AddOnEncodeTable:Encode(LibCompress[alg](LibCompress, serialized)))
     end
     
@@ -99,7 +99,7 @@ end
 --
 -- eventually, we can eliminate chaining and go back to our method of choice
 -- however this needs phased out in multiple releases
-local Compressors =  Compression.GetCompressors(
+local Compressors = Compression.GetCompressors(
         Compression.CompressorType.LibCompress,
         Compression.CompressorType.LibDeflate,
         Compression.CompressorType.LibCompressNoOp

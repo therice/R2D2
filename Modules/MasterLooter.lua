@@ -664,6 +664,7 @@ function ML:AddCandidate(name, class, rank, enchant, lvl, ilvl)
             tostring(lvl), tostring(ilvl)
     )
     Util.Tables.Insert(self.candidates, name, Models.Candidate:new(name, class, rank, enchant, lvl, ilvl))
+    Logging:Debug("AddCandidate() : count=%d", Util.Tables.Count(self.candidates))
 end
 
 function ML:RemoveCandidate(name)
@@ -768,7 +769,7 @@ function ML:SendCandidates()
 end
 
 function ML:NewMasterLooter(ml)
-    Logging:Debug("NewMasterLooter(%s)", ml)
+    Logging:Debug("NewMasterLooter(%s)", tostring(ml))
     local C = AddOn.Constants
     -- Are we are the the ML?
     if AddOn:UnitIsUnit(ml, C.player) then
@@ -782,7 +783,7 @@ function ML:NewMasterLooter(ml)
 end
 
 function ML:Timer(type, ...)
-    Logging:Trace("Timer(%s)", type)
+    Logging:Trace("Timer(%s)", tostring(type))
     local C = AddOn.Constants
     if type == "AddItem" then
         self:AddItem(...)
