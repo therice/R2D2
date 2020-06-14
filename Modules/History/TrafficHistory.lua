@@ -183,8 +183,14 @@ function TrafficHistory:GetDataForSync()
         local send = {}
         
         while Util.Tables.Count(send) < math.min(10, Util.Tables.Count(db)) do
-            table.insert(send, Util.Tables.Random(db))
+            local v = Util.Tables.Random(db)
+            if Util.Objects.IsString(v) then
+                table.insert(send, v)
+            end
         end
+    
+        -- always select the compression settings key (if present)
+        send[CDB.CompressionSettingsKey] = db[CDB.CompressionSettingsKey]
         
         Logging:Debug("TrafficHistory:GetDataForSync() : randomly selected entries count is %d", #send)
         
