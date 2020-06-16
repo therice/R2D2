@@ -462,7 +462,7 @@ function Standby:GetAwardRoster()
         
         local roster = {}
         for name, _ in pairs(self.roster) do
-            Tables.Push(roster, name)
+            Tables.Push(roster, AddOn:UnitName(name))
         end
         
         -- return roster of names and award %
