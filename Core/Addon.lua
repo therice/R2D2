@@ -321,7 +321,8 @@ function R2D2:ChatCommand(msg)
             self.mode:Enable(flag)
         end
         self:Print("Persistence Mode = " .. tostring(self:PersistenceModeEnabled()))
-    --@debug@
+    -- master looter commands for working around issues with compression until we can swap
+    -- codecs
     elseif cmd == 'ml' then
         local subCmd = Strings.Lower(tostring(args[1])) or nil
         if not Strings.IsEmpty(subCmd) and AddOn.isMasterLooter then
@@ -330,13 +331,14 @@ function R2D2:ChatCommand(msg)
             
             if not ML:IsEnabled() then return end
             
+            -- player info
             if subCmd == 'pi' then
                 AddOn:SendCommand(C.group, C.Commands.PlayerInfoRequest)
+            -- update candidates
             elseif subCmd == 'uc' then
                 ML:UpdateCandidates()
             end
         end
-    --@end-debug@
     else
         self:Help()
     end
