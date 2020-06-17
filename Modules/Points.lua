@@ -204,7 +204,7 @@ function Points:Adjust(award)
         local function reset(_, _) return amount end
         local function decay(amt, by)
             -- Logging:Debug("%d - math.floor(%d * %s) = %d", amt, amt, tostring(by), (amt - math.floor(amt * by)))
-            return amt - math.floor(amt * by)
+            return Util.Numbers.Round(amt - (amt * by))
         end
         
         local oper =

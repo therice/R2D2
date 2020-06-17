@@ -146,10 +146,13 @@ function LootHistory:GetDataForSync()
         
         while Util.Tables.Count(rkeys) < math.min(4, Util.Tables.Count(db)) do
             local rkey = Util.Tables.RandomKey(db)
-            if not Util.Tables.ContainsKey(rkey) then
+            if rkey ~= CDB.CompressionSettingsKey and not Util.Tables.ContainsKey(rkey) then
                 rkeys[rkey] = true
             end
         end
+    
+        -- always select the compression settings key (if present)
+        rkeys[CDB.CompressionSettingsKey] = true
         
         Logging:Debug("LootHistory:GetDataForSync() : randomly selected keys are %s", Util.Objects.ToString(Util.Tables.Keys(rkeys)))
         

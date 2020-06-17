@@ -13,7 +13,7 @@ describe("History - Traffic Model", function()
         CDB = R2D2.components.Models.CompressedDb
     
         for _,v in pairs(TrafficTestData) do
-            Util.Tables.Push(history, CDB.static:decompress(v))
+            Util.Tables.Push(history, CDB.static:decompress(v, CDB.LegacyCompressorType))
         end
     end)
     
@@ -28,7 +28,6 @@ describe("History - Traffic Model", function()
             for _, v in pairs(history) do
                 stats:ProcessEntry(v)
             end
-            
             
             local se = stats:Get('Annasthétic-Atiesh')
             se:CalculateTotals()

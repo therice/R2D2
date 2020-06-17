@@ -5,9 +5,10 @@ local Objects   = Util.Objects
 local L         = AddOn.components.Locale
 local Models    = AddOn.components.Models
 local ItemUtil  = AddOn.Libs.ItemUtil
-local Compress  = AddOn.Libs.Compress
+local LibCompress = AddOn.Libs.Compress
+local Compression = AddOn.Libs.Util.Compression
 
-local AddOnEncodeTable = Compress:GetAddonEncodeTable()
+local AddOnEncodeTable = LibCompress:GetAddonEncodeTable()
 
 function AddOn:GetAnnounceChannel(channel)
     local C = AddOn.Constants
@@ -67,17 +68,18 @@ function AddOn.ScrubData(...)
     return scrubbed
 end
 
+-- todo : replace the compression with LibDeflate, once receiving logic has been released
 function AddOn:PrepareForSend(command, ...)
     local serialized = self:Serialize(command, self.ScrubData(...))
     local encodedTable = Util.Tables.Temp()
     
-    for _, alg in Util.Objects.Each({'CompressHuffman', 'CompressLZW', 'Store'}) do
-        Util.Tables.Push(encodedTable, AddOnEncodeTable:Encode(Compress[alg](Compress, serialized)))
+    for _, alg in Util.Objects.Each({'CompressLZW', 'CompressHuffman', 'Store'}) do
+        Util.Tables.Push(encodedTable, AddOnEncodeTable:Encode(LibCompress[alg](LibCompress, serialized)))
     end
     
     local minIndex, minLen = -1, math.huge
     for i = #encodedTable, 1, -1 do
-        local test = Compress:Decompress(AddOnEncodeTable:Decode(encodedTable[i]))
+        local test = LibCompress:Decompress(AddOnEncodeTable:Decode(encodedTable[i]))
         Logging:Trace("PrepareForSend(%d) : length '%d' valid '%s'", i, #encodedTable[i], tostring(test == serialized ))
         if test and test == serialized and #encodedTable[i] < minLen then
             minLen = #encodedTable[i]
@@ -92,32 +94,70 @@ function AddOn:PrepareForSend(command, ...)
     return data
 end
 
+-- order is significant for types specified here, as that is the order in which they
+-- will be attempted, which the next one being fallback, and so forth...
+--
+-- eventually, we can eliminate chaining and go back to our method of choice
+-- however this needs phased out in multiple releases
+local Compressors = Compression.GetCompressors(
+        Compression.CompressorType.LibCompress,
+        Compression.CompressorType.LibDeflate,
+        Compression.CompressorType.LibCompressNoOp
+)
+
 function AddOn:ProcessReceived(msg)
     if not msg then
         Logging:Error("ProcessReceived() : No message was provided")
         return false
     end
     
+    local decompressed
+    for _, compressor in pairs(Compressors) do
+        Logging:Trace("ProcessReceived() : Attempting decompression using %s", compressor:GetName())
+        decompressed = compressor:decompress(msg, true)
+        if decompressed then
+            Logging:Trace("ProcessReceived() : Decompression SUCCEEDED using %s", compressor:GetName())
+            break
+        end
+        
+        Logging:Trace("ProcessReceived() : Decompression FAILED using %s", compressor:GetName())
+    end
+    
+    -- keeping around for now as reference in case we encounter issues with moving towards
+    -- different type of compression and quickly need to revert
+    --[[
     local decoded = AddOnEncodeTable:Decode(msg)
     if not decoded then
         Logging:Error("ProcessReceived() : Message could not be decoded")
         return false
     end
     
-    local decompressed, err = Compress:Decompress(decoded)
+    local decompressed, err = LibCompress:Decompress(decoded)
     if not decompressed then
-        Logging:Trace("ProcessReceived() : Message could not be decompressed - will retry with no compression. '%s'", err)
+        Logging:Debug("ProcessReceived() : Message could not be decompressed - will retry with no compression. '%s'", err)
         
         -- try again with "no compression" tacked on to beginning
-        decompressed, err = Compress:Decompress(Compress:Store(decoded))
+        decompressed, err = LibCompress:Decompress(LibCompress:Store(decoded))
         if not decompressed then
             Logging:Warn("ProcessReceived() : Message could not be decompressed (with explicit no compression). '%s'",
                          err)
             return false
         end
     end
+    --]]
     
-    return self:Deserialize(decompressed)
+    if not decompressed then
+        Logging:Warn("ProcessReceived() : Message could not be decompressed")
+        return false
+    end
+    
+    
+    local success, command, data = self:Deserialize(decompressed)
+    if not success then
+        Logging:Error("ProcessReceived() : Message could not deserialized, '%s' - %s", tostring(command), Util.Objects.ToString(decompressed))
+    end
+    
+    return success, command, data
 end
 
 function AddOn:SendCommand(target, command, ...)
@@ -126,12 +166,15 @@ function AddOn:SendCommand(target, command, ...)
     -- send all data as a table, and let receiver unpack it
     -- before sending, we scrub to insure it can be serialized
     --
-    -- todo : compress and encode
     -- local toSend = self:Serialize(command, self.ScrubData(...))
     local toSend = self:PrepareForSend(command, ...)
     local prefix = C.name
 
-    Logging:Trace("SendCommand(%s, %s) : %s", target, command, Util.Objects.ToString(toSend))
+    
+    Logging:Debug("SendCommand(%s, %s) : %s",
+                  target, command,
+                  Logging:IsEnabledFor(Logging.Level.Trace) and Util.Objects.ToString(toSend, 1) or '[omitted]'
+    )
 
     if target == C.group then
         -- raid
@@ -221,7 +264,7 @@ end
 
 
 function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
-    Logging:Trace("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
+    Logging:Debug("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
     Logging:Trace("OnCommReceived() : %s", serializedMsg)
 
     local C = AddOn.Constants
@@ -310,6 +353,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
             elseif command == C.Commands.Candidates then
                 self.candidates = unpack(data)
                 Util.Tables.Map(self.candidates, function (entry) return Models.Candidate:new():reconstitute(entry) end)
+                Logging:Debug("Received Candidates => %d / %s", Util.Tables.Count(self.candidates), Util.Objects.ToString(self.candidates, 2))
             elseif command == C.Commands.MasterLooterDb and not self.isMasterLooter then
                 if self:UnitIsUnit(sender, self.masterLooter) then
                     self:OnMasterLooterDbReceived(unpack(data))
@@ -403,7 +447,6 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 else
                     Logging:Warn("Non-MasterLooter %s sent standby ping command", sender)
                 end
-            -- todo : check if history is enabled
             elseif command == C.Commands.LootHistoryAdd then
                 local winner, table = unpack(data)
                 Logging:Debug("%s, %s", tostring(winner), Objects.ToString(table))
@@ -417,7 +460,6 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 if LH:IsEnabled() then
                    LH:BuildData()
                 end
-            -- todo : check if history is enabled
             elseif command == C.Commands.TrafficHistoryAdd then
                 local table = unpack(data)
                 local entry = Models.History.Traffic():reconstitute(table)

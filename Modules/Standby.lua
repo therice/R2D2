@@ -428,7 +428,7 @@ end
 
 function Standby:RemovePlayer(player)
     if self:IsOperationRequired() and player then
-        Standby.roster[player.name] = nil
+        self.roster[player.name] = nil
     end
 end
 
@@ -462,7 +462,7 @@ function Standby:GetAwardRoster()
         
         local roster = {}
         for name, _ in pairs(self.roster) do
-            Tables.Push(roster, name)
+            Tables.Push(roster, AddOn:UnitName(name))
         end
         
         -- return roster of names and award %

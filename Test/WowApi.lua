@@ -12,7 +12,7 @@ FrameClass.methods = {
 	"EnableMouse", "SetAllPoints", "SetBackdropColor", "SetBackdropBorderColor", "SetWidth", "SetHeight", "GetParent",
 	"GetFrameLevel", "SetFrameLevel", "CreateTexture", "SetFontString", "SetDisabledFontObject", "SetID", "SetToplevel",
 	"GetFont", "SetWordWrap", "SetJustifyH", "SetMotionScriptsWhileDisabled", "SetDisabledTexture",
-	"SetAttribute", "SetScale", "GetObjectType"
+	"SetAttribute", "SetScale", "GetObjectType", "IsVisible"
 }
 
 TextureClass.methods = {
@@ -98,6 +98,10 @@ end
 
 function FrameClass:IsShown()
 	return frames[self].isShow
+end
+
+function FrameClass:IsVisible()
+	return self:IsShown()
 end
 
 function FrameClass:ClearAllPoints()

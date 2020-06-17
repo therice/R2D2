@@ -143,7 +143,8 @@ function AddOn:NewMasterLooterCheck()
     
     -- We were ML, but no longer, so disable master looter module
     if self:UnitIsUnit(oldMl, "player") and not self.isMasterLooter then
-        self:MasterLooterModule():Disable()
+        self:StopHandleLoot()
+        -- self:MasterLooterModule():Disable()
     end
     
     if self:UnitIsUnit(oldMl, self.masterLooter) and Util.Strings.Equal(oldLm, self.lootMethod) then
@@ -422,6 +423,7 @@ function AddOn:OnEvent(event, ...)
                 function()
                     local name, _, _, difficulty = GetInstanceInfo()
                     self.instanceName = name .. (Util.Strings.IsEmpty(difficulty) and "" or "-" .. difficulty)
+                    Logging:Debug("Instance Name = %s", tostring(self.instanceName))
                 end,
                 5
         )

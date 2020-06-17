@@ -23,7 +23,7 @@ R2D2.version = GetAddOnMetadata(AddOnName, "Version")
 --@debug@
 -- if local development and not substituted, then use a dummy version
 if R2D2.version == '@project-version@' then
-    R2D2.version = '1.2-dev'
+    R2D2.version = '1.2.3-dev'
 end
 --@end-debug@
 
@@ -55,6 +55,7 @@ do
 
     R2D2:AddLib('Util', 'LibUtil-1.1')
     R2D2:AddLib('Class', 'LibClass-1.0')
+    R2D2:AddLib('Deflate', 'LibDeflate')
     R2D2:AddLib('Compress', 'LibCompress')
     R2D2:AddLib('Base64', 'LibBase64-1.0')
     R2D2:AddLib('AceAddon', AceAddon, AceAddonMinor)

@@ -126,6 +126,11 @@ function R2D2:OnEnable()
     self.realmName = select(2, UnitFullName(self.Constants.player))
     self.playerName = self:UnitName(self.Constants.player)
     self.playerFaction = UnitFactionGroup(self.Constants.player)
+    -- seeing behavior that makes me think this is sometimes not being set
+    -- so, double check here
+    if not Util.Strings.IsSet(self.playerClass) then
+        self.playerClass = select(2, UnitClass("player"))
+    end
     
     Logging:Debug("OnEnable(%s) : Faction '%s'", self:GetName(), self.playerFaction)
     
@@ -149,12 +154,13 @@ function R2D2:OnEnable()
                 self,
                 GuildStorage.Events.StateChanged,
                 function(event, state)
-                    Logging:Trace("GuildStorage.Callback(%s, %s)", tostring(event), tostring(state))
+                    Logging:Debug("GuildStorage.Callback(%s, %s)", tostring(event), tostring(state))
                     if state == GuildStorage.States.Current then
                         local me = GuildStorage:GetMember(AddOn.playerName)
                         if me then
                             AddOn.guildRank = me.rank
                             GuildStorage.UnregisterCallback(self, GuildStorage.Events.StateChanged)
+                            Logging:Debug("GuildStorage.Callback() : Guild Rank = %s", AddOn.guildRank)
                         else
                             AddOn.guildRank = L["not_found"]
                         end
@@ -306,7 +312,7 @@ function R2D2:ChatCommand(msg)
             self.mode:Enable(flag)
         end
         self:Print("Development Mode = " .. tostring(self:DevModeEnabled()))
-    -- 'pm' == persitence mode (which coresponds to persisting changes to officer's notes for EPGP)
+    -- 'pm' == persitence mode (which corresponds to persisting changes to officer's notes for EPGP)
     elseif cmd == 'pm' then
         local flag = R2D2.Constants.Modes.Persistence
         if self.mode:Enabled(flag) then
@@ -315,6 +321,24 @@ function R2D2:ChatCommand(msg)
             self.mode:Enable(flag)
         end
         self:Print("Persistence Mode = " .. tostring(self:PersistenceModeEnabled()))
+    -- master looter commands for working around issues with compression until we can swap
+    -- codecs
+    elseif cmd == 'ml' then
+        local subCmd = Strings.Lower(tostring(args[1])) or nil
+        if not Strings.IsEmpty(subCmd) and AddOn.isMasterLooter then
+            local ML = AddOn:MasterLooterModule()
+            local C = AddOn.Constants
+            
+            if not ML:IsEnabled() then return end
+            
+            -- player info
+            if subCmd == 'pi' then
+                AddOn:SendCommand(C.group, C.Commands.PlayerInfoRequest)
+            -- update candidates
+            elseif subCmd == 'uc' then
+                ML:UpdateCandidates()
+            end
+        end
     else
         self:Help()
     end

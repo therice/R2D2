@@ -54,7 +54,7 @@ describe("Loot History", function()
             assert(count == 33)
         end)
     end)
-    
+
     describe("builds history", function()
         it("from db (test data) #travisignore", function()
             local StubSt = Class('StubSt')
@@ -75,7 +75,7 @@ describe("Loot History", function()
             LootHistory:BuildData()
 
             --print(Util.Tables.Count(LootHistory.frame.name.data))
-            
+
             assert(Util.Tables.Count(LootHistory.frame.st.data) == 97)
             assert(Util.Tables.Count(LootHistory.frame.name.data) == 34) -- +1 is for the dummy candidate
             assert(Util.Tables.Count(LootHistory.frame.date.data) == 3)

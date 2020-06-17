@@ -134,6 +134,27 @@ function LootSession.SetCellItemIcon(rowFrame, frame, data, cols, row, realrow, 
     end)
 end
 
+function LootSession:StartMLSession()
+    if loadingItems then
+        return AddOn:Print(L["session_items_not_loaded"])
+    end
+    
+    if not ML.lootTable or Util.Tables.Count(ML.lootTable) == 0 then
+        AddOn:Print(L["session_no_items"])
+        return Logging:Debug("Session cannot be started as there are no items")
+    end
+    
+    if not ML:CanStartSession() then
+        return
+    elseif InCombatLockdown() then
+        return AddOn:Print(L["session_in_combat"])
+    else
+        ML:StartSession()
+    end
+    
+    self:Disable()
+end
+
 function LootSession:GetFrame()
     if self.frame then return self.frame end
     local f = UI:CreateFrame("R2D2_LootSession", "LootSession", L["r2d2_loot_session_frame"], 260, 325, false)
@@ -141,27 +162,7 @@ function LootSession:GetFrame()
     -- start button
     local start = UI:CreateButton(_G.START, f.content)
     start:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
-    start:SetScript("OnClick", function()
-        if loadingItems then
-            return AddOn:Print(L["session_items_not_loaded"])
-        end
-
-        if not ML.lootTable or Util.Tables.Count(ML.lootTable) == 0 then
-            AddOn:Print(L["session_no_items"])
-            return Logging:Debug("Session cannot be started as there are no items")
-        end
-
-        if not AddOn.candidates[AddOn.playerName] then
-            AddOn:Print(L["session_data_sync"])
-            return Logging:Debug("Session data not yet available")
-        elseif InCombatLockdown() then
-            return AddOn:Print(L["session_in_combat"])
-        else
-            ML:StartSession()
-        end
-
-        self:Disable()
-    end)
+    start:SetScript("OnClick", function() self:StartMLSession() end)
     f.startBtn = start
 
     -- cancel button

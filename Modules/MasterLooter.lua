@@ -7,7 +7,7 @@ local ItemUtil = AddOn.Libs.ItemUtil
 local Models = AddOn.components.Models
 local UI = AddOn.components.UI
 local COpts = UI.ConfigOptions
-local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT = 10, 3
+local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT = 10, 5
 
 -- these are the defaults for DB
 ML.defaults = {
@@ -659,15 +659,16 @@ function ML:UpdateDb()
 end
 
 function ML:AddCandidate(name, class, rank, enchant, lvl, ilvl)
-    Logging:Trace("AddCandidate(%s, %s, %s, %s, %s, %s)",
+    Logging:Debug("AddCandidate(%s, %s, %s, %s, %s, %s)",
             name, class, tostring(rank), tostring(enchant),
             tostring(lvl), tostring(ilvl)
     )
     Util.Tables.Insert(self.candidates, name, Models.Candidate:new(name, class, rank, enchant, lvl, ilvl))
+    Logging:Debug("AddCandidate() : count=%d", Util.Tables.Count(self.candidates))
 end
 
 function ML:RemoveCandidate(name)
-    Logging:Trace("RemoveCandidate(%s)", name)
+    Logging:Debug("RemoveCandidate(%s)", name)
     Util.Tables.Remove(self.candidates, name)
 end
 
@@ -675,13 +676,12 @@ function ML:GetCandidate(name)
     return self.candidates[name]
 end
 
-function ML:UpdateCandidates(ask)
-    Logging:Debug("UpdateCandidates(%s)", tostring(ask))
+function ML:UpdateCandidates(...)
+    Logging:Debug("UpdateCandidates() : %s", Util.Objects.ToString({...}))
+    
     local C = AddOn.Constants
     
-    if not Util.Objects.IsBoolean(ask) then ask = false end
-    
-    local candidatesCopy = Util(self.candidates):Copy()()
+    local candidatesCopy = Util(self.candidates):Copy():Map(function(c) return c:IsComplete() end)()
     local updates = false
 
     for i = 1, GetNumGroupMembers() do
@@ -692,31 +692,32 @@ function ML:UpdateCandidates(ask)
         -- name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole
         --      = GetRaidRosterInfo(raidIndex)
         local name, _, _, _, _, class = GetRaidRosterInfo(i)
-        if name then
+        if name and class then
             name = AddOn:UnitName(name)
             -- player already a tracked candidate
             if Util.Tables.ContainsKey(candidatesCopy, name) then
+                -- verify we have complete information for candidate, if not then request it
+                if not candidatesCopy[name] then AddOn:SendCommand(name, C.Commands.PlayerInfoRequest) end
                 Util.Tables.Remove(candidatesCopy, name)
             else
-                -- ask for their player information
-                if not ask then
-                    AddOn:SendCommand(name, C.Commands.PlayerInfoRequest)
-                end
+                -- add the player and ask for their player information
                 self:AddCandidate(name, class)
+                AddOn:SendCommand(name, C.Commands.PlayerInfoRequest)
                 updates = true
             end
         else
             Logging:Warn("UpdateCandidates() : GetRaidRosterInfo() returned nil for index = %d, retrying after a pause", i)
-            return self:ScheduleTimer("UpdateCandidates", 1, ask)
+            return self:ScheduleTimer("UpdateCandidates", 1)
         end
     end
 
     -- these folks no longer around (in raid)
-    for name, v in pairs(candidatesCopy) do
-        if v then
+    for name, _ in pairs(candidatesCopy) do
+        -- don't remove ourselves
+        -- if not Util.Strings.Equal(name, AddOn.playerName) then
             self:RemoveCandidate(name)
             updates = true
-        end
+        -- end
     end
 
     -- send updates to candidate list and db
@@ -724,18 +725,20 @@ function ML:UpdateCandidates(ask)
         AddOn:SendCommand(C.group, C.Commands.MasterLooterDb, AddOn.mlDb)
         self:SendCandidates()
     end
+    
+    Logging:Debug("UpdateCandidates() : Current candidates (%s) => %s", Util.Tables.Count(self.candidates), Util.Objects.ToString(self.candidates, 1))
 end
 
 local function SendCandidates()
     local C = AddOn.Constants
+    Logging:Debug("SendCandidates(LOCAL)")
     AddOn:SendCommand(C.group, C.Commands.Candidates, ML.candidates)
     ML.timers.send_candidates = nil
-    Logging:Debug("SendCandidates(LOCAL)")
 end
 
 local function OnCandidatesCooldown()
-    ML.timers.cooldown_candidates = nil
     Logging:Debug("OnCandidatesCooldown(LOCAL)")
+    ML.timers.cooldown_candidates = nil
 end
 
 -- sends candidates to the group no more than every CANDIDATE_SEND_INTERVAL seconds
@@ -766,13 +769,13 @@ function ML:SendCandidates()
 end
 
 function ML:NewMasterLooter(ml)
-    Logging:Debug("NewMasterLooter(%s)", ml)
+    Logging:Debug("NewMasterLooter(%s)", tostring(ml))
     local C = AddOn.Constants
     -- Are we are the the ML?
     if AddOn:UnitIsUnit(ml, C.player) then
         AddOn:SendCommand(C.group, C.Commands.PlayerInfoRequest)
         self:UpdateDb()
-        self:UpdateCandidates(true)
+        self:UpdateCandidates()
     else
         -- don't use this module if we're not the ML
         self:Disable()
@@ -780,7 +783,7 @@ function ML:NewMasterLooter(ml)
 end
 
 function ML:Timer(type, ...)
-    Logging:Trace("Timer(%s)", type)
+    Logging:Trace("Timer(%s)", tostring(type))
     local C = AddOn.Constants
     if type == "AddItem" then
         self:AddItem(...)
@@ -1378,20 +1381,30 @@ function ML:AnnounceAward(name, link, response, roll, session, changeAward, owne
     end
 end
 
+function ML:CanStartSession()
+    if not AddOn.candidates[AddOn.playerName] then
+        AddOn:Print(L["session_data_sync"])
+        Logging:Warn(
+            "CanStartSession() : Session data not yet available. Player '%s' / Candidates = %s",
+            AddOn.playerName,
+            Util.Objects.ToString(AddOn.candidates, 2)
+        )
+    
+        -- do we want to send a player info request or update candidates here?
+        self:SendCandidates()
+        
+        return false
+    end
+    
+    return true
+end
 
 function ML:StartSession()
     Logging:Debug("StartSession(%s)", tostring(self.running))
     local C = AddOn.Constants
 
-    -- don't being the session pre-maturely
-    if not AddOn.candidates[AddOn.playerName] then
-        AddOn:Print(L["session_data_sync"])
-        return Logging:Debug(
-                "StartSession() : Session data not yet available. %s => %s",
-                AddOn.playerName,
-                Util.Objects.ToString(AddOn.candidates)
-        )
-    end
+    -- don't begin the session pre-maturely
+    if not ML:CanStartSession() then return end
 
     -- only sort if we not currently in-flight
     -- if not self.running then self:SortLootTable(self.lootTable) end
@@ -1649,6 +1662,11 @@ function ML:OnLootOpen()
 end
 
 function ML:OnLootSlotCleared(slot, link)
+    if not self.lootQueue then
+        Logging:Warn("OnLootSlotCleared() : Loot Queue is nil")
+        return
+    end
+    
     for i = #self.lootQueue, 1, -1 do
         local entry = self.lootQueue[i]
         -- loot success
@@ -1667,10 +1685,11 @@ end
 function ML:Test(items)
     Logging:Debug("Test(%s)", Util.Tables.Count(items))
     local C = AddOn.Constants
-
+    --[[
     if not tContains(self.candidates, AddOn.playerName) then
         self:AddCandidate(AddOn.playerName, AddOn.playerClass, AddOn.guildRank)
     end
+    --]]
     
     -- self:AddCandidate("Eliovak-Atiesh", "ROGUE", "Powder Monkey")
     

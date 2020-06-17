@@ -1,31 +1,54 @@
 local _, AddOn = ...
-local Compress = AddOn.Libs.Compress
 local Serialize = AddOn.Libs.AceSerializer
 local Base64 = AddOn.Libs.Base64
 local Class = AddOn.Libs.Class
 local Logging = AddOn.Libs.Logging
 local Util = AddOn.Libs.Util
+local Compression = Util.Compression
 
+-- compressors that were used either in the past or currently
+local LegacyCompressorType = Compression.CompressorType.LibCompress
+local CurrentCompressorType = Compression.CompressorType.LibDeflate
+local Compressors = Util(
+        Compression.GetCompressors(
+                LegacyCompressorType,
+                CurrentCompressorType
+        )
+):MapKeys(
+        function(i)
+            return
+                i == 1 and LegacyCompressorType or
+                i == 2 and CurrentCompressorType or
+                nil
+        end
+)()
+
+local CompressionSettingsKey = '__CompressionSettings'
 local CompressedDb = Class('CompressedDb')
+CompressedDb.static.CompressionSettingsKey = CompressionSettingsKey
+CompressedDb.static.LegacyCompressorType = LegacyCompressorType
+
 local CompressedDbEntry = Class('CompressedDbEntry')
 
 AddOn.components.Models.CompressedDb = CompressedDb
 AddOn.components.Models.CompressedDbEntry = CompressedDbEntry
 
-local function compress(data)
+local function compress(data, type)
     if data == nil then return nil end
+    if not Util.Objects.IsNumber(type) then return nil end
     
     local serialized = Serialize:Serialize(data)
-    local compressed = Compress:Compress(serialized)
+    local compressed = Compressors[type]:compress(serialized)
     local encoded = Base64:Encode(compressed)
     return encoded
 end
 
-local function decompress(data)
+local function decompress(data, type)
     if data == nil then return nil end
+    if not Util.Objects.IsNumber(type) then return nil end
     
     local decoded = Base64:Decode(data)
-    local decompressed, message = Compress:Decompress(decoded)
+    local decompressed, message = Compressors[type]:decompress(decoded)
     if not decompressed then
         error('Could not de-compress decoded data : ' .. message)
         return
@@ -84,16 +107,49 @@ end
 -- such as loot history
 function CompressedDb:initialize(db)
     self.db = db
+    self.compressionType = nil
+    
+    -- check compression settings on the DB
+    -- if not present, or not the current type
+    -- upgrade the DB
+    local setttings = db[CompressionSettingsKey]
+    if not setttings or setttings.type ~= CurrentCompressorType then
+        Logging:Warn("Existing compression settings are empty or incompatible - updating DB compression")
+        self.compressionType = LegacyCompressorType
+        local before, after = 0,0
+        for k, v in pairs(self.db) do
+            print('Updating compression for key = ' .. tostring(k))
+            self.db[k] = compress(decompress(v, LegacyCompressorType), CurrentCompressorType)
+            before = before + #v
+            after = after + #self.db[k]
+        end
+        Logging:Debug("Database compression updated. Size before = %d, after = %d  reduced (Pct) = %d", before, after, (100.0 - ((after / before) * 100.0)))
+        
+        self.compressionType = CurrentCompressorType
+        self.db[CompressionSettingsKey] = {
+            type = self.compressionType
+        }
+    else
+        self.compressionType = setttings.type
+        Logging:Debug("Database compression type %d", self.compressionType)
+    end
+end
+
+function CompressedDb:decompress(data)
+    return decompress(data, self.compressionType)
+end
+
+function CompressedDb:compress(data)
+    return compress(data, self.compressionType)
 end
 
 function CompressedDb:get(key)
     -- print(format('get(%s)', tostring(key)))
-    return decompress(self.db[key])
+    return self:decompress(self.db[key])
 end
 
 function CompressedDb:put(key, value)
-    -- print(format('put(%s) :%s', tostring(key), Util.Objects.ToString(value)))
-    self.db[key] = compress(value)
+    self.db[key] = self:compress(value)
 end
 
 function CompressedDb:del(key, index)
@@ -109,13 +165,9 @@ function CompressedDb:del(key, index)
     end
 end
 
---function CompressedDb:insert(value)
---    Util.Tables.Push(self.db, compress(value))
---end
-
 function CompressedDb:insert(value, key)
     if Util.Objects.IsEmpty(key) then
-        Util.Tables.Push(self.db, compress(value))
+        Util.Tables.Push(self.db, self:compress(value))
     else
         local v = self:get(key)
         if not Util.Objects.IsTable(v) then
@@ -135,7 +187,10 @@ function CompressedDb.static.pairs(cdb)
     local function stateless_iter(tbl, k)
         local v
         k, v = next(tbl, k)
-        if v ~= nil then return k, decompress(v) end
+        if k == CompressionSettingsKey then
+            k, v = next(tbl, k)
+        end
+        if v ~= nil then return k, cdb:decompress(v) end
     end
     
     return stateless_iter, cdb.db, nil
@@ -145,13 +200,14 @@ function CompressedDb.static.ipairs(cdb)
     local function stateless_iter(tbl, i)
         i = i + 1
         local v = tbl[i]
-        if v ~= nil then return i, decompress(v) end
+        if v ~= nil then return i, cdb:decompress(v) end
     end
     
     return stateless_iter, cdb.db, 0
 end
 
+
 if _G.R2D2_Testing then
-    function CompressedDb.static:decompress(data) return decompress(data) end
-    function CompressedDb.static:compress(data) return compress(data) end
+    function CompressedDb.static:decompress(data, type) return decompress(data, type or CurrentCompressorType) end
+    function CompressedDb.static:compress(data, type) return compress(data, type or CurrentCompressorType) end
 end
