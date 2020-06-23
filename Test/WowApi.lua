@@ -12,7 +12,7 @@ FrameClass.methods = {
 	"EnableMouse", "SetAllPoints", "SetBackdropColor", "SetBackdropBorderColor", "SetWidth", "SetHeight", "GetParent",
 	"GetFrameLevel", "SetFrameLevel", "CreateTexture", "SetFontString", "SetDisabledFontObject", "SetID", "SetToplevel",
 	"GetFont", "SetWordWrap", "SetJustifyH", "SetMotionScriptsWhileDisabled", "SetDisabledTexture",
-	"SetAttribute", "SetScale", "GetObjectType", "IsVisible"
+	"SetAttribute", "SetScale", "GetObjectType", "IsVisible", "EnableKeyboard", "SetJustifyV", "GetHeight"
 }
 
 TextureClass.methods = {
@@ -119,7 +119,11 @@ end
 function FrameClass:SetFrameLevel(l)
 end
 
+function FrameClass:EnableKeyboard() end
 
+function FrameClass:SetJustifyV()
+
+end
 
 function FrameClass:GetFrameLevel()
 	return 0
@@ -147,6 +151,10 @@ end
 
 function FrameClass:SetSize(x, y)
 
+end
+
+function FrameClass:GetHeight()
+	return 250
 end
 
 function FrameClass:SetFrameStrata(strata)
@@ -402,7 +410,6 @@ function C_CreatureInfo.GetClassInfo(classID)
 	return nil
 end
 
-
 InterfaceOptionsFrameCancel = {}
 function InterfaceOptionsFrameCancel:GetScript(event)
 	return {}
@@ -410,6 +417,8 @@ end
 
 function UnitName(unit)
 	if unit == "player" then
+		return "Gnomechomsky"
+	elseif unit == "raid1" then
 		return "Gnomechomsky"
 	else
 		return unit
@@ -422,6 +431,30 @@ function UnitFullName(unit)
 	else
 		return unit
 	end
+end
+
+function UnitIsUnit(a, b)
+	if a == b then return 1 else return nil end
+end
+
+function IsInRaid()
+	return true
+end
+
+function IsInInstance()
+	return true, "raid"
+end
+
+function UnitIsDeadOrGhost(a)
+	return false
+end
+
+function InCinematic()
+	return false
+end
+
+function IsMasterLooter()
+	return true
 end
 
 function GuildRoster ()
@@ -466,11 +499,15 @@ function UnitHealth()
 end
 
 function GetNumRaidMembers()
-	return 1
+	return 40
 end
 
 function GetNumPartyMembers()
-	return 1
+	return 5
+end
+
+function GetNumGroupMembers()
+	return 40
 end
 
 -- There are 9 classes in classic, but they are NOT the first 9 ids. Druids are class ID 11 even in classic.
@@ -484,11 +521,11 @@ FACTION_HORDE = "Horde"
 FACTION_ALLIANCE = "Alliance"
 
 function UnitFactionGroup(unit)
-	return "Horde", "Horde"
+	return FACTION_ALLIANCE, FACTION_ALLIANCE
 end
 
 function UnitRace(unit)
-	return "Undead", "Scourge"
+	return "Gnome", "Gnome"
 end
 
 
@@ -496,7 +533,6 @@ _time = 0
 function GetTime()
 	return _time
 end
-
 function IsAddOnLoaded() return nil end
 
 SlashCmdList = {}
@@ -564,7 +600,7 @@ function GetNumAddOns()
 end
 
 function GetLootMethod()
-	return "master"
+	return "master", nil, 1
 end
 
 function getglobal(k)
@@ -616,11 +652,17 @@ random = math.random
 math.randomseed(os.time())
 math.random()
 
-function ChatFrame_AddMessageEventFilter(event, fn)
 
-
+function GetRaidRosterInfo(i)
+	-- name, _, _, _, _, class
+	return "Character" .. i, nil, nil, nil, nil, C_CreatureInfo.GetClassInfo(math.random(1,5)).classFile
 end
 
+
+
+function ChatFrame_AddMessageEventFilter(event, fn)
+
+end
 
 function SendChatMessage(text, chattype, language, destination)
 	assert(#text<255)
@@ -1017,3 +1059,7 @@ _G.CreateColor = function(r, g, b, a)
 	return {r=r, g=g, b=b, a=a}
 end
 
+_G.UNKNOWNOBJECT = "Unknown Entity"
+_G.StaticPopup_DisplayedFrames = {}
+
+_G.PlaySound = function(...) end

@@ -99,7 +99,6 @@ function R2D2:OnInitialize()
     -- does R2D2 handle loot?
     self.handleLoot = false
     self.reconnectPending = false
-    self.instanceName = ""
     self.inCombat = false
     self.encounter = Models.Encounter.None
     -- have we completed our initial version check (for being out of date)
@@ -207,10 +206,12 @@ end
 function R2D2:CandidateCheck()
     Logging:Debug("CandidateCheck()")
     local ML = self:MasterLooterModule()
-    if ML.timers and ML.timers.cooldown_candidates then
-        Logging:Debug("CandidateCheck() : Cooldown schedule present, discarding and sending candidates")
-        ML.timers.cooldown_candidates = nil
-        ML:SendCandidates()
+    -- my guess is this will always be disabled at this point, verify
+    if ML:IsEnabled() then
+        Logging:Debug("CandidateCheck() : Master Looter is enabled, forcing candidate send")
+        self:MasterLooterModule():SendCandidates(true)
+    else
+        Logging:Debug("CandidateCheck() : Master Looter is not enabled, unable to force candidate send")
     end
 end
 
@@ -329,7 +330,10 @@ function R2D2:ChatCommand(msg)
             local ML = AddOn:MasterLooterModule()
             local C = AddOn.Constants
             
-            if not ML:IsEnabled() then return end
+            if not ML:IsEnabled() then
+                self:Print("Master Looter is not enabled")
+                return
+            end
             
             -- player info
             if subCmd == 'pi' then
@@ -337,6 +341,13 @@ function R2D2:ChatCommand(msg)
             -- update candidates
             elseif subCmd == 'uc' then
                 ML:UpdateCandidates()
+            -- send candidates
+            elseif subCmd == 'sc' then
+                ML:SendCandidates(true)
+            -- candidate check
+            elseif subCmd == 'cc' then
+                local proceeed, _, _ = ML:CandidatesInSync()
+                self:Print("Candidates In-Sync = " .. tostring(proceeed))
             end
         end
     else

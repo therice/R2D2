@@ -39,7 +39,7 @@ describe("LibUtil", function()
             assert.equal(0, Util.Tables.Count(Util.Tables.Get(T, 'tp', K2)))
             assert.equal(true, Util.Tables.Get(T, 'tp.a.big.path'))
         end)
-        it("copy and map", function()
+        it("copies and maps", function()
             local copy =
                 Util(TestTable2)
                     :Copy()
@@ -49,7 +49,10 @@ describe("LibUtil", function()
                         end
                 )()
 
-            print(Util.Objects.ToString(copy))
+            assert(Util.Tables.Equals(copy['a'], {}))
+            assert(Util.Tables.Equals(copy['b'], {test=false}))
+            assert(Util.Tables.Equals(copy['c'], {test=false}))
+            assert(Util.Tables.Equals(copy['d'], {}))
         end)
         it("provides keys", function()
             local keys = Util(TestTable2):Keys()()
@@ -58,8 +61,7 @@ describe("LibUtil", function()
                 assert(Util.Objects.In(v, 'a', 'b', 'c', 'd'))
                 Util.Tables.Push(copy, v)
             end
-            
-            print(Util.Objects.ToString(copy))
+            assert(Util.Tables.Equals(keys, copy))
         end)
         it("sorts associatively", function()
             local t = {
@@ -75,32 +77,73 @@ describe("LibUtil", function()
                 idx = idx + 1
             end
         end)
-        it("copys, maps, and flips", function()
+        it("copies, maps, and flips", function()
             local t =  {
                 Declined    = { 1, 'declined' },
-                Unavailable = { 2, 'unavailable' },
-                Unsupported = { 3, 'unsupported' },
+                Unavailable = { 3, 'unavailable' },
+                Unsupported = { 2, 'unsupported' },
             }
-    
-            print(Util.Objects.ToString(t))
+            
             local t2 = Util(t):Copy():Map(function (e) return e[1] end):Flip()()
-            print(Util.Objects.ToString(t2))
+            assert(t2[1] == 'Declined')
+            assert(t2[2] == 'Unsupported')
+            assert(t2[3] == 'Unavailable')
         end)
-        it("copys without mutate", function()
+        it("copies without mutate", function()
             local o = {
                 a = {1, "b", true},
                 b = {2, "c", true},
                 c = {3, "d", false},
             }
             local c = Util(o):Copy()()
-            print(Util.Objects.ToString(o))
-            print(Util.Objects.ToString(c))
-            if Util.Tables.ContainsKey(c, "b") then
-                Util.Tables.Remove(c, "b")
-            end
-            print(Util.Objects.ToString(o))
-            print(Util.Objects.ToString(c))
+            Util.Tables.Remove(c, "b")
+            assert(Util.Tables.ContainsKey(o, 'b'))
+            assert(not Util.Tables.ContainsKey(c, 'b'))
+        end)
+        it("yields difference", function()
+            local source = {
+                a = {true},
+                b = {},
+                c = false,
+                x = {}
+            }
+    
+            local target = {
+                a = {true},
+                b = {3},
+                d = {},
+            }
+    
+            local delta1 = Util.Tables.CopyUnselect(source, unpack(Util.Tables.Keys(target)))
+            local delta2 = Util.Tables.CopyUnselect(target, unpack(Util.Tables.Keys(source)))
+                    
+            --local delta =
+            --    Util(source)
+            --        :CopyFilter(
+            --            function(v, k)
+            --                print(Util.Objects.ToString(k) .. ' = ' .. Util.Objects.ToString(v))
+            --                if Util.Tables.ContainsKey(target, k) then
+            --                    local v2 = target[k]
+            --                    if type(v) == type(v2) then
+            --                        return Util.Objects.Equals(v, v2)
+            --                    end
+            --                end
+            --                print('default')
+            --                return true
+            --            end,
+            --            true,
+            --            false,
+            --            true
+            --    )()
             
+            print(Util.Objects.ToString(delta1))
+            print(Util.Tables.Count(delta1))
+            print(Util.Objects.ToString(delta2))
+            print(Util.Tables.Count(delta2))
+    
+            local deltac = Util.Tables.CopyUnselect({a=1, b=1, c=1}, 'a', 'b', 'c')
+            print(Util.Objects.ToString(deltac))
+            print(Util.Tables.Count(deltac))
         end)
     end)
 end)

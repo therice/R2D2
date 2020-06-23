@@ -7,7 +7,7 @@ local ItemUtil = AddOn.Libs.ItemUtil
 local Models = AddOn.components.Models
 local UI = AddOn.components.UI
 local COpts = UI.ConfigOptions
-local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT = 10, 5
+local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT, FALSE_START_THRESHOLD = 5, 5, 3
 
 -- these are the defaults for DB
 ML.defaults = {
@@ -531,10 +531,12 @@ function ML:OnEnable()
     self.timers = {}
     -- is a session in flight
     self.running = false
+    -- running counter of how many attempts to start a session when unable
+    self.falseStarts = 0
     self:RegisterComm(name, "OnCommReceived")
     self:RegisterEvent(C.Events.ChatMessageWhisper, "OnEvent")
     self:RegisterEvent(C.Events.PlayerRegenEnabled, "OnEvent")
-    self:RegisterBucketEvent(C.Events.GroupRosterUpdate, 10, "UpdateCandidates")
+    self:RegisterBucketEvent(C.Events.GroupRosterUpdate, 5, "UpdateCandidates")
     self:RegisterBucketMessage(C.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
 end
 
@@ -668,8 +670,9 @@ function ML:AddCandidate(name, class, rank, enchant, lvl, ilvl)
 end
 
 function ML:RemoveCandidate(name)
-    Logging:Debug("RemoveCandidate(%s)", name)
+    Logging:Debug("RemoveCandidate(%s)", tostring(name))
     Util.Tables.Remove(self.candidates, name)
+    Logging:Debug("RemoveCandidate() : count=%d", Util.Tables.Count(self.candidates))
 end
 
 function ML:GetCandidate(name)
@@ -682,8 +685,9 @@ function ML:UpdateCandidates(...)
     local C = AddOn.Constants
     
     local candidatesCopy = Util(self.candidates):Copy():Map(function(c) return c:IsComplete() end)()
-    local updates = false
+    local updates, phantoms = false, 0
 
+    -- https://wow.gamepedia.com/API_GetNumGroupMembers
     for i = 1, GetNumGroupMembers() do
         -- https://wow.gamepedia.com/API_GetRaidRosterInfo
         --
@@ -691,33 +695,44 @@ function ML:UpdateCandidates(...)
         --
         -- name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole
         --      = GetRaidRosterInfo(raidIndex)
-        local name, _, _, _, _, class = GetRaidRosterInfo(i)
-        if name and class then
+        --
+        -- if player isn't online, don't send a message to them (won't receive)
+        local name, _, _, _, _, class, _, online = GetRaidRosterInfo(i)
+        if name then
             name = AddOn:UnitName(name)
+            Logging:Debug("UpdateCandidates(%d) : %s, %s, %s", i, tostring(name), tostring(class), tostring(online))
+            
             -- player already a tracked candidate
             if Util.Tables.ContainsKey(candidatesCopy, name) then
                 -- verify we have complete information for candidate, if not then request it
-                if not candidatesCopy[name] then AddOn:SendCommand(name, C.Commands.PlayerInfoRequest) end
+                if not candidatesCopy[name] and online then
+                    AddOn:SendCommand(name, C.Commands.PlayerInfoRequest)
+                end
                 Util.Tables.Remove(candidatesCopy, name)
             else
                 -- add the player and ask for their player information
                 self:AddCandidate(name, class)
-                AddOn:SendCommand(name, C.Commands.PlayerInfoRequest)
+                if online then
+                    AddOn:SendCommand(name, C.Commands.PlayerInfoRequest)
+                end
                 updates = true
             end
         else
-            Logging:Warn("UpdateCandidates() : GetRaidRosterInfo() returned nil for index = %d, retrying after a pause", i)
-            return self:ScheduleTimer("UpdateCandidates", 1)
+            phantoms = phantoms + 1
+            Logging:Warn("UpdateCandidates() : GetRaidRosterInfo() returned nil for index = %d, total phantoms = %d", i, phantoms)
         end
     end
-
-    -- these folks no longer around (in raid)
-    for name, _ in pairs(candidatesCopy) do
-        -- don't remove ourselves
-        -- if not Util.Strings.Equal(name, AddOn.playerName) then
+    
+    -- cannot consider remaining candidates for removal if we have phantoms
+    if phantoms == 0 then
+        -- these folks no longer around (in raid)
+        for name, _ in pairs(candidatesCopy) do
             self:RemoveCandidate(name)
             updates = true
-        -- end
+        end
+    else
+        Logging:Debug("UpdateCandidates() : %d phantoms found, scheduling another update in 2 seconds", phantoms)
+        self:ScheduleTimer("UpdateCandidates", 2)
     end
 
     -- send updates to candidate list and db
@@ -726,45 +741,71 @@ function ML:UpdateCandidates(...)
         self:SendCandidates()
     end
     
-    Logging:Debug("UpdateCandidates() : Current candidates (%s) => %s", Util.Tables.Count(self.candidates), Util.Objects.ToString(self.candidates, 1))
+    Logging:Debug(
+        "UpdateCandidates() : Current candidates (%d), phantoms (%d) => %s",
+        Util.Tables.Count(self.candidates),
+        phantoms,
+        Util.Objects.ToString(self.candidates, 1)
+    )
+end
+
+local function CancelCandidateTimers(send, cooldown)
+    if not Util.Objects.IsBoolean(send) then send = true end
+    if not Util.Objects.IsBoolean(cooldown) then cooldown = true end
+    
+    if send and ML.timers.candidates_send then
+        Logging:Debug("CancelCandidateTimers() : Cancelling 'candidates_send' schedule")
+        ML:CancelTimer(ML.timers.candidates_send)
+        ML.timers.candidates_send = nil
+    end
+    
+    if cooldown and ML.timers.candidates_cooldown then
+        Logging:Debug("CancelCandidateTimers() : Cancelling 'candidates_cooldown' schedule")
+        ML:CancelTimer(ML.timers.candidates_cooldown)
+        ML.timers.candidates_cooldown = nil
+    end
 end
 
 local function SendCandidates()
-    local C = AddOn.Constants
     Logging:Debug("SendCandidates(LOCAL)")
+    local C = AddOn.Constants
     AddOn:SendCommand(C.group, C.Commands.Candidates, ML.candidates)
-    ML.timers.send_candidates = nil
+    CancelCandidateTimers(true, false)
 end
 
 local function OnCandidatesCooldown()
     Logging:Debug("OnCandidatesCooldown(LOCAL)")
-    ML.timers.cooldown_candidates = nil
+    CancelCandidateTimers(false, true)
 end
 
+
 -- sends candidates to the group no more than every CANDIDATE_SEND_INTERVAL seconds
-function ML:SendCandidates()
-    local C = AddOn.Constants
-    Logging:Debug("SendCandidates()")
+function ML:SendCandidates(force)
+    if not Util.Objects.IsBoolean(force) then force = false end
+    Logging:Debug("SendCandidates(%s)", tostring(force))
+    if force then CancelCandidateTimers(true, true) end
+    
     -- recently sent one
-    if self.timers.cooldown_candidates then
+    if self.timers.candidates_cooldown then
         Logging:Debug("SendCandidates() : Cooldown schedule present")
         -- we've queued a new one
-        if self.timers.send_candidates then
-            Logging:Debug("SendCandidates() : Send schedule present")
+        if self.timers.candidates_send then
             -- do nothing, once current timer expires it will be sent
+            Logging:Debug("SendCandidates() : Send schedule present")
             return
         -- send the candidates once interval has expired
         else
-            local timeRemaining = self:TimeLeft(self.timers.cooldown_candidates)
+            local timeRemaining = self:TimeLeft(self.timers.candidates_cooldown)
+            if not timeRemaining or timeRemaining < 0 then timeRemaining = 0 end
             Logging:Debug("SendCandidates() : Send schedule NOT present, scheduling for %d seconds", timeRemaining)
-            self.timers.send_candidates = self:ScheduleTimer(SendCandidates, timeRemaining)
+            self.timers.candidates_send = self:ScheduleTimer(SendCandidates, timeRemaining)
             return
         end
     -- no cooldown, send immediately and start the cooldown
     else
         Logging:Debug("SendCandidates() : Cooldown schedule NOT present, scheduling and sending")
-        self.timers.cooldown_candidates = self:ScheduleTimer(OnCandidatesCooldown, CANDIDATE_SEND_COOLDOWN)
-        AddOn:SendCommand(C.group, C.Commands.Candidates, self.candidates)
+        self.timers.candidates_cooldown = self:ScheduleTimer(OnCandidatesCooldown, CANDIDATE_SEND_COOLDOWN)
+        SendCandidates()
     end
 end
 
@@ -1381,21 +1422,59 @@ function ML:AnnounceAward(name, link, response, roll, session, changeAward, owne
     end
 end
 
+
+function ML:CandidatesInSync()
+    -- candidates which are in the ML list, but not present in addon's candidate list
+    local missing = Util.Tables.CopyUnselect(self.candidates, unpack(Util.Tables.Keys(AddOn.candidates)))
+    -- candidates which are NOT in the ML list, but present in addon's candidate list
+    local extra = Util.Tables.CopyUnselect(AddOn.candidates, unpack(Util.Tables.Keys(self.candidates)))
+    -- good to start if both missing and extra have not entries
+    local canStart = (Util.Tables.Count(missing) == 0) and (Util.Tables.Count(extra) == 0)
+    if not canStart then
+        Logging:Warn("CandidatesInSync() : Missing Candidates => %s", Util.Objects.ToString(missing, 2))
+        Logging:Warn("CandidatesInSync() : Extra Candidates => %s", Util.Objects.ToString(extra, 2))
+    end
+    
+    -- return 'can start', 'missing keys', 'extra keys'
+    return canStart, Util.Tables.Keys(missing), Util.Tables.Keys(extra)
+end
+
 function ML:CanStartSession()
-    if not AddOn.candidates[AddOn.playerName] then
+    local proceeed, _, _ = self:CandidatesInSync()
+    if not proceeed then
         AddOn:Print(L["session_data_sync"])
+        self.falseStarts = self.falseStarts + 1
+        
         Logging:Warn(
-            "CanStartSession() : Session data not yet available. Player '%s' / Candidates = %s",
+            "CanStartSession(%d) : Session data not yet available. Player '%s' / Candidates = %s",
+            self.falseStarts,
             AddOn.playerName,
             Util.Objects.ToString(AddOn.candidates, 2)
         )
-    
+        
         -- do we want to send a player info request or update candidates here?
-        self:SendCandidates()
+        --
+        -- if we have eclipsed our threshold, just do a direct call into comm layer
+        -- to transfer candidates
+        --
+        -- todo : remove this crapola once the source of phantom candidates is found
+        if self.falseStarts > FALSE_START_THRESHOLD then
+            local C = AddOn.Constants
+            AddOn:OnCommReceived(
+                    AddOn.name,
+                    AddOn:PrepareForSend(C.Commands.Candidates, self.candidates),
+                    C.player,
+                    AddOn.playerName
+            )
+        else
+            self:SendCandidates(true)
+        end
         
         return false
     end
     
+    -- reset false starts back to zero, we can start session
+    self.falseStarts = 0
     return true
 end
 
@@ -1635,8 +1714,7 @@ function ML:LootOpened()
                 end
             end
         end
-            
-    
+        
         if #self.lootTable > 0 and not self.running then
             if self.db.profile.autoStart and AddOn.candidates[AddOn.playerName] then
                 self:StartSession()

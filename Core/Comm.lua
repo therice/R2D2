@@ -68,11 +68,24 @@ function AddOn.ScrubData(...)
     return scrubbed
 end
 
+-- order is significant for types specified here, as that is the order in which they
+-- will be attempted, which the next one being fallback, and so forth...
+--
+-- eventually, we can eliminate chaining and go back to our method of choice
+-- however this needs phased out in multiple releases
+local Compressors = Compression.GetCompressors(
+        Compression.CompressorType.LibCompress,
+        Compression.CompressorType.LibDeflate,
+        Compression.CompressorType.LibCompressNoOp
+)
+
+
 -- todo : replace the compression with LibDeflate, once receiving logic has been released
 function AddOn:PrepareForSend(command, ...)
     local serialized = self:Serialize(command, self.ScrubData(...))
-    local encodedTable = Util.Tables.Temp()
     
+    --[[
+    local encodedTable = Util.Tables.Temp()
     for _, alg in Util.Objects.Each({'CompressLZW', 'CompressHuffman', 'Store'}) do
         Util.Tables.Push(encodedTable, AddOnEncodeTable:Encode(LibCompress[alg](LibCompress, serialized)))
     end
@@ -88,22 +101,15 @@ function AddOn:PrepareForSend(command, ...)
     end
     
     Logging:Debug("PrepareForSend() : Best compression at index '%d' with length '%d'", minIndex, minLen)
-    
     local data = encodedTable[minIndex]
     Util.Tables.ReleaseTemp(encodedTable)
+    --]]
+    
+    local data = Compressors[2]:compress(serialized, true)
+    Logging:Debug("PrepareForSend() : Compressed length '%d' to '%d'", #serialized, #data)
+    
     return data
 end
-
--- order is significant for types specified here, as that is the order in which they
--- will be attempted, which the next one being fallback, and so forth...
---
--- eventually, we can eliminate chaining and go back to our method of choice
--- however this needs phased out in multiple releases
-local Compressors = Compression.GetCompressors(
-        Compression.CompressorType.LibCompress,
-        Compression.CompressorType.LibDeflate,
-        Compression.CompressorType.LibCompressNoOp
-)
 
 function AddOn:ProcessReceived(msg)
     if not msg then
@@ -169,7 +175,6 @@ function AddOn:SendCommand(target, command, ...)
     -- local toSend = self:Serialize(command, self.ScrubData(...))
     local toSend = self:PrepareForSend(command, ...)
     local prefix = C.name
-
     
     Logging:Debug("SendCommand(%s, %s) : %s",
                   target, command,
@@ -431,7 +436,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
             elseif command == C.Commands.LootAck and not self:UnitIsUnit(sender, "player") and self.enabled then
                 if not self.lootTable or #self.lootTable == 0 then
                     Logging:Warn("Received a LootAck without having a loot table")
-                    if not self.masterLooter then
+                    if Util.Objects.IsEmpty(self.masterLooter) then
                         return Logging:Warn("There is currently no assigned Master Looter")
                     end
                     if not self.reconnectPending then
