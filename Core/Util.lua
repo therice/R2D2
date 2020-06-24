@@ -283,12 +283,14 @@ function AddOn:GetItemLevelDifference(item, g1, g2)
 end
 
 function AddOn:ConvertIntervalToString(years, months, days)
+    -- Logging:Debug("ConvertIntervalToString(%s, %s, %s)", tostring(years), tostring(months), tostring(days))
+    
     local text = format(L["n_days"], days)
     
     if years > 0 then
-        text = format(L["n_days_and_n_months_and_n_years"], text, months, years)
+        text = format(L["n_years_and_n_months_and_n_days"], years, months, text)
     elseif months > 0 then
-        text = format(L["n_days_and_n_monthss"], text, months)
+        text = format(L["n_months_and_n_days"], months, text)
     end
     
     return text
