@@ -73,8 +73,8 @@ end
 
 function LoggingUI:GetFrame()
     if self.frame then return self.frame end
-
-    local frame = UI:CreateFrame("R2D2_LoggingWindow", "LoggingUI", "Logging", nil, nil, false)
+    
+    local frame = UI:CreateFrame("R2D2_LoggingWindow", "LoggingUI", L['r2d2_logging_frame'], nil, nil, false)
     frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
     frame:SetWidth(750)
     frame:SetHeight(400)
@@ -85,6 +85,7 @@ function LoggingUI:GetFrame()
     frame.msg:SetFading(false)
     frame.msg:SetFontObject(GameFontHighlightLeft)
     frame.msg:EnableMouseWheel(true)
+    frame.msg:SetTextCopyable(true)
     frame.msg:SetBackdrop(
             {
                 bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
