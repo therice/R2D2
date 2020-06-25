@@ -79,7 +79,7 @@ function LootAllocate:OnEnable()
     -- Update "Out of instance" text when any raid members change zone
     self:RegisterBucketEvent({"UNIT_PHASE", "ZONE_CHANGED_NEW_AREA"}, 1, "Update")
     self.frame = self:GetFrame()
-    self:ScheduleTimer("CandidateCheck", 20)
+    self:ScheduleTimer("CandidateCheck", 5)
     guildRanks = AddOn:GetGuildRanks()
     updateFrame:Show()
     updatePending = false
@@ -196,7 +196,6 @@ function LootAllocate:Setup(entries)
     end
 end
 
-
 function LootAllocate:SwitchSession(sess)
     -- Logging:Debug("SwitchSession(%d)", sess)
     
@@ -273,14 +272,14 @@ function LootAllocate:GetCandidateData(session, candidate, data)
     end
 end
 
+-- this seems like it shouldn't be needed and could be evaluated for elimination
 function LootAllocate:CandidateCheck()
-    -- Logging:Trace("CandidateCheck()")
     -- our name isn't present, assume not received
-    if not AddOn.candidates[AddOn.playerName] and AddOn.masterLooter then
+    if not AddOn.candidates[AddOn.playerName] and Util.Strings.IsSet(AddOn.masterLooter) then
         local C = AddOn.Constants
-        Logging:Warn("CandidateCheck() : Failed (we are ML and our name is not present on candidate list)")
+        Logging:Warn("CandidateCheck() : Failed (our name is not present on candidate list)")
         AddOn:SendCommand(AddOn.masterLooter, C.Commands.CandidatesRequest)
-        self:ScheduleTimer("CandidateCheck", 20)
+        self:ScheduleTimer("CandidateCheck", 5)
     end
 end
 

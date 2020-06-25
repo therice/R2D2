@@ -118,7 +118,6 @@ function CompressedDb:initialize(db)
         self.compressionType = LegacyCompressorType
         local before, after = 0,0
         for k, v in pairs(self.db) do
-            print('Updating compression for key = ' .. tostring(k))
             self.db[k] = compress(decompress(v, LegacyCompressorType), CurrentCompressorType)
             before = before + #v
             after = after + #self.db[k]

@@ -8,8 +8,8 @@ local Dialog = AddOn.Libs.Dialog
 local UI = AddOn.components.UI
 local Models = AddOn.components.Models
 
--- keep track of whether we need to re-request data due to a reload
-local relogged = true
+-- track whether initial login rather than reload or zone change
+local handledEnteringWorld = false
 
 function AddOn:CallModule(module)
     Logging:Debug("CallModule(%s)", module)
@@ -95,14 +95,13 @@ end
 
 function AddOn:GetMasterLooter()
     Logging:Debug("GetMasterLooter()")
-    local MasterLooterDbCheck = AddOn.Constants.Commands.MasterLooterDbCheck
     local lootMethod, mlPartyId, mlRaidId = GetLootMethod()
     self.lootMethod = lootMethod
     Logging:Debug("GetMasterLooter() : Loot Method is '%s'", self.lootMethod)
     
     -- always the player when testing alone
     if GetNumGroupMembers() == 0 and (self:TestModeEnabled() or self:DevModeEnabled()) then
-        self:ScheduleTimer("Timer", 5, MasterLooterDbCheck)
+        self:ScheduleTimer("Timer", 5, AddOn.Constants.Commands.MasterLooterDbCheck)
         return true, self.playerName
     end
 
@@ -155,16 +154,22 @@ function AddOn:NewMasterLooterCheck()
     -- if self.db.profile.usage.never then return end
     if self:MasterLooterModule():DbValue('usage.never') then return end
     
-    if self.masterLooter == nil then return end
+    if Util.Objects.IsEmpty(self.masterLooter) then return end
     
     -- request ML DB if not received within 15 seconds
     self:ScheduleTimer("Timer", 15,  AddOn.Constants.Commands.MasterLooterDbCheck)
     
     -- Someone else has become ML
-    if not self.isMasterLooter and self.masterLooter then return end
+    if not self.isMasterLooter and Util.Strings.IsSet(self.masterLooter) then return end
     
     -- if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
     if not IsInRaid() and self:MasterLooterModule():DbValue('onlyUseInRaids') then return end
+    
+    -- already handling loot, just bail
+    if self.handleLoot then return end
+    
+    local _, type = IsInInstance()
+    if type == "arena" or type == "pvp" then return end
     
     Logging:Debug("NewMasterLooterCheck() : isMasterLooter=%s", tostring(self.isMasterLooter))
     
@@ -184,7 +189,7 @@ function AddOn:OnRaidEnter()
     Logging:Debug("OnRaidEnter()")
     --if not IsInRaid() and self.db.profile.onlyUseInRaids then return end
     if not IsInRaid() and self:MasterLooterModule():DbValue('onlyUseInRaids') then return end
-    if not self.masterLooter and UnitIsGroupLeader("player") then
+    if Util.Objects.IsEmpty(self.masterLooter) and UnitIsGroupLeader("player") then
         -- self.db.profile.usage.leader
         if self:MasterLooterModule():DbValue('usage.leader') then
             self.isMasterLooter, self.masterLooter = true, self.playerName
@@ -357,7 +362,7 @@ function AddOn:Timer(type, ...)
     local C = AddOn.Constants
 
     if type == C.Commands.MasterLooterDbCheck then
-        if self.masterLooter then
+        if Util.Strings.IsSet(self.masterLooter) then
             if not self.mlDb.buttons then
                 self:SendCommand(self.masterLooter, C.Commands.MasterLooterDbRequest)
             end
@@ -394,8 +399,8 @@ function AddOn:DoAutoPass(table, skip)
 end
 
 function AddOn:ResetReconnectRequest()
-    Logging:Debug("ResetReconnectRequest")
     self.reconnectPending = false
+    Logging:Debug("ResetReconnectRequest")
 end
 
 function AddOn:MoreInfoEnabled(module)
@@ -417,25 +422,22 @@ function AddOn:OnEvent(event, ...)
         self:NewMasterLooterCheck()
     elseif event == E.RaidInstanceWelcome then
         self:ScheduleTimer("OnRaidEnter", 2)
+    -- this event is triggered when the player logs in, /reloads the UI, or zones between map instances
+    -- basically whenever the loading screen appears.
     elseif event == E.PlayerEnteringWorld then
         self:NewMasterLooterCheck()
-        self:ScheduleTimer(
-                function()
-                    local name, _, _, difficulty = GetInstanceInfo()
-                    self.instanceName = name .. (Util.Strings.IsEmpty(difficulty) and "" or "-" .. difficulty)
-                    Logging:Debug("Instance Name = %s", tostring(self.instanceName))
-                end,
-                5
-        )
-        if relogged then
-            if not self.isMasterLooter and Util.Strings.IsSet(self.masterLooter) then
-                Logging:Debug("Player re-logged")
+        -- if we have not yet handled the initial entering world event
+        if not handledEnteringWorld then
+            -- not relevant for master looter or if no master looter set
+            if not self.isMasterLooter and Util.Strings.IsSet(self.masterLooter) and not handledEnteringWorld then
+                Logging:Debug("Player '%s' entering world", tostring(self.playerName))
                 self:ScheduleTimer("SendCommand", 2, self.masterLooter, C.Reconnect)
                 self:SendCommand(self.masterLooter, C.PlayerInfo, self:GetPlayerInfo())
             end
+            
+            self:UpdatePlayersData()
+            handledEnteringWorld = true
         end
-        self:UpdatePlayersData()
-        relogged = false
     elseif event == E.EncounterStart then
         -- https://wow.gamepedia.com/ENCOUNTER_START
         -- ENCOUNTER_START: encounterID, "encounterName", difficultyID, groupSize
@@ -533,7 +535,7 @@ function AddOn:AddLootSlotInfo(i, ...)
             }
         end
         
-        -- it ws cached, so we did the needful
+        -- it was cached, so we did the needful
         return true
     end
     

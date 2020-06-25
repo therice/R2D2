@@ -94,7 +94,7 @@ end
 ---@return table
 function Self.Keys(t)
     local u = Self.New()
-    for i,v in pairs(t) do tinsert(u, i) end
+    for i,_ in pairs(t) do tinsert(u, i) end
     return u
 end
 
@@ -688,12 +688,12 @@ function Self.Unique(t, k)
     return t
 end
 
--- Substract the given tables from the table
+-- Subtract the given tables from the table
 ---@param t table
 function Self.Diff(t, ...)
     local k = select(select("#", ...), ...) == true
 
-    for i,v in pairs(t) do
+    for _,v in pairs(t) do
         for i=1, select("#", ...) - (k and 1 or 0) do
             if Util.In(v, (select(i, ...))) then
                 Self.Remove(t, i, k)
@@ -709,7 +709,7 @@ end
 function Self.Intersect(t, ...)
     local k = select(select("#", ...), ...) == true
 
-    for i,v in pairs(t) do
+    for _,v in pairs(t) do
         for i=1, select("#", ...) - (k and 1 or 0) do
             if not Util.In(v, (select(i, ...))) then
                 Self.Remove(t, i, k)
