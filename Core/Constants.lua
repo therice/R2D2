@@ -69,7 +69,7 @@ AddOn.Constants = {
         PointsFilter             = name .. "_Points_Filter",
         StandbyRightClick        = name .. "_Standby_RightClick",
         TrafficHistoryFilter     = name .. "_TH_Filter",
-        TrafficHistoryRightClick = name .. "_TH__RightClick",
+        TrafficHistoryRightClick = name .. "_TH_RightClick",
     },
 
     Events = {
