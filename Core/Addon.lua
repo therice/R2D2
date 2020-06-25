@@ -170,7 +170,8 @@ function R2D2:OnEnable()
         self:ScheduleTimer("SendGuildVersionCheck", 2)
     end
     
-    self:CandidateCheck()
+    -- self:ScheduleTimer("CandidateCheck", 3)
+    
     -- Setup the options for configuration UI
     self.components.Config.SetupOptions()
     self:Print(format(L["chat version"], tostring(self.version)) .. " is now loaded. Thank you for trusting us to handle all your EP/GP needs!")
