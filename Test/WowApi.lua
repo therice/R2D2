@@ -658,7 +658,9 @@ function GetRaidRosterInfo(i)
 	return "Character" .. i, nil, nil, nil, nil, C_CreatureInfo.GetClassInfo(math.random(1,5)).classFile
 end
 
-
+function GetInstanceInfo()
+	return "Temple of Ahn\'Qiraj", "raid", 1, "40 Player", 40, 0, false, 531, nil
+end
 
 function ChatFrame_AddMessageEventFilter(event, fn)
 

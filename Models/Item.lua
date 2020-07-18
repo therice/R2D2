@@ -142,7 +142,7 @@ function Item:GetGp(awardReason)
     if self.gp and awardReason then
         local awardScale = AddOn:GearPointsModule():GetAwardScale(awardReason)
         if awardScale then
-            awardGp = math.floor(self.gp * awardScale)
+            awardGp = Util.Numbers.Round(self.gp * awardScale)
         end
     end
     
@@ -403,7 +403,15 @@ function ItemAward:initialize(allocation, session, candidate, reason)
 end
 
 function ItemAward:GetGp()
-    return self.awardGp and self.awardGp or self.baseGp
+    -- these award value will be based upon the player's response
+    -- with base gp being the core value upon which it was calculated
+    local gp = self.awardGp and self.awardGp or self.baseGp
+    -- now apply any additional scaling required (such as raid reduction)
+    -- maybe we shouldn't be performing this operation via EP module?
+    --
+    -- this also relies upon the award being completed in the instance where the item dropped
+    -- otherwise, it will not be able to infer the raid (map id) for which any scaling should be applied
+    return AddOn:EffortPointsModule():ScaleIfRequired(gp)
 end
 
 function ItemAward:NormalizedResponse()

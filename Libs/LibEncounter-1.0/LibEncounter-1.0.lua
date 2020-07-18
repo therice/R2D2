@@ -4,13 +4,15 @@ local MINOR_VERSION = 11303
 local lib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then return end
 
--- Boss localization
-local LB = LibStub("LibBabble-Boss-3.0"):GetLookupTable()
--- Zone localization (e.g. raids)
-local LZ = LibStub("LibBabble-SubZone-3.0"):GetLookupTable()
+local LibBoss = LibStub("LibBabble-Boss-3.0")
+local LibSubZone = LibStub("LibBabble-SubZone-3.0")
 local Util = LibStub("LibUtil-1.1")
 
-
+-- Boss localization
+local LB = LibBoss:GetLookupTable()
+-- Zone localization (e.g. raids)
+local LZ = LibSubZone:GetLookupTable()
+local LZR = LibSubZone:GetReverseLookupTable()
 
 -- collection of maps (for encounters)
 lib.Maps = {
@@ -27,12 +29,17 @@ lib.Encounters = {
 
 }
 
-
 function lib:GetCreatureMapId(creatureId)
     local encounters = Util(lib.Encounters)
         :CopyFilter(
-            function(v, i)
-                return v.creature_id == creatureId
+            function(v)
+                for _, id in pairs(v.creature_id) do
+                    if id == creatureId then
+                        return true
+                    end
+                end
+                
+                return false
             end
     )()
 
@@ -52,7 +59,6 @@ function lib:GetCreatureName(creatureId)
     --  map id to the creature, then look up from localization
     local creature = lib.Creatures[creatureId]
     if creature then creatureName = LB[creature.name] end
-
     return creatureName
 end
 
@@ -61,8 +67,21 @@ function lib:GetMapName(mapId)
     --  map id to the map's name key, then look up from localization
     local map = lib.Maps[mapId]
     if map then mapName = LZ[map.name] end
-
     return mapName
+end
+
+function lib:GetMapId(mapName)
+    local mapId
+    -- Maps are in English, so map localized map name to english variation for lookup
+    local mapName = LZR[mapName]
+    if mapName then
+        mapId = Util.Tables.FindFn(
+            lib.Maps,
+            function(value) return value.name == mapName end
+        )
+    end
+    
+    return mapId
 end
 
 function lib:GetCreatureDetail(creatureId)
@@ -70,11 +89,13 @@ function lib:GetCreatureDetail(creatureId)
     return self:GetCreatureName(creatureId), self:GetMapName(map_id)
 end
 
+-- the returned value will be a table, as encounters can have more than one creature
 function lib:GetEncounterCreatureId(encounterId)
     local encounter = lib.Encounters[encounterId]
-    local creatureId
-    
-    if encounter then creatureId = encounter.creature_id end
-    
-    return creatureId
+    return encounter and encounter.creature_id or nil
+end
+
+function lib:GetEncounterMapId(encounterId)
+    local encounter = lib.Encounters[encounterId]
+    return encounter and encounter.map_id or nil
 end

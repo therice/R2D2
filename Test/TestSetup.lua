@@ -34,15 +34,16 @@ function Before()
     local caller = params[1]
     local path = pl.dirname(caller)
     local name = pl.basename(caller):match("(.*).lua$")
-    print("Caller -> FILE(" .. caller .. ") PATH(" .. path .. ") NAME(" .. name .. ")")
     _G.R2D2_Testing = true
     logFile = io.open(pl.abspath(path) .. '/' .. name .. '.log', 'w')
     _G.R2D2_Testing_GetLogFile = function() return logFile end
+    print("Caller -> FILE(" .. caller .. ") PATH(" .. path .. ") NAME(" .. name .. ")")
 end
 
 function After()
     if logFile then
         logFile:close()
+        logFile = nil
     end
     _G.R2D2_Testing = nil
 end

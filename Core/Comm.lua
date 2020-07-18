@@ -8,7 +8,7 @@ local ItemUtil  = AddOn.Libs.ItemUtil
 local LibCompress = AddOn.Libs.Compress
 local Compression = AddOn.Libs.Util.Compression
 
-local AddOnEncodeTable = LibCompress:GetAddonEncodeTable()
+-- local AddOnEncodeTable = LibCompress:GetAddonEncodeTable()
 
 function AddOn:GetAnnounceChannel(channel)
     local C = AddOn.Constants
@@ -74,7 +74,7 @@ end
 -- eventually, we can eliminate chaining and go back to our method of choice
 -- however this needs phased out in multiple releases
 local Compressors = Compression.GetCompressors(
-        Compression.CompressorType.LibCompress,
+        -- Compression.CompressorType.LibCompress,
         Compression.CompressorType.LibDeflate,
         Compression.CompressorType.LibCompressNoOp
 )
@@ -105,7 +105,7 @@ function AddOn:PrepareForSend(command, ...)
     Util.Tables.ReleaseTemp(encodedTable)
     --]]
     
-    local data = Compressors[2]:compress(serialized, true)
+    local data = Compressors[1]:compress(serialized, true)
     Logging:Debug("PrepareForSend() : Compressed length '%d' to '%d'", #serialized, #data)
     
     return data
