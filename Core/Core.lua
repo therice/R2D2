@@ -247,6 +247,9 @@ function AddOn:OnMasterLooterDbReceived(mlDb)
 
     if not self.mlDb.buttons.default then self.mlDb.buttons.default = {} end
     setmetatable(self.mlDb.buttons.default, { __index = ML:DefaultDbValue('profile.buttons.default')})
+    
+    if not self.mlDb.raids then self.mlDb.raids = {} end
+    -- could add metatable for getting from EP module here, but not adding now
 end
 
 function AddOn:GetLootSlotInfo(slot)

@@ -149,14 +149,11 @@ do
     
     -- update defaults to set scaling off for all raids
     for mapId, _ in pairs(Encounter.Maps) do
-        Logging:Debug("Adding defaults for %d", mapId)
         defaults[tostring(mapId)] = {
             scaling = false,
             scaling_pct = 1.0,
         }
     end
-    
-    Logging:Debug("Defaults => %s", Util.Objects.ToString(defaults, 5))
     
     -- table for storing processed defaults which needed added as arguments
     -- Creatures indexed by map name
@@ -261,7 +258,15 @@ function EP:ScaleIfRequired(value, mapId)
         end
     end
     
-    local raidScalingSettings = self.db.profile.raid[tostring(mapId)]
+    local raidScalingSettings
+    if next(AddOn.mlDb) and not Util.Objects.IsEmpty(AddOn:GetMasterLooterDbValue('raid', tostring(mapId))) then
+        raidScalingSettings = AddOn:GetMasterLooterDbValue('raid', tostring(mapId))
+        Logging:Debug("EP:ScaleIfRequired() : Scaling settings obtained from ML DB")
+    else
+        raidScalingSettings = self.db.profile.raid[tostring(mapId)]
+        Logging:Debug("EP:ScaleIfRequired() : Scaling settings obtained from Effort Points Module")
+    end
+    
     Logging:Debug("EP:ScaleIfRequired() : mapId = %s, scaling_settings = %s", tostring(mapId), Util.Objects.ToString(raidScalingSettings))
     if raidScalingSettings then
         local scaleAward = raidScalingSettings.scaling or false
