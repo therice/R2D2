@@ -23,7 +23,7 @@ R2D2.version = GetAddOnMetadata(AddOnName, "Version")
 --@debug@
 -- if local development and not substituted, then use a dummy version
 if R2D2.version == '@project-version@' then
-    R2D2.version = '1.2.3-dev'
+    R2D2.version = '1.2.5-dev'
 end
 --@end-debug@
 

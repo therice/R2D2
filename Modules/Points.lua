@@ -337,11 +337,11 @@ function Points:Update(forceUpdate)
     if not self:IsEnabled() then return end
     if not self.frame then return end
     -- execute the update if forced or pending update combined with state of update handler
-    local performUpdate = forceUpdate or (pendingUpdate and (self.updateHandler and self.updateHandler:Eligible() or true))
+    local performUpdate = forceUpdate or (pendingUpdate and (self.updateHandler and self.updateHandler:Eligible()))
     if not performUpdate then return end
     -- Logging:Debug("Update(%s) - Performing update", tostring(forceUpdate or false))
     self.frame.st:SortData()
-    self.updateHandler:RefreshInterval()
+    self.updateHandler:ResetInterval()
 end
 
 function Points:GetFrame()
@@ -617,7 +617,6 @@ function Points:UpdateAdjustFrame(subjectType, name, resource, subjects)
         c = AddOn.GetSubjectTypeColor(subjectType)
     end
     
-    
     if subjectType ~= Award.SubjectType.Character and subjects then
         name = name .. "(" .. Util.Tables.Count(subjects) .. ")"
         self.adjustFrame.subjects = subjects
@@ -634,7 +633,6 @@ function Points:UpdateAdjustFrame(subjectType, name, resource, subjects)
     end
     
     self.adjustFrame.subjectType = subjectType
-    
     
     self.adjustFrame.name:SetText(name)
     self.adjustFrame.name:SetTextColor(c.r, c.g, c.b, c.a)
@@ -669,7 +667,7 @@ function Points:UpdateAmendFrame(entry)
     )
     --
     -- I don't think we want to provide these values, as it infers it will be updated
-    -- when in fact, it's an entirey new entry with no relation to one being amended
+    -- when in fact, it's an entirely new entry with no relation to one being amended
     -- other than the subjects
     --
     -- self.adjustFrame.actionType:SetValue(entry.actionType)

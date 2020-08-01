@@ -626,14 +626,28 @@ function ML:BuildDb()
     end
 
     changedButtons.default.numButtons = db.buttons.default.numButtons
-
+    
+    local raids = {}
+    local epDb = AddOn:EffortPointsModule().db.profile
+    for mapId, raidSettings in pairs(epDb.raid) do
+        -- only pickup settings that are a numeric value
+        -- these represent actual map identifiers
+        if tonumber(mapId) then
+            raids[mapId] = raidSettings
+        end
+    end
+    
+    
     local Db = {
         buttons     =   changedButtons,
         responses   =   changedResponses,
         outOfRaid   =   db.outOfRaid,
         timeout     =   db.timeout,
+        raid        =   raids,
     }
 
+    Logging:Debug("ML:BuildDb() : %s", Util.Objects.ToString(Db, 5))
+    
     --[[
         mlDb = {
             responses = {
@@ -1344,8 +1358,8 @@ ML.AnnounceItemStrings = {
     ["&o"] = function(_,_,v) return v.owner and AddOn.Ambiguate(v.owner) or "" end,
     ["&g"] = function(_, item)
         local i = ML:GetItemInfo(item)
-        local gp, _ = i:GetGp(nil)
-        return tostring(gp)
+        local gp1, gp2 = i:GetGp(nil)
+        return tostring(gp2 and gp2 or gp1)
     end,
 }
 

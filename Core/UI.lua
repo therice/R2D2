@@ -167,8 +167,8 @@ function UpdateHandler:Stop()
     self.frame:Hide()
 end
 
-function UpdateHandler:RefreshInterval()
-    self.elapsed = 0
+function UpdateHandler:ResetInterval()
+    self.elapsed = 0.0
 end
 
 function UpdateHandler:Eligible()
