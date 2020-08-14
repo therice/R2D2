@@ -720,11 +720,30 @@ function Points:GetDecayFrame()
     f:SetWidth(225)
     f:SetPoint("TOPRIGHT", self.frame, "TOPLEFT", -150)
 
+    local rtLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    rtLabel:SetPoint("TOPLEFT", f.content, "TOPLEFT", 15, -25)
+    rtLabel:SetText(L["resource_type"])
+    f.rtLabel = rtLabel
+    
+    local resourceType =
+        UI('Dropdown')
+            .SetPoint("TOPLEFT", f.rtLabel, "BOTTOMLEFT", 0, -5)
+            .SetParent(f)()
+    local values = { }
+    values[0] = 'All'
+    for k, v in pairs(Award.TypeIdToResource) do
+        values[k] = v:upper()
+    end
+    
+    resourceType:SetList(values)
+    resourceType:SetValue(0) -- default to 'All'
+    f.resourceType = resourceType
+    
     local pctLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    pctLabel:SetPoint("TOPLEFT", f.content, "TOPLEFT", 15, -45)
+    pctLabel:SetPoint("TOPLEFT", f.rtLabel, "TOPLEFT", 0, -50)
     pctLabel:SetText(L["percent"])
     f.pctLabel = pctLabel
-    
+
     local pct =
         UI('Slider')
                 .SetSliderValues(0, 1, 0.01)
@@ -733,7 +752,7 @@ function Points:GetDecayFrame()
                 .SetPoint("TOPLEFT", f.pctLabel, "BOTTOMLEFT")
                 .SetParent(f)()
     f.pct = pct
-    
+
     local descLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     descLabel:SetPoint("TOPLEFT", f.pctLabel, "TOPLEFT", 0, -65)
     descLabel:SetText(L["description"])
@@ -760,16 +779,35 @@ function Points:GetDecayFrame()
     f.decay = decay
     
     function f.Validate()
-        local epDecay = Award()
-        epDecay:SetSubjects(Award.SubjectType.Guild)
-        epDecay:SetAction(Award.ActionType.Decay)
-        epDecay:SetResource(Award.ResourceType.Ep, f.pct:GetValue())
-        epDecay.description = f.desc:GetText()
+        local resourceType = f.resourceType:GetValue()
+        local pct = f.pct:GetValue()
+        local description = f.desc:GetText()
+        local resourceTypes = resourceType == 0 and Util(Award.TypeIdToResource):Keys():Copy()() or {resourceType}
         
-        local gpDecay = Award():reconstitute(epDecay:toTable())
-        gpDecay:SetResource(Award.ResourceType.Gp, f.pct:GetValue())
+        Logging:Debug("DecayFrame.Validate() : resourceType=%d, resourceTypes=%s, pct=%d, description=%s",
+                      resourceType, Objects.ToString(resourceTypes), pct, description
+        )
+    
+        local decayAwards = {}
+        for _, type in pairs(resourceTypes) do
+            Logging:Debug("DecayFrame.Validate() : processing resourceType=%d", type)
+            local decay
+            if #decayAwards == 0 then
+                decay = Award()
+                decay:SetSubjects(Award.SubjectType.Guild)
+                decay:SetAction(Award.ActionType.Decay)
+                decay.description = description
+            else
+                decay = Award():reconstitute(decayAwards[#decayAwards]:toTable())
+            end
+            
+            decay:SetResource(type, pct)
+            Util.Tables.Push(decayAwards, decay)
+        end
+    
+        Logging:Debug("DecayFrame.Validate() : decay entries %s", Objects.ToString(decayAwards, 2))
         
-        return epDecay, gpDecay
+        return Util.Tables.Unpack(decayAwards)
     end
     
     self.decayFrame = f
@@ -800,16 +838,15 @@ function Points.DecayOnShow(frame, awards)
     
     frame.text:SetText(
             format(L["confirm_decay"],
+                   #awards == 1 and (award.resourceType == Award.ResourceType.Ep and L["ep_abbrev"] or L["gp_abbrev"]) or L["all_values"],
                    award.resourceQuantity * 100,
                    decoratedText
             )
     )
 end
 
-
-
 function Points.DecayOnClickYes(frame, awards, ...)
-    Logging:Trace("DecayOnClickYes(%d)", #awards)
+    Logging:Debug("DecayOnClickYes(%d)", #awards)
     
     if #awards == 0 then return end
     
@@ -817,7 +854,7 @@ function Points.DecayOnClickYes(frame, awards, ...)
     -- if we try to do them too quickly, the updates to player's officer note won't
     -- be written yet and could encounter a conflict
     --
-    -- therefore, this function will managed that via performing adjustment
+    -- therefore, this function will manage that via performing adjustment
     -- and waiting for callbacks to determine that all have been completed before
     -- moving to next award
     local function adjust(awards, index)
