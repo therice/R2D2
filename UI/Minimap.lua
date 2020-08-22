@@ -30,10 +30,11 @@ local function CreateDataBoker()
                OnTooltipShow = function(tooltip)
                    tooltip:AddDoubleLine("|cfffe7b2cR2D2|r", format("|cffFFFFFF%s|r", tostring(AddOn.version)))
                    tooltip:AddLine(format(TT_ENTRY, L["left_click"], L["open_standings"]))
-                   tooltip:AddLine(format(TT_ENTRY, L["shift_left_click"], L["open_config"]))
+                   tooltip:AddLine(format(TT_ENTRY, L["right_click"] .. ' / ' .. L["shift_left_click"], L["open_config"]))
                end,
                OnClick = function(self, button)
                    if button == "RightButton" then
+                       AddOn:Config()
                    elseif button == "MiddleButton" then
                    else
                        if IsShiftKeyDown() then
