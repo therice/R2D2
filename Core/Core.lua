@@ -209,8 +209,16 @@ function AddOn:StartHandleLoot()
         self:Print(L["changing_loot_method_to_ml"])
         SetLootMethod("master", self.Ambiguate(self.playerName))
     end
-    -- not manipulating this here, let ML set the loot threshold (not via addon)
-    -- SetLootThreshold(4)
+    
+    -- change loot threshold as needed for auto awards
+    local ML = self:MasterLooterModule()
+    local lootThreshold = GetLootThreshold()
+    local autoAwardLowerThreshold = ML.db.profile.autoAwardLowerThreshold
+    if ML.db.profile.autoAward and lootThreshold ~= 2 and lootThreshold > autoAwardLowerThreshold then
+        self:Print(L["changing_loot_threshold_auto_awards"])
+        SetLootThreshold(autoAwardLowerThreshold >= 2 and autoAwardLowerThreshold or 2)
+    end
+    
     self:Print(format(L["player_handles_looting"], self.playerName))
     self.handleLoot = true
     self:SendCommand(C.group, C.Commands.HandleLootStart)
