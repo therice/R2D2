@@ -1366,7 +1366,7 @@ function ML:AutoAward(lootIndex, item, quality, winner, mode)
         end
         
         
-        local awardReason = AddOn:LootAllocateModule().db.awardReasons[awardReasonIdx]
+        local awardReason = AddOn:LootAllocateModule().db.profile.awardReasons[awardReasonIdx]
         
         self:GiveLoot(
             lootIndex,
