@@ -9,6 +9,11 @@ local UI = AddOn.components.UI
 local COpts = UI.ConfigOptions
 local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT, FALSE_START_THRESHOLD = 5, 5, 3
 
+local AutoAwardType = {
+    Equippable    = 1,
+    NotEquippable = 2,
+    All           = 99,
+}
 -- these are the defaults for DB
 ML.defaults = {
     profile = {
@@ -53,6 +58,9 @@ ML.defaults = {
         announceResponseText = { channel = "group", text = L["response_to_item_detailed"]},
         -- enables the auto-awarding of items that meet specific criteria
         autoAward = false,
+        -- what types of items should be auto-awarded, supports
+        -- equippable, non-equippable, and all currently
+        autoAwardType = AutoAwardType.Equippable,
         -- the lower threshold for item quality for auto-award
         autoAwardLowerThreshold = 2,
         -- the upper threshold for item quality for auto-award
@@ -356,8 +364,23 @@ ML.options = {
                     disabled = function() return not ML.db.profile.autoAward end,
                     args = {
                         autoAward = COpts.Toggle(L["auto_award"], 1, L["auto_award_desc"], false),
+                        autoAwardType = {
+                            order = 2,
+                            name = L["auto_award_type"],
+                            desc = L["auto_award_type_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            width = "double",
+                            values = function()
+                                return {
+                                    [AutoAwardType.Equippable] = L['equipable'],
+                                    [AutoAwardType.NotEquippable] = L['equipable_not'],
+                                    [AutoAwardType.All] = L['all']
+                                }
+                            end,
+                        },
                         autoAwardLowerThreshold = {
-                            order = 1.1,
+                            order = 3.1,
                             name = L["lower_quality_limit"],
                             desc = L["lower_quality_limit_desc"],
                             type = "select",
@@ -371,7 +394,7 @@ ML.options = {
                             end,
                         },
                         autoAwardUpperThreshold = {
-                            order = 1.2,
+                            order = 3.2,
                             name = L["upper_quality_limit"],
                             desc = L["upper_quality_limit_desc"],
                             type = "select",
@@ -385,7 +408,7 @@ ML.options = {
                             end,
                         },
                         autoAwardToNotInGroup = {
-                            order = 2,
+                            order = 4,
                             name = L["auto_award_to"],
                             desc = L["auto_award_to_desc"],
                             width = "double",
@@ -395,7 +418,7 @@ ML.options = {
                             set = function(i,v) ML.db.profile.autoAwardTo = v end,
                         },
                         autoAwardTo = {
-                            order = 2,
+                            order = 4,
                             name = L["auto_award_to"],
                             desc = L["auto_award_to_desc"],
                             width = "double",
@@ -412,7 +435,7 @@ ML.options = {
                             hidden = function() return GetNumGroupMembers() == 0 end,
                         },
                         autoAwardReason = {
-                            order = 2.1,
+                            order = 4.1,
                             name = L["reason"],
                             desc = L["reason_desc"],
                             type = "select",
@@ -1282,15 +1305,29 @@ function ML:ShouldAutoAward(item, quality)
     if not item then return false end
     Logging:Debug("ShouldAutoAward() : item=%s, quality=%d", tostring(item), quality)
     
+    local db = self.db.profile
+    
     local function IsEligibleUnit(unit)
         return UnitInRaid(unit) or UnitInParty(unit)
     end
     
-    local db = self.db.profile
+    local function IsEligibleItem(item)
+        local itemId = ItemUtil:ItemLinkToId(item)
+        -- reputation items are handled separately, always false
+        if itemId and ItemUtil:IsReputationItem(itemId) then
+            return false
+        end
+    
+        local isEquippable = IsEquippableItem(item)
+        return  (db.autoAwardType == AutoAwardType.All) or
+                (db.autoAwardType == AutoAwardType.Equippable and isEquippable) or
+                (db.autoAwardType == AutoAwardType.NotEquippable and not isEquippable)
+    end
+
     if db.autoAward and
         quality >= db.autoAwardLowerThreshold and
         quality <= db.autoAwardUpperThreshold and
-        IsEquippableItem(item) then
+        IsEligibleItem(item) then
         
         if db.autoAwardLowerThreshold >= GetLootThreshold() or db.autoAwardLowerThreshold < 2 then
             if IsEligibleUnit(db.autoAwardTo) then
@@ -1993,7 +2030,7 @@ function ML:LootOpened()
                     local quality = item.quality
                     self:ScheduleTimer("HookLootButton", 0.5, i)
                     
-                    local autoAward, mode, winner = self:ShouldAutoAward(item, quality)
+                    local autoAward, mode, winner = self:ShouldAutoAward(link, quality)
     
                     if autoAward and quantity > 0 then
                         self:AutoAward(i, link, quality, winner, mode)
