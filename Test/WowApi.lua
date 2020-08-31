@@ -457,6 +457,10 @@ function IsMasterLooter()
 	return true
 end
 
+function GetLootThreshold()
+	return 2
+end
+
 function GuildRoster ()
 
 end

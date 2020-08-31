@@ -1061,6 +1061,7 @@ do
             
             if value == "AWARD_FOR" and entry.special == value then
                 for k,v in ipairs(LootAllocate.db.profile.awardReasons) do
+                    Logging:Debug("AWARD_FOR() : %s / %s", tostring(k), Util.Objects.ToString(v))
                     if k > LootAllocate.db.profile.awardReasons.numAwardReasons then break end
                     info.text = v.text
                     info.notCheckable = true

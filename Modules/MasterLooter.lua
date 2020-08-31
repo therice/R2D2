@@ -9,6 +9,11 @@ local UI = AddOn.components.UI
 local COpts = UI.ConfigOptions
 local CANDIDATE_SEND_COOLDOWN, LOOT_TIMEOUT, FALSE_START_THRESHOLD = 5, 5, 3
 
+local AutoAwardType = {
+    Equippable    = 1,
+    NotEquippable = 2,
+    All           = 99,
+}
 -- these are the defaults for DB
 ML.defaults = {
     profile = {
@@ -51,6 +56,25 @@ ML.defaults = {
         announceResponses = true,
         -- where player's responses to items are announced, channel + message
         announceResponseText = { channel = "group", text = L["response_to_item_detailed"]},
+        -- enables the auto-awarding of items that meet specific criteria
+        autoAward = false,
+        -- what types of items should be auto-awarded, supports
+        -- equippable, non-equippable, and all currently
+        autoAwardType = AutoAwardType.Equippable,
+        -- the lower threshold for item quality for auto-award
+        autoAwardLowerThreshold = 2,
+        -- the upper threshold for item quality for auto-award
+        autoAwardUpperThreshold = 2,
+        -- to whom any auto-awarded items should be assigned
+        autoAwardTo = _G.NONE,
+        -- the reason associated with auto-awarding of items
+        autoAwardReason = 3, -- bank
+        -- enables the auto-awarding of reputation items
+        autoAwardRepItems = false,
+        -- to whom any auto-awarded reputation items should be assigned
+        autoAwardRepItemsTo = _G.NONE,
+        -- the reason associated with auto-awarding of reputation items
+        autoAwardRepItemsReason = 3, -- bank
         
         buttons = {
             -- dynamically constructed in the do/end loop below
@@ -68,7 +92,7 @@ ML.defaults = {
         responses = {
             default = {
                 AWARDED         =   { color = {1,1,1,1},		sort = 0.1,	text = L["awarded"], },
-                NOTANNOUNCED    =   { color = {1,0,1,1},		sort = 501,	text = L["not_annouced"], },
+                NOTANNOUNCED    =   { color = {1,0,1,1},		sort = 501,	text = L["not_annonuced"], },
                 ANNOUNCED		=   { color = {1,0,1,1},		sort = 502,	text = L["announced_awaiting_answer"], },
                 WAIT			=   { color = {1,1,0,1},		sort = 503,	text = L["candidate_selecting_response"], },
                 TIMEOUT			=   { color = {1,0,0,1},		sort = 504,	text = L["candidate_no_response_in_time"], },
@@ -85,7 +109,6 @@ ML.defaults = {
                                     { color = {0,1,0,1},        sort = 1,   text = L["ms_need"], },         [1]
                                     { color = {1,0.5,0,1},	    sort = 2,	text = L["os_greed"], },        [2]
                                     { color = {0,0.7,0.7,1},    sort = 3,	text = L["minor_upgrade"], },   [3]
-                                    { color = {1,0.5,0,1},	    sort = 4,	text = L["pvp"], },             [4]
                                     { color = {1,0.5,0,1},	    sort = 4,	text = L["pvp"], },             [4]
                 --]]
             }
@@ -328,8 +351,148 @@ ML.options = {
                 }
             }
         },
-        responses = {
+        awards = {
             order = 3,
+            type = 'group',
+            name = L["awards"],
+            args = {
+                autoAward = {
+                    order = 1,
+                    name = L["auto_award"],
+                    type = 'group',
+                    inline = true,
+                    disabled = function() return not ML.db.profile.autoAward end,
+                    args = {
+                        autoAward = COpts.Toggle(L["auto_award"], 1, L["auto_award_desc"], false),
+                        autoAwardType = {
+                            order = 2,
+                            name = L["auto_award_type"],
+                            desc = L["auto_award_type_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            width = "double",
+                            values = function()
+                                return {
+                                    [AutoAwardType.Equippable] = L['equipable'],
+                                    [AutoAwardType.NotEquippable] = L['equipable_not'],
+                                    [AutoAwardType.All] = L['all']
+                                }
+                            end,
+                        },
+                        autoAwardLowerThreshold = {
+                            order = 3.1,
+                            name = L["lower_quality_limit"],
+                            desc = L["lower_quality_limit_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            values = function()
+                                local t = {}
+                                for i = 0, 5 do
+                                    t[i] = ITEM_QUALITY_COLORS[i].hex .. getglobal("ITEM_QUALITY"..i.."_DESC")
+                                end
+                                return t
+                            end,
+                        },
+                        autoAwardUpperThreshold = {
+                            order = 3.2,
+                            name = L["upper_quality_limit"],
+                            desc = L["upper_quality_limit_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            values = function()
+                                local t = {}
+                                for i = 0, 5 do
+                                    t[i] = ITEM_QUALITY_COLORS[i].hex .. getglobal("ITEM_QUALITY"..i.."_DESC")
+                                end
+                                return t
+                            end,
+                        },
+                        autoAwardToNotInGroup = {
+                            order = 4,
+                            name = L["auto_award_to"],
+                            desc = L["auto_award_to_desc"],
+                            width = "double",
+                            type = "input",
+                            hidden = function() return GetNumGroupMembers() > 0 end,
+                            get = function() return ML.db.profile.autoAwardTo end,
+                            set = function(i,v) ML.db.profile.autoAwardTo = v end,
+                        },
+                        autoAwardTo = {
+                            order = 4,
+                            name = L["auto_award_to"],
+                            desc = L["auto_award_to_desc"],
+                            width = "double",
+                            type = "select",
+                            style = "dropdown",
+                            values = function()
+                                local t = {}
+                                for i = 1, GetNumGroupMembers() do
+                                    local name = GetRaidRosterInfo(i)
+                                    t[name] = name
+                                end
+                                return t
+                            end,
+                            hidden = function() return GetNumGroupMembers() == 0 end,
+                        },
+                        autoAwardReason = {
+                            order = 4.1,
+                            name = L["reason"],
+                            desc = L["reason_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            -- values = ... (set in initializer function below)
+                        },
+                    }
+                },
+                autoAwardRepItems = {
+                    order = 1.5,
+                    name = L["auto_award_rep_items"],
+                    type = "group",
+                    inline = true,
+                    disabled = function () return not ML.db.profile.autoAwardRepItems end,
+                    args = {
+                        autoAwardRepItems = COpts.Toggle(L["auto_award_rep_items"], 1, L["auto_award_rep_items_desc"], false,  {width='full'}),
+                        autoAwardRepItemsToNotInGroup = {
+                            order = 3,
+                            name = L["auto_award_to"],
+                            desc = L["auto_award_to_desc"],
+                            width = "double",
+                            type = "input",
+                            hidden = function()return GetNumGroupMembers() > 0 end,
+                            get = function() return ML.db.profile.autoAwardRepItemsTo end,
+                            set = function(_,v) ML.db.profile.autoAwardRepItemsTo = v end
+                        },
+                        autoAwardRepItemsTo = {
+                            order = 3,
+                            name = L["auto_award_to"],
+                            desc = L["auto_award_to_desc"],
+                            width = "double",
+                            type = "select",
+                            style = "dropdown",
+                            values = function()
+                                local t = {}
+                                for i = 1, GetNumGroupMembers() do
+                                    local name = GetRaidRosterInfo(i)
+                                    t[name] = name
+                                end
+                                return t
+                            end,
+                            hidden = function()return GetNumGroupMembers() == 0 end,
+                        },
+                        autoAwardRepItemsReason = {
+                            order = 3.1,
+                            name = L["reason"],
+                            desc = L["reason_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            -- values = ... (set in initializer function below)
+                        },
+                    }
+                }
+            }
+        },
+        responses = {
+            order = 4,
             type = 'group',
             name = L["responses"],
             args = {
@@ -387,13 +550,18 @@ do
     local DefaultButtons = ML.defaults.profile.buttons.default
     local DefaultResponses = ML.defaults.profile.responses.default
     local GP = AddOn:GetModule("GearPoints")
+    
     -- these are the responses available to player when presented with a loot decision
     -- we only select ones that are "user visible", as others are only available to
     -- master looter (e.g. 'Free', 'Disenchant', 'Bank', etc.)
     local UserVisibleAwards =
         Util(GP.defaults.profile.award_scaling)
                 :CopyFilter(function (v) return v.user_visible end, true, nil, true)()
-
+    local NonUserVisibleAwards =
+        Util(GP.defaults.profile.award_scaling)
+                :CopyFilter(function (v) return not v.user_visible end, true, nil, true)()
+   
+    
     DefaultButtons.numButtons = Util.Tables.Count(UserVisibleAwards)
     local index = 1
     for award, value in pairs(UserVisibleAwards) do
@@ -404,6 +572,21 @@ do
         Util.Tables.Push(DefaultResponses, { color = value.color, sort = index, text = L[award], award_scale=award})
         index = index + 1
     end
+    
+    local AwardReasons = { }
+    index = 1
+    for award, _ in pairs(NonUserVisibleAwards) do
+        AwardReasons[index] = L[award]
+        index = index + 1
+    end
+    
+    local awardReasonsFunc = function()
+        Logging:Debug("%s", Util.Objects.ToString(AwardReasons, 3))
+        return AwardReasons
+    end
+    
+    ML.options.args.awards.args.autoAward.args.autoAwardReason.values = awardReasonsFunc
+    ML.options.args.awards.args.autoAwardRepItems.args.autoAwardRepItemsReason.values = awardReasonsFunc
 end
 
 -- sets up configuration options that rely upon DB settings
@@ -1112,6 +1295,135 @@ local function RegisterAndAnnounceBagged(session)
     return false
 end
 
+-- Modes for distinguising between types of auto awards
+local AutoAwardMode = {
+    Normal          =   "normal",
+    ReputationItem  =   "rep_item",
+}
+
+function ML:ShouldAutoAward(item, quality)
+    if not item then return false end
+    Logging:Debug("ShouldAutoAward() : item=%s, quality=%d", tostring(item), quality)
+    
+    local db = self.db.profile
+    
+    local function IsEligibleUnit(unit)
+        return UnitInRaid(unit) or UnitInParty(unit)
+    end
+    
+    local function IsEligibleItem(item)
+        local itemId = ItemUtil:ItemLinkToId(item)
+        -- reputation items are handled separately, always false
+        if itemId and ItemUtil:IsReputationItem(itemId) then
+            return false
+        end
+    
+        local isEquippable = IsEquippableItem(item)
+        return  (db.autoAwardType == AutoAwardType.All) or
+                (db.autoAwardType == AutoAwardType.Equippable and isEquippable) or
+                (db.autoAwardType == AutoAwardType.NotEquippable and not isEquippable)
+    end
+
+    if db.autoAward and
+        quality >= db.autoAwardLowerThreshold and
+        quality <= db.autoAwardUpperThreshold and
+        IsEligibleItem(item) then
+        
+        if db.autoAwardLowerThreshold >= GetLootThreshold() or db.autoAwardLowerThreshold < 2 then
+            if IsEligibleUnit(db.autoAwardTo) then
+                return true, AutoAwardMode.Normal, db.autoAwardTo
+            else
+                AddOn:Print(L["cannot_auto_award"])
+                AddOn:Print(format(L["could_not_find_player_in_group"], db.autoAwardTo))
+                return false
+            end
+        else
+            AddOn:Print(format(L["could_not_auto_award_item"], tostring(item)))
+        end
+    end
+    
+    if db.autoAwardRepItems then
+        local itemId = ItemUtil:ItemLinkToId(item)
+        if itemId and ItemUtil:IsReputationItem(itemId) then
+            if IsEligibleUnit(db.autoAwardRepItemsTo) then
+                return true, AutoAwardMode.ReputationItem, db.autoAwardRepItemsTo
+            else
+                AddOn:Print(L["cannot_auto_award"])
+                AddOn:Print(format(L["could_not_find_player_in_group"], db.autoAwardRepItemsTo))
+                return false
+            end
+        end
+    end
+    
+    return false
+end
+
+function ML:AutoAward(lootIndex, item, quality, winner, mode)
+    winner = AddOn:UnitName(winner)
+    Logging:Debug(
+        "AutoAward() : lootIndex=%d, item=%s, quality=%d, winner=%s, mode=%s",
+        tonumber(lootIndex), tostring(item), tonumber(quality), winner, tostring(mode)
+    )
+    
+    local db = self.db.profile
+    
+    if Util.Strings.Equal(mode, AutoAwardMode.Normal) then
+        -- Perform an extra check for normal auto-awards, as Blizzard prevents you from
+        -- looting items below a specific quality threshold to anyone except yourself
+        -- 0 == Poor
+        -- 1 == Common
+        -- 2 == Uncommon
+        if db.autoAwardLowerThreshold < 2 and quality < 2 and not AddOn:UnitIsUnit(winner, "player") then
+            AddOn:Print(
+                    format(
+                            L["cannot_auto_award_quality"],
+                            _G.ITEM_QUALITY_COLORS[2].hex .. _G.ITEM_QUALITY2_DESC .. "|r"
+                    )
+            )
+            return false
+        end
+    end
+    
+    local canGiveLoot, cause = self:CanGiveLoot(lootIndex, item, winner)
+    if not canGiveLoot then
+        AddOn:Print(L["cannot_auto_award"])
+        self:PrintLootError(cause, lootIndex, item, winner)
+        return false
+    else
+        
+        local awardReasonIdx
+        if Util.Strings.Equal(mode, AutoAwardMode.Normal) then
+            awardReasonIdx = db.autoAwardReason
+        elseif Util.Strings.Equal(mode, AutoAwardMode.ReputationItem) then
+            awardReasonIdx = db.autoAwardRepItemsReason
+        else
+            AddOn:Print(L["cannot_auto_award"])
+            AddOn:Print(format(L["auto_award_invalid_mode"], mode))
+            return false
+        end
+        
+        
+        local awardReason = AddOn:LootAllocateModule().db.profile.awardReasons[awardReasonIdx]
+        
+        self:GiveLoot(
+            lootIndex,
+            winner,
+            function(awarded, cause)
+                if awarded then
+                    self:AnnounceAward(winner, item, awardReason.text)
+                    -- todo : track history
+                    return true
+                else
+                    AddOn:Print(L["cannot_auto_award"])
+                    self:PrintLootError(cause, lootIndex, item, winner)
+                    return false
+                end
+            end
+        )
+        return true
+    end
+end
+
 --@param session the session to award.
 --@param winner	Nil/false if items should be stored in inventory and awarded later.
 --@param response the candidates response, used for announcement.
@@ -1718,8 +2030,12 @@ function ML:LootOpened()
                     local quality = item.quality
                     self:ScheduleTimer("HookLootButton", 0.5, i)
                     
+                    local autoAward, mode, winner = self:ShouldAutoAward(link, quality)
+    
+                    if autoAward and quantity > 0 then
+                        self:AutoAward(i, link, quality, winner, mode)
                     -- check if we are allowed to loot item
-                    if link and self:CanWeLootItem(link, quality) and quantity > 0 then
+                    elseif link and self:CanWeLootItem(link, quality) and quantity > 0 then
                         self:AddItem(link, false, i)
                     -- currency
                     elseif quantity == 0 then

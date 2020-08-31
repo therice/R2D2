@@ -27,7 +27,7 @@ function AddOn:UnitIsUnit(unit1, unit2)
         unit2 = Ambiguate(unit2, "short")
     end
     -- There's problems comparing non-ascii characters of different cases using UnitIsUnit()
-    -- I.e. UnitIsUnit("Potdisc", "potdisc") works, but UnitIsUnit("Æver", "æver") doesn't.
+    -- I.e. UnitIsUnit("Foo", "foo") works, but UnitIsUnit("Æver", "æver") doesn't.
     -- Since I can't find a way to ensure consistent returns from UnitName(), just lowercase units here
     -- before passing them.
     return UnitIsUnit(unit1:lower(), unit2:lower())
@@ -204,15 +204,35 @@ function AddOn:GetPlayersGear(link, equipLoc, current)
     if current then
         GetInventoryItemLink = function(_, slot) return current[slot] end
     end
-
-    -- todo : need to handle tokens and trinkets
-    local item1, item2
+    
+    -- this is special casing for token based items, which require a different approach
+    local itemId = ItemUtil:ItemLinkToId(link)
+    if itemId and ItemUtil:IsTokenBasedItem(itemId) then
+        local equipLocs = ItemUtil:GetTokenBasedItemLocations(itemId)
+        if #equipLocs > 1 then
+            local items = {true, true}
+            for i = 1, 2 do
+                items[i] =  GetInventoryItemLink("player", GetInventorySlotInfo(equipLocs[i]))
+            end
+            if not items[1] then return items[2] end
+            return unpack(items)
+        elseif equipLocs[1] == "Weapon" then
+            return
+                GetInventoryItemLink("player", GetInventorySlotInfo("MainHandSlot")),
+                GetInventoryItemLink("player", GetInventorySlotInfo("SecondaryHandSlot"))
+        else
+            return GetInventoryItemLink("player", GetInventorySlotInfo(equipLocs[1]))
+        end
+    end
+    
+    
     -- map equipment location to slots where it can be equipped
     local gearSlots = ItemUtil:GetGearSlots(equipLoc)
     Logging:Trace("GetPlayersGear() : %s -> %s", equipLoc, Util.Objects.ToString(gearSlots))
     if not gearSlots then return nil, nil end
+    
+    local item1, item2
     -- index 1 will always have a value if returned
-
     item1 = GetInventoryItemLink("player", GetInventorySlotInfo(gearSlots[1]))
     -- gear slots supports an 'or' construct with the value being other potential gear slot
     if not item1 and gearSlots['or'] then

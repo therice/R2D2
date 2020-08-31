@@ -21,6 +21,19 @@ tooltip:SetOwner(UIParent, "ANCHOR_NONE")
 tooltip:UnregisterAllEvents()
 tooltip:Hide()
 
+
+-- mapping of item ids to item names
+-- for items which are related to reputation
+lib.ReputationItems = {
+
+}
+
+-- mapping of item ids to equipment locations
+-- for items which are obained via tokens
+lib.TokenEquipmentLocations = {
+
+}
+
 -- https://wow.gamepedia.com/ItemType
 local DisallowedByClass = {
     DRUID = {
@@ -417,4 +430,16 @@ function lib:ClassCanUse(class, classesFlag, equipLoc, typeId, subTypeId)
     end
 
     return true
+end
+
+function lib:IsTokenBasedItem(itemId)
+    return lib.TokenEquipmentLocations[itemId] and true or false
+end
+
+function lib:GetTokenBasedItemLocations(itemId)
+    return lib.TokenEquipmentLocations[itemId]
+end
+
+function lib:IsReputationItem(itemId)
+    return lib.ReputationItems[itemId] and true or false
 end
