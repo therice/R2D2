@@ -10,6 +10,12 @@ local lib = LibStub("LibEncounter-1.0", true)
 
 -- Mapping from map id to details (name will be used as index for localization)
 lib.Maps = {
+    [309] = {
+        name = 'Ancient Zul\'Gurub',
+    },
+    [509] = {
+        name = 'Ruins of Ahn\'Qiraj',
+    },
     [409] = {
         name = 'Molten Core',
     },
@@ -30,6 +36,63 @@ lib.Maps = {
 
 -- Mapping from creature id to details (name will be used as index for localization)
 lib.Creatures = {
+    [15348] = {
+        name = 'Kurinnaxx',
+    },
+    [15341] = {
+        name = 'General Rajaxx',
+    },
+    [15340] = {
+        name = 'Moam',
+    },
+    [15370] = {
+        name = 'Buru the Gorger',
+    },
+    [15369] = {
+        name = 'Ayamiss the Hunter',
+    },
+    [15339] = {
+        name = 'Ossirian the Unscarred',
+    },
+    [14507] = {
+        name = 'High Priest Venoxis',
+    },
+    [14517] = {
+        name = 'High Priestess Jeklik',
+    },
+    [14510] = {
+        name = 'High Priestess Mar\'li',
+    },
+    [14509] = {
+        name = 'High Priest Thekal',
+    },
+    [14515] = {
+        name = 'High Priestess Arlokk',
+    },
+    [11382] = {
+        name = 'Bloodlord Mandokir',
+    },
+    [15114] = {
+        name = 'Gahz\'ranka',
+    },
+    [15085] = {
+        name = 'Wushoolay',
+    },
+    [15084] = {
+        name = 'Renataki',
+    },
+    [15082] = {
+        name = 'Gri\'lek',
+    },
+    [15083] = {
+        name = 'Hazza\'rah',
+    },
+    [11380] = {
+        name = 'Jin\'do the Hexxer',
+    },
+    [14834] = {
+        name = 'Hakkar',
+    },
     [12118] = {
         name = 'Lucifron',
     },
@@ -127,6 +190,86 @@ lib.Creatures = {
 
 -- Mapping from encounter id to details
 lib.Encounters = {
+    -- Kurinaxx
+    [718] = {
+        map_id = 509,
+        creature_id = {15348},
+    },
+    -- Rajaxx
+    [719] = {
+        map_id = 509,
+        creature_id = {15341},
+    },
+    -- Moam
+    [720] = {
+        map_id = 509,
+        creature_id = {15340},
+    },
+    -- Buru
+    [721] = {
+        map_id = 509,
+        creature_id = {15370},
+    },
+    -- Ayamiss
+    [722] = {
+        map_id = 509,
+        creature_id = {15369},
+    },
+    -- Ossirian
+    [723] = {
+        map_id = 509,
+        creature_id = {15339},
+    },
+    -- Venoxis
+    [784] = {
+        map_id = 309,
+        creature_id = {14507},
+    },
+    -- Jeklik
+    [785] = {
+        map_id = 309,
+        creature_id = {14517},
+    },
+    -- Marli
+    [786] = {
+        map_id = 309,
+        creature_id = {14510},
+    },
+    -- Thekal
+    [789] = {
+        map_id = 309,
+        creature_id = {14509},
+    },
+    -- Arlokk
+    [791] = {
+        map_id = 309,
+        creature_id = {14515},
+    },
+    -- Mandokir
+    [787] = {
+        map_id = 309,
+        creature_id = {11382},
+    },
+    -- Gahzranka
+    [790] = {
+        map_id = 309,
+        creature_id = {15114},
+    },
+    -- Madness
+    [788] = {
+        map_id = 309,
+        creature_id = {15082, 15083, 15084, 15085},
+    },
+    -- Jindo
+    [792] = {
+        map_id = 309,
+        creature_id = {11380},
+    },
+    -- Hakkar
+    [793] = {
+        map_id = 309,
+        creature_id = {14834},
+    },
     -- Lucifron
     [663] = {
         map_id = 409,
@@ -225,46 +368,46 @@ lib.Encounters = {
     -- Skeram
     [709] = {
         map_id = 531,
-        creature_id = {15263}
+        creature_id = {15263},
     },
     -- Silithid Royalty (Three Bugs)
     [710] = {
         map_id = 531,
-        creature_id = {15544, 15511, 15543}
+        creature_id = {15544, 15511, 15543},
     },
     -- Battleguard Sartura
     [711] = {
         map_id = 531,
-        creature_id = {15516}
+        creature_id = {15516},
     },
     -- Fankriss the Unyielding
     [712] = {
         map_id = 531,
-        creature_id = {15510}
+        creature_id = {15510},
     },
     -- Viscidus
     [713] = {
         map_id = 531,
-        creature_id = {15299}
+        creature_id = {15299},
     },
     -- Princess Huhuran
     [714] = {
         map_id = 531,
-        creature_id = {15509}
+        creature_id = {15509},
     },
     -- Twin Emperors
     [715] = {
         map_id = 531,
-        creature_id = {15275, 15276}
+        creature_id = {15275, 15276},
     },
     -- Ouro
     [716] = {
         map_id = 531,
-        creature_id = {15517}
+        creature_id = {15517},
     },
     -- C'Thun
     [717] = {
         map_id = 531,
-        creature_id = {15727}
+        creature_id = {15727},
     },
 }

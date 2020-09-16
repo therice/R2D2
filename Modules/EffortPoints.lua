@@ -20,7 +20,7 @@ EP.defaults = {
             -- should EP be auto-awarded for kills
             auto_award_victory = true,
             -- should EP be awarded for defeats
-            award_defeat       = false,
+            award_defeat       = true,
             -- should EP be auto-awarded for wipes
             auto_award_defeat  = false,
             -- the percent of kil EP to award on defeat
@@ -29,6 +29,44 @@ EP.defaults = {
             -- These are represented as strings instead of numbers in order to facilitate
             -- easy access by path when reading/writing values
             creatures  = {
+                -- Kurinaxx
+                ['15348'] = 7,
+                -- Rajaxx
+                ['15341'] = 7,
+                -- Moam
+                ['15340'] = 7,
+                -- Buru
+                ['15370'] = 7,
+                -- Ayamiss
+                ['15369'] = 7,
+                -- Ossirian
+                ['15339'] = 10,
+                -- Venoxis
+                ['14507'] = 5,
+                -- Jeklik
+                ['14517'] = 5,
+                -- Marli
+                ['14510'] = 5,
+                -- Thekal
+                ['14509'] = 5,
+                -- Arlokk
+                ['14515'] = 5,
+                -- Mandokir
+                ['11382'] = 7,
+                -- Gahzranka
+                ['15114'] = 5,
+                -- Wushoolay
+                ['15085'] = 5,
+                -- Renataki
+                ['15084'] = 5,
+                -- Grilek
+                ['15082'] = 5,
+                -- Hazzarah
+                ['15083'] = 5,
+                -- Jindo
+                ['11380'] = 7,
+                -- Hakkar
+                ['14834'] = 8,
                 -- Lucifron
                 ['12118'] = 10,
                 -- Magmadar
