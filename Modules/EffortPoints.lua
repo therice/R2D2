@@ -20,7 +20,7 @@ EP.defaults = {
             -- should EP be auto-awarded for kills
             auto_award_victory = true,
             -- should EP be awarded for defeats
-            award_defeat       = true,
+            award_defeat       = false,
             -- should EP be auto-awarded for wipes
             auto_award_defeat  = false,
             -- the percent of kil EP to award on defeat
@@ -55,14 +55,8 @@ EP.defaults = {
                 ['11382'] = 7,
                 -- Gahzranka
                 ['15114'] = 5,
-                -- Wushoolay
-                ['15085'] = 5,
-                -- Renataki
-                ['15084'] = 5,
-                -- Grilek
-                ['15082'] = 5,
-                -- Hazzarah
-                ['15083'] = 5,
+                -- Edge of Madness
+                ['edge_of_madness'] = 5,
                 -- Jindo
                 ['11380'] = 7,
                 -- Hakkar
@@ -178,6 +172,7 @@ EP.options = {
 
 -- Mapping from translation key to actual creatures are part of encounter
 local MultiCreatureEncounters = {
+    ['edge_of_madness'] = Encounter:GetEncounterCreatureId(788),
     ['silithid_royalty'] = Encounter:GetEncounterCreatureId(710),
     ['twin_emperors']    = Encounter:GetEncounterCreatureId(715),
 }

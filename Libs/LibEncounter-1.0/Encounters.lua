@@ -255,7 +255,7 @@ lib.Encounters = {
         map_id = 309,
         creature_id = {15114},
     },
-    -- Madness
+    -- Edge of Madness
     [788] = {
         map_id = 309,
         creature_id = {15082, 15083, 15084, 15085},
