@@ -172,7 +172,7 @@ EP.options = {
 
 -- Mapping from translation key to actual creatures are part of encounter
 local MultiCreatureEncounters = {
-    ['edge_of_madness'] = Encounter:GetEncounterCreatureId(788),
+    ['edge_of_madness']  = Encounter:GetEncounterCreatureId(788),
     ['silithid_royalty'] = Encounter:GetEncounterCreatureId(710),
     ['twin_emperors']    = Encounter:GetEncounterCreatureId(715),
 }
