@@ -29,6 +29,38 @@ EP.defaults = {
             -- These are represented as strings instead of numbers in order to facilitate
             -- easy access by path when reading/writing values
             creatures  = {
+                -- Kurinaxx
+                ['15348'] = 7,
+                -- Rajaxx
+                ['15341'] = 7,
+                -- Moam
+                ['15340'] = 7,
+                -- Buru
+                ['15370'] = 7,
+                -- Ayamiss
+                ['15369'] = 7,
+                -- Ossirian
+                ['15339'] = 10,
+                -- Venoxis
+                ['14507'] = 5,
+                -- Jeklik
+                ['14517'] = 5,
+                -- Marli
+                ['14510'] = 5,
+                -- Thekal
+                ['14509'] = 5,
+                -- Arlokk
+                ['14515'] = 5,
+                -- Mandokir
+                ['11382'] = 7,
+                -- Gahzranka
+                ['15114'] = 5,
+                -- Edge of Madness
+                ['edge_of_madness'] = 5,
+                -- Jindo
+                ['11380'] = 7,
+                -- Hakkar
+                ['14834'] = 8,
                 -- Lucifron
                 ['12118'] = 10,
                 -- Magmadar
@@ -140,6 +172,7 @@ EP.options = {
 
 -- Mapping from translation key to actual creatures are part of encounter
 local MultiCreatureEncounters = {
+    ['edge_of_madness']  = Encounter:GetEncounterCreatureId(788),
     ['silithid_royalty'] = Encounter:GetEncounterCreatureId(710),
     ['twin_emperors']    = Encounter:GetEncounterCreatureId(715),
 }
