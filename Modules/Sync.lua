@@ -5,6 +5,7 @@ local Util = AddOn.Libs.Util
 local UI = AddOn.components.UI
 local L = AddOn.components.Locale
 local Dialog = AddOn.Libs.Dialog
+local Models = AddOn.components.Models
 
 local Responses = {
     Declined    = { id=1, msg=L['sync_response_declined'] },
@@ -105,32 +106,51 @@ local function AddNameToList(l, name, class)
             :decorate(tostring(name))
 end
 
-function Sync:AvailableSyncTargets()
+function Sync:AvailableGuildTargets()
     local name, online, class, targets = nil, nil, nil, {}
-    
-    for i = 1, GetNumGroupMembers() do
-        name, _, _, _, _, class, _, online = GetRaidRosterInfo(i)
-        if online then
-            AddNameToList(targets, AddOn:UnitName(name), class)
-        end
-    end
-    
+
     for i = 1, GetNumGuildMembers() do
         name, _, _, _, _, _, _, _, online,_,class = GetGuildRosterInfo(i)
         if online then
             AddNameToList(targets, AddOn:UnitName(name), class)
         end
     end
-    
+
+    return targets
+end
+
+function Sync:AvailableGroupTargets()
+    local name, online, class, targets = nil, nil, nil, {}
+
+    for i = 1, GetNumGroupMembers() do
+        name, _, _, _, _, class, _, online = GetRaidRosterInfo(i)
+        if online then
+            AddNameToList(targets, AddOn:UnitName(name), class)
+        end
+    end
+
+    return targets
+end
+
+function Sync:AvailableSyncTargets()
+    local targets = {}
+
+    Util.Tables.CopyInto(targets, self:AvailableGuildTargets())
+    Util.Tables.CopyInto(targets, self:AvailableGroupTargets())
+
     if not AddOn:DevModeEnabled() then
         targets[AddOn.playerName] = nil
     end
-    
+
     if Util.Tables.Count(targets) == 0 then
         targets[1] = format("-- %s --", L['no_recipients_avail'])
+    else
+        -- add guild and group targets, which will processed dynamically if selected
+        targets[AddOn.Constants.guild] = UI.ColoredDecorator(AddOn.GetSubjectTypeColor(Models.Award.SubjectType.Guild)):decorate(_G.GUILD)
+        targets[AddOn.Constants.group] = UI.ColoredDecorator(AddOn.GetSubjectTypeColor(Models.Award.SubjectType.Raid)):decorate(_G.GROUP)
     end
     
-    table.sort(targets, function (a,b) return a > b end)
+    -- table.sort(targets, function (a,b) return a > b end)
     Logging:Trace("%s", Util.Objects.ToString(targets))
     
     return targets
@@ -184,9 +204,13 @@ function Sync:GetFrame()
     )
     f.target = target
     function f.target.Update()
-        f.target:SetList(self:AvailableSyncTargets())
+        local availTargets, availTargetsSort = self:AvailableSyncTargets(), {}
+        for i, v in pairs(Util.Tables.Sort(Util.Tables.Keys(availTargets), function(a,b)  return string.lower(a) < string.lower(b) end)) do
+            availTargetsSort[i] = v
+        end
+
+        f.target:SetList(availTargets, availTargetsSort)
     end
-    
     
     local targetLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     targetLabel:SetPoint("BOTTOMLEFT", f.target.frame, "TOPLEFT", 0, 5)
@@ -288,13 +312,40 @@ local SyncSYNInterval = 15
 
 function Sync:SendSyncSYN(target, type, data)
     Logging:Debug("SendSyncSYN() : %s, %s", target, type)
-    
+
     if time() - self.ts < (AddOn:DevModeEnabled() and 0 or SyncSYNInterval) then
         return AddOn:Print(format(L["sync_rate_exceeded"], SyncSYNInterval))
     end
-    
-    AddOn:SendCommand(target, AddOn.Constants.Commands.SyncSYN, AddOn.playerName, type)
-    self:AddStream(target, type, data)
+
+    -- targets could be an individual player or a keyword that indicates a group of players
+    -- handle that here, then iterate through each
+    local targets = {}
+    if Util.Objects.In(target, AddOn.Constants.guild, AddOn.Constants.group) then
+        if Util.Strings.Equal(target, AddOn.Constants.guild) then
+            targets = self:AvailableGuildTargets()
+        elseif Util.Strings.Equal(target, AddOn.Constants.group) then
+            targets = self:AvailableGroupTargets()
+        end
+
+        targets = Util.Tables.Keys(targets)
+    else
+        Util.Tables.Push(targets, target)
+    end
+
+    Logging:Debug("SendSyncSYN() : %s => %s", target, Util.Objects.ToString(targets))
+
+    if Util.Tables.Count(targets) == 0 then
+        AddOn:Print(format(L["sync_target_none_avail"], target))
+        Logging:Debug("SendSyncSYN() : No sync targets available for selection %s", target)
+        return
+    end
+
+    for _, t in pairs(targets) do
+        Logging:Debug("SendSyncSYN() : Sending 'SyncSYN' to %s", t)
+        AddOn:SendCommand(t, AddOn.Constants.Commands.SyncSYN, AddOn.playerName, type)
+        self:AddStream(t, type, data)
+    end
+
     self.ts = time()
 end
 
