@@ -749,11 +749,12 @@ function ML:OnEnable()
     self:RegisterBucketEvent(C.Events.GroupRosterUpdate, 5, "UpdateCandidates")
     self:RegisterBucketMessage(C.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
     self:AutoAwardRepItemsSetup()
+    AddOn:StandbyModule():RosterSetup()
+
 end
 
 function ML:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
-    self.repItemsRR = nil
     self:UnregisterAllEvents()
     self:UnregisterAllBuckets()
     self:UnregisterAllComm()
@@ -764,6 +765,7 @@ function ML:OnDisable()
     --
     -- this means state rest will be triggered when you were once ML and status changed to not being ML
     -- whether that be someone else becoming ML, a loot method change, or leaving the group
+    self.repItemsRR = nil
     self:AutoAwardRepItemsPersist()
 end
 
@@ -1407,6 +1409,7 @@ function ML:AutoAwardRepItemsPersist()
         if not self.repItemsRR or self.repItemsRR:size() <= 1 then
             db.autoAwardRepItemsState = { }
         else
+            --
             local v = self.repItemsRR:toTable()
             db.autoAwardRepItemsState = v
         end

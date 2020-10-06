@@ -16,6 +16,7 @@ Standby.defaults = {
         enabled     = false,
         standby_pct = 0.75,
         verify_after_each_award = false,
+        roster = {},
     }
 }
 
@@ -115,6 +116,8 @@ function Standby:OnInitialize()
     }
     self.db = AddOn.db:RegisterNamespace(self:GetName(), Standby.defaults)
     self.roster = {}
+    self:RosterSetup()
+
     self:RegisterMessage(C.Messages.PlayerNotFound, function(...) Standby:PlayerNotFound(...) end)
     MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.StandbyRightClick, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
@@ -333,6 +336,40 @@ function Standby:IsOperationRequired()
             (IsInGroup() or AddOn:DevModeEnabled())
 end
 
+function Standby:RosterSetup()
+    Logging:Debug("RosterSetup()")
+
+    if self:IsOperationRequired() then
+        local roster = self.db.profile.roster
+        if roster and Util.Tables.Count(roster) > 0 then
+            Logging:Debug("SetupRosterFromDb() : %d entries in persisted roster",
+                    Util.Tables.Count(roster)
+            )
+
+            self.roster = Util.Tables.Map(
+                Util.Tables.Copy(self.db.profile.roster),
+                function(e) return StandbyMember():reconstitute(e) end
+            )
+
+            Logging:Debug("SetupRosterFromDb() : %s", Util.Objects.ToString(self.roster))
+        end
+    end
+end
+
+function Standby:RosterPersist()
+    Logging:Debug("RosterPersist()")
+    if self:IsOperationRequired() then
+        if not self.roster or Util.Tables.Count(self.roster) == 0 then
+            self.db.profile.roster = {}
+        else
+            self.db.profile.roster = Util.Tables.Map(
+                    Util.Tables.Copy(self.roster),
+                    function(e) return e:toTable() end
+            )
+        end
+    end
+end
+
 function Standby:PingPlayers()
     for name, _ in pairs(self.roster) do
         self:PingPlayer(name)
@@ -374,6 +411,7 @@ function Standby:PingAck(from, playerName)
             end
     
             if standbyMember then
+                -- Logging:Debug("%s", Util.Objects.ToString(standbyMember))
                 standbyMember:UpdateStatus(from and from or playerName, not Strings.IsEmpty(from))
                 Logging:Debug("%s / %s : %s", tostring(from), tostring(playerName), Objects.ToString(standbyMember:toTable()))
                 self:RefreshData()
@@ -422,6 +460,8 @@ function Standby:AddPlayer(player)
     -- everyone else gets information via broadcasts
     if self:IsOperationRequired() then
         self.roster[player.name] = player
+        -- Logging:Debug('AddPlayer() : %s', Util.Objects.ToString(player))
+        self:ScheduleTimer("RosterPersist", 3)
         self:RefreshData()
     end
 end
@@ -429,11 +469,17 @@ end
 function Standby:RemovePlayer(player)
     if self:IsOperationRequired() and player then
         self.roster[player.name] = nil
+        self:ScheduleTimer("RosterPersist", 3)
+        self:RefreshData()
     end
 end
 
 function Standby:ResetRoster()
-    if self.db.profile.enabled then self.roster = {} end
+    if self.db.profile.enabled then
+        self.roster = {}
+        self:RefreshData()
+        self:RosterPersist()
+    end
 end
 
 function Standby:PruneRoster()
