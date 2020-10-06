@@ -143,7 +143,6 @@ function AddOn:NewMasterLooterCheck()
     -- We were ML, but no longer, so disable master looter module
     if self:UnitIsUnit(oldMl, "player") and not self.isMasterLooter then
         self:StopHandleLoot()
-        -- self:MasterLooterModule():Disable()
     end
     
     if self:UnitIsUnit(oldMl, self.masterLooter) and Util.Strings.Equal(oldLm, self.lootMethod) then

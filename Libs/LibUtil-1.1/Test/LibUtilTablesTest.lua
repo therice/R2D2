@@ -66,8 +66,8 @@ describe("LibUtil", function()
         it("sorts associatively", function()
             local t = {
                 ['test'] = {a=1,b='Zed'},
-                ['foo'] = {a=2,b='Bar'},
-                ['aba'] = {a=100, b = 'Qre'},
+                ['foo'] = {a=2, b='Bar'},
+                ['aba'] = {a=100, b='Qre'},
             }
             
             local t2 = Util.Tables.ASort(t, function (a,b) return a[2].b < b[2].b end)
