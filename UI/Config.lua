@@ -64,7 +64,7 @@ function Config.BuildOptions()
                         ),
                         verCheck = COpts.Execute(L['version_check'], 5, L["version_check_desc"],
                                                  function() AddOn:CallModule('VersionCheck') end),
-                        sync = COpts.Execute(L["sync"], 6, L["sync_desc"], function() end),
+                        sync = COpts.Execute(L["sync"], 6, L["sync_desc"], function() AddOn:CallModule("Sync") end),
                     }
                 }
             }

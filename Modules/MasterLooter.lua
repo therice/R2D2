@@ -14,6 +14,12 @@ local AutoAwardType = {
     NotEquippable = 2,
     All           = 99,
 }
+
+local AutoAwardRepItemsMode = {
+    Person      = 1,
+    RoundRobin  = 2
+}
+
 -- these are the defaults for DB
 ML.defaults = {
     profile = {
@@ -71,6 +77,11 @@ ML.defaults = {
         autoAwardReason = 3, -- bank
         -- enables the auto-awarding of reputation items
         autoAwardRepItems = false,
+        -- what is the mode use for auto-award of reputation items
+        autoAwardRepItemsMode = AutoAwardRepItemsMode.Person,
+        -- for tracking state of auto-awarding of rep items via RR, as needed
+        -- this allows reloads/relogs to not lose current status
+        autoAwardRepItemsState = {},
         -- to whom any auto-awarded reputation items should be assigned
         autoAwardRepItemsTo = _G.NONE,
         -- the reason associated with auto-awarding of reputation items
@@ -452,13 +463,27 @@ ML.options = {
                     disabled = function () return not ML.db.profile.autoAwardRepItems end,
                     args = {
                         autoAwardRepItems = COpts.Toggle(L["auto_award_rep_items"], 1, L["auto_award_rep_items_desc"], false,  {width='full'}),
+                        autoAwardRepItemsMode = {
+                            order = 2,
+                            name = L["auto_award_rep_items_mode"],
+                            desc = L["auto_award_rep_items_mode_desc"],
+                            type = "select",
+                            style = "dropdown",
+                            width = "full",
+                            values = function()
+                                return {
+                                    [AutoAwardRepItemsMode.Person] = L['person'],
+                                    [AutoAwardRepItemsMode.RoundRobin] = L['round_robin'],
+                                }
+                            end,
+                        },
                         autoAwardRepItemsToNotInGroup = {
                             order = 3,
                             name = L["auto_award_to"],
                             desc = L["auto_award_to_desc"],
                             width = "double",
                             type = "input",
-                            hidden = function()return GetNumGroupMembers() > 0 end,
+                            hidden = function()return GetNumGroupMembers() > 0 or ML.db.profile.autoAwardRepItemsMode == AutoAwardRepItemsMode.RoundRobin end,
                             get = function() return ML.db.profile.autoAwardRepItemsTo end,
                             set = function(_,v) ML.db.profile.autoAwardRepItemsTo = v end
                         },
@@ -477,7 +502,7 @@ ML.options = {
                                 end
                                 return t
                             end,
-                            hidden = function()return GetNumGroupMembers() == 0 end,
+                            hidden = function() return GetNumGroupMembers() == 0 or ML.db.profile.autoAwardRepItemsMode == AutoAwardRepItemsMode.RoundRobin end,
                         },
                         autoAwardRepItemsReason = {
                             order = 3.1,
@@ -581,7 +606,7 @@ do
     end
     
     local awardReasonsFunc = function()
-        Logging:Debug("%s", Util.Objects.ToString(AwardReasons, 3))
+        Logging:Trace("%s", Util.Objects.ToString(AwardReasons, 3))
         return AwardReasons
     end
     
@@ -716,11 +741,16 @@ function ML:OnEnable()
     self.running = false
     -- running counter of how many attempts to start a session when unable
     self.falseStarts = 0
+    -- for tracking auto awarding of rep items via round-robin (as/if needed)
+    self.repItemsRR = nil
     self:RegisterComm(name, "OnCommReceived")
     self:RegisterEvent(C.Events.ChatMessageWhisper, "OnEvent")
     self:RegisterEvent(C.Events.PlayerRegenEnabled, "OnEvent")
     self:RegisterBucketEvent(C.Events.GroupRosterUpdate, 5, "UpdateCandidates")
     self:RegisterBucketMessage(C.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
+    self:AutoAwardRepItemsSetup()
+    AddOn:StandbyModule():RosterSetup()
+
 end
 
 function ML:OnDisable()
@@ -730,6 +760,13 @@ function ML:OnDisable()
     self:UnregisterAllComm()
     self:UnregisterAllMessages()
     self:UnhookAll()
+    -- when the module is disabled, we discard history irrespective of other conditions
+    -- persistence is only meant to be used for reloads/relogging
+    --
+    -- this means state rest will be triggered when you were once ML and status changed to not being ML
+    -- whether that be someone else becoming ML, a loot method change, or leaving the group
+    self.repItemsRR = nil
+    self:AutoAwardRepItemsPersist()
 end
 
 -- when the db was changed, need to check if we must broadcast the new MasterLooter Db
@@ -737,17 +774,39 @@ end
 -- where the deserialized message will be a tuple of 'module of origin' (e.g MasterLooter), 'db key name' (e.g. outOfRaid)
 function ML:ConfigTableChanged(msg)
     Logging:Debug("ConfigTableChanged() : %s", Util.Objects.ToString(msg))
-    if not AddOn.mlDb then return ML:UpdateDb() end
+    local updateDb = not AddOn.mlDb
+    -- if not AddOn.mlDb then return ML:UpdateDb() end
+
     for serializedMsg, _ in pairs(msg) do
         local success, module, val = AddOn:Deserialize(serializedMsg)
-        --Logging:Debug("ConfigTableChanged(%s) : %s",  Util.Objects.ToString(module), Util.Objects.ToString(val))
+        Logging:Debug("ConfigTableChanged(%s) : %s",  Util.Objects.ToString(module), Util.Objects.ToString(val))
         if success and self:GetName() == module then
-            for key in pairs(AddOn.mlDb) do
-                if key == val then return ML:UpdateDb() end
+
+            -- Settings for which specific actions are required besides updating ML Db
+            if Util.Objects.In(val, 'autoAwardRepItems', 'autoAwardRepItemsMode') then
+                -- schedule this to occur in a few seconds, don't block processing of rest of
+                -- events here as it doesn't need to be handled ASAP
+                self:ScheduleTimer("AutoAwardRepItemsSetup", 2)
+            end
+
+            -- only need to check the ML Db if not already scheduled for update
+            if not updateDb then
+                for key in pairs(AddOn.mlDb) do
+                    if key == val then
+                        updateDb = true
+                        break
+                    end
+                end
             end
         end
     end
+
+    if updateDb then
+        Logging:Debug("ConfigTableChanged() : Updating ML Db")
+        ML:UpdateDb()
+    end
 end
+
 
 -- @return the 'db' value at specified path
 -- intentionally not named 'Get'DbValue to avoid conflict with default module prototype as specified
@@ -864,12 +923,14 @@ function ML:AddCandidate(name, class, rank, enchant, lvl, ilvl)
     )
     Util.Tables.Insert(self.candidates, name, Models.Candidate:new(name, class, rank, enchant, lvl, ilvl))
     Logging:Debug("AddCandidate() : count=%d", Util.Tables.Count(self.candidates))
+    self:AutoAwardRepItemsScheduleSync()
 end
 
 function ML:RemoveCandidate(name)
     Logging:Debug("RemoveCandidate(%s)", tostring(name))
     Util.Tables.Remove(self.candidates, name)
     Logging:Debug("RemoveCandidate() : count=%d", Util.Tables.Count(self.candidates))
+    self:AutoAwardRepItemsScheduleSync()
 end
 
 function ML:GetCandidate(name)
@@ -1295,6 +1356,102 @@ local function RegisterAndAnnounceBagged(session)
     return false
 end
 
+--
+-- Start Round Robin awarding of reputation items
+--
+-- much of this could be removed if we did not want to support persistence of current award
+-- states across events like reloading ui or relogging
+
+function ML:AutoAwardRepItemsIsRR()
+    local db = self.db.profile
+    return (db.autoAwardRepItems and db.autoAwardRepItemsMode == AutoAwardRepItemsMode.RoundRobin)
+end
+
+function ML:AutoAwardRepItemsSetup()
+    local db = self.db.profile
+
+    Logging:Debug("AutoAwardRepItemsSetup() : %s / %d",
+            tostring(db.autoAwardRepItems),
+            db.autoAwardRepItemsMode
+    )
+
+    -- if auto award of rep items is enabled and mode is RR, set up necessary tracking
+    if self:AutoAwardRepItemsIsRR() then
+        if not self.repItemsRR then
+            local state = db.autoAwardRepItemsState
+            Logging:Debug("AutoAwardRepItemsSetup() : %d entries in persisted state",
+                    Util.Tables.Count(state)
+            )
+
+            if state and Util.Tables.Count(state) > 0 then
+                -- populate from persisted state, sync to current candidate list will be handled later
+                self.repItemsRR = Util.Objects.WeightedRoundRobin():reconstitute(state)
+            else
+                -- create a new instance to track state, will populate later
+                self.repItemsRR = Util.Objects.WeightedRoundRobin()
+            end
+        end
+    end
+end
+
+function ML:AutoAwardRepItemsPersist()
+    local db = self.db.profile
+
+    Logging:Debug("AutoAwardRepItemsPersist() : %s / %d",
+            tostring(db.autoAwardRepItems),
+            db.autoAwardRepItemsMode
+    )
+
+    if self:AutoAwardRepItemsIsRR() then
+        -- <= 1 to account for testing outside of a group (by yourself)
+        -- probably not best way of tracking, but works for now as
+        -- this data is only persisted/used when actually ML
+        if not self.repItemsRR or self.repItemsRR:size() <= 1 then
+            db.autoAwardRepItemsState = { }
+        else
+            --
+            local v = self.repItemsRR:toTable()
+            db.autoAwardRepItemsState = v
+        end
+    end
+end
+
+function ML:AutoAwardRepItemsScheduleSync()
+    if self:AutoAwardRepItemsIsRR() then
+        Logging:Debug("AutoAwardRepItemsScheduleSync()")
+        -- if not schedule already present, schedule one in 3 seconds
+        if not self.timers.aa_ri_sync then
+            self.timers.aa_ri_sync = self:ScheduleTimer("AutoAwardRepItemsSync", 3)
+        end
+    end
+end
+
+function ML:AutoAwardRepItemsSync()
+    local db = self.db.profile
+
+    Logging:Debug("AutoAwardRepItemsSync() : %s / %d, %d",
+            tostring(db.autoAwardRepItems),
+            db.autoAwardRepItemsMode,
+            #self.candidates
+    )
+
+    -- if auto award of rep items is enabled and mode is RR, set up necessary tracking
+    if self:AutoAwardRepItemsIsRR() then
+        local added, removed = self.repItemsRR:ensure(Util.Tables.Keys(self.candidates))
+        Logging:Debug("AutoAwardRepItemsSync() : added=%d, removed=%d, size=%d", added, removed, self.repItemsRR:size())
+        if (added > 0 or removed > 0) then
+            self:AutoAwardRepItemsPersist()
+        end
+
+        -- if we had a scheduled execution, cancel it and drop ref
+        if self.timers.aa_ri_sync then
+            self:CancelTimer(self.timers.aa_ri_sync)
+            self.timers.aa_ri_sync = nil
+        end
+    end
+end
+-- End Round Robin awarding of reputation items --
+
 -- Modes for distinguising between types of auto awards
 local AutoAwardMode = {
     Normal          =   "normal",
@@ -1345,11 +1502,27 @@ function ML:ShouldAutoAward(item, quality)
     if db.autoAwardRepItems then
         local itemId = ItemUtil:ItemLinkToId(item)
         if itemId and ItemUtil:IsReputationItem(itemId) then
-            if IsEligibleUnit(db.autoAwardRepItemsTo) then
-                return true, AutoAwardMode.ReputationItem, db.autoAwardRepItemsTo
+            local awardTo = db.autoAwardRepItemsTo
+
+            -- only in the case of round-robin do we need to determine the person for award
+            if db.autoAwardRepItemsMode == AutoAwardRepItemsMode.RoundRobin then
+                if not self.repItemsRR then
+                    Logging:Warn("ShouldAutoAward() : Round-robin awarding enabled, but no tracked state. Attempting to use 'autoAwardRepItemsTo'")
+                else
+                    -- we return the next person to which award should be made
+                    -- state mutation and persistence will only occur after award
+                    --
+                    -- there is a window of opportunity here that returned person may have
+                    -- left the raid, but it's very small so not accounting for ATM
+                    awardTo = self.repItemsRR:peek().id
+                end
+            end
+
+            if IsEligibleUnit(awardTo) then
+                return true, AutoAwardMode.ReputationItem, awardTo
             else
                 AddOn:Print(L["cannot_auto_award"])
-                AddOn:Print(format(L["could_not_find_player_in_group"], db.autoAwardRepItemsTo))
+                AddOn:Print(format(L["could_not_find_player_in_group"], awardTo))
                 return false
             end
         end
@@ -1383,11 +1556,32 @@ function ML:AutoAward(lootIndex, item, quality, winner, mode)
             return false
         end
     end
+
+    local function PostAutoAward(success)
+        -- in face of boolean not being specified, just exit
+        if not Util.Objects.IsBoolean(success) then return end
+
+        if Util.Strings.Equal(mode, AutoAwardMode.ReputationItem) and self:AutoAwardRepItemsIsRR() then
+            if success then
+                -- updates the award count and sends them back of line for next award
+                Logging:Debug("AutoAward() : Success, updating number of awards and moving %s to back of the line", winner)
+                self.repItemsRR:next()
+            else
+                -- not a success, maybe the candidate isn't online or has full bags
+                -- skip over them for now, considering next candidate
+                Logging:Warn("AutoAward() : Failure, skipping %s", winner)
+                self.repItemsRR:skip()
+            end
+
+            self:AutoAwardRepItemsPersist()
+        end
+    end
     
     local canGiveLoot, cause = self:CanGiveLoot(lootIndex, item, winner)
     if not canGiveLoot then
         AddOn:Print(L["cannot_auto_award"])
         self:PrintLootError(cause, lootIndex, item, winner)
+        PostAutoAward(false)
         return false
     else
         
@@ -1401,8 +1595,7 @@ function ML:AutoAward(lootIndex, item, quality, winner, mode)
             AddOn:Print(format(L["auto_award_invalid_mode"], mode))
             return false
         end
-        
-        
+
         local awardReason = AddOn:LootAllocateModule().db.profile.awardReasons[awardReasonIdx]
         
         self:GiveLoot(
@@ -1411,11 +1604,13 @@ function ML:AutoAward(lootIndex, item, quality, winner, mode)
             function(awarded, cause)
                 if awarded then
                     self:AnnounceAward(winner, item, awardReason.text)
+                    PostAutoAward(true)
                     -- todo : track history
                     return true
                 else
                     AddOn:Print(L["cannot_auto_award"])
                     self:PrintLootError(cause, lootIndex, item, winner)
+                    PostAutoAward(false)
                     return false
                 end
             end

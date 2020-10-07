@@ -1,20 +1,24 @@
 local pl = require('pl.path')
 local this = pl.abspath(pl.abspath('.') .. '/' .. debug.getinfo(1).source:match("@(.*)$"))
-local ml, Util, Candidate
+local ml, sb, Util, Candidate
 
 describe("MasterLooter", function()
     setup(function()
         loadfile(pl.abspath(pl.dirname(this) .. '/../../Test/TestSetup.lua'))(this, {})
         R2D2:OnInitialize()
         R2D2:OnEnable()
+        sb = R2D2:StandbyModule()
+        sb:OnInitialize()
         ml = R2D2:MasterLooterModule()
         ml:OnInitialize()
+
         Util = R2D2.Libs.Util
         Candidate = R2D2.components.Models.Candidate
     end)
     
     teardown(function()
         ml:Disable()
+        sb:Disable()
         After()
     end)
     

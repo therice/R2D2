@@ -6,7 +6,7 @@ if not lib or next(lib.Objects) or (minor or 0) > MINOR_VERSION then return end
 
 local Util = lib
 local Self = Util.Objects
-
+local Class = LibStub("LibClass-1.0")
 -------------------------------------------------------
 --                      General                      --
 -------------------------------------------------------
@@ -284,4 +284,114 @@ function Self.Dump(...)
     for i=1,select("#", ...) do
         print(Util.Str.ToString((select(i, ...))))
     end
+end
+
+local WeightedRoundRobinEntry = Class('WeightedRoundRobinEntry')
+local WeightedRoundRobin = Class('WeightedRoundRobin')
+
+Self.WeightedRoundRobinEntry = WeightedRoundRobinEntry
+Self.WeightedRoundRobin = WeightedRoundRobin
+
+function WeightedRoundRobinEntry:initialize(id, weight)
+    self.id = id
+    self.weight = weight or 0
+end
+
+function WeightedRoundRobinEntry:incr(value)
+    self.weight = self.weight + (value or 1)
+end
+
+function WeightedRoundRobinEntry:decr(value)
+    self.weight = self.weight - (value or 1)
+end
+
+function WeightedRoundRobin:initialize(...)
+    self.entries = {}
+    for _, id in Self.Each(...) do
+        Util.Tables.Push(self.entries, WeightedRoundRobinEntry(id))
+    end
+end
+
+function WeightedRoundRobin:size()
+    return #self.entries
+end
+
+function WeightedRoundRobin:afterReconstitute(instance)
+    instance.entries = Util.Tables.Map(
+            instance.entries,
+            function(e) return WeightedRoundRobinEntry():reconstitute(e) end
+    )
+    return instance
+end
+
+function WeightedRoundRobin:peek()
+    return self.entries[1]
+end
+
+function WeightedRoundRobin:next()
+    local n = self:peek()
+    if n then
+        n:incr()
+        Util.Tables.Rotate(self.entries, 1)
+    end
+    return n
+end
+
+function WeightedRoundRobin:skip()
+    if #self.entries >= 2 then
+        self.entries[1], self.entries[2] = self.entries[2], self.entries[1]
+    end
+end
+
+function WeightedRoundRobin:add(id)
+    local index, _ = Util.Tables.FindFn(self.entries,
+            function(v, i)
+                local n = self.entries[i + 1]
+
+                if n then
+                    return n.weight > v.weight
+                end
+
+                return false
+            end, true, false
+    )
+    Util.Tables.Insert(self.entries, (index and index  or #self.entries) + 1, WeightedRoundRobinEntry(id))
+end
+
+function WeightedRoundRobin:remove(id)
+    local index, _ = self:find(id)
+    if index then
+        Util.Tables.Remove(self.entries, index)
+    end
+end
+
+-- @return # added, # removed
+function WeightedRoundRobin:ensure(...)
+    -- add any entries which are missing
+    local added = 0
+    for _, id in Self.Each(...) do
+        if not self:find(id) then
+            self:add(id)
+            added = added +1
+        end
+    end
+
+    local before = #self.entries
+    -- remove any entries which shouldn't be present
+    self.entries = Util.Tables.CopyFilter(
+            self.entries,
+            function(v, ...)
+                return Self.In(v.id, ...)
+            end, false, false, nil, ...
+    )
+
+    return added, (before - #self.entries)
+end
+
+function WeightedRoundRobin:find(id)
+    return Util.Tables.FindFn(self.entries,
+            function(v)
+                return v.id == id
+            end
+    )
 end

@@ -7,7 +7,6 @@ if not lib or next(lib.Tables) or (minor or 0) > MINOR_VERSION then return end
 local Util = lib
 local Self = Util.Tables
 
-
 -------------------------------------------------------
 --                       Table                       --
 -------------------------------------------------------
@@ -87,6 +86,13 @@ end
 function Self.Random(t)
     local key = Self.RandomKey(t)
     return key and t[key]
+end
+
+function Self.Shuffle(t)
+    for i = #t, 2, -1 do
+        local j = math.random(i)
+        t[i], t[j] = t[j], t[i]
+    end
 end
 
 -- Get table keys

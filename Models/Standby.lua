@@ -14,6 +14,9 @@ local StandbyMember = Class('StandbyMember')
 local StandbyStatus = Class('StandbyStatus')
 
 AddOn.components.Models.StandbyMember = StandbyMember
+if _G.R2D2_Testing then
+    AddOn.components.Models.StandbyStatus = StandbyStatus
+end
 
 local fullDf = DateFormat("mm/dd/yyyy HH:MM:SS")
 local TsDecorator = UI.ColoredDecorator(0.25, 0.78, 0.92)
@@ -40,16 +43,30 @@ local function processContacts(contacts, timestamp)
 end
 
 function StandbyMember:initialize(name, class, contacts, joined)
+    -- If the name is nil, create an empty instance - likely being invoked via reconstitute()
+    -- probably not the best approach, but for now it will do
+    if Util.Objects.IsNil(name) then return end
+
     if not Date.isInstanceOf(joined, Date) then
         joined = joined and Date(joined) or Date('utc')
     end
-    
+
     self.name = name
     self.class = class
     self.joined = joined.time
     self.status = StandbyStatus(self.joined, true)
-    self.contacts = processContacts(contacts, self.joined)
+    self.contacts = processContacts(contacts or {}, self.joined)
 end
+
+function StandbyMember:afterReconstitute(instance)
+    instance.status = StandbyStatus(instance.status.timestamp, instance.status.online)
+    instance.contacts = Util.Tables.Map(
+            instance.contacts,
+            function(e) return StandbyStatus():reconstitute(e) end
+    )
+    return instance
+end
+
 
 -- @return the timestamp at which player joined the standby roster, formatted in local TZ in format of mm/dd/yyyy HH:MM:SS
 function StandbyMember:JoinedTimestamp()

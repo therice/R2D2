@@ -31,12 +31,27 @@ describe("Standby Model", function()
             assert(m.status.timestamp == m.joined)
             assert(m.status.online == true)
             assert(Util.Tables.Count(m.contacts) == 2)
-            
+
             for name, status in pairs(m.contacts) do
                 assert(Util.Objects.In(name, "Anothertest", "Debugme"))
                 assert(status.timestamp == m.joined)
                 assert(status.online == false)
             end
+        end)
+        it("supports (de)serialization", function()
+            local m1 = Models.StandbyMember("Imatest", "WARLOCK", {"Anothertest", "Debugme"})
+            m1.status = Models.StandbyStatus(1602021820, false)
+            m1:UpdateStatus('Anothertest', true)
+
+            local m2 = Models.StandbyMember():reconstitute(m1:toTable())
+            for name, status in pairs(m2.contacts) do
+                assert(Util.Objects.In(name, "Anothertest", "Debugme"))
+                assert.Is.Not.Nil(status:GetText())
+                assert(Util.Tables.Equals(m1.contacts[name]:toTable(), status:toTable(), true))
+            end
+
+            local e1, e2 = m1:toTable(), m2:toTable()
+            assert(Util.Tables.Equals(e1, e2, true))
         end)
     end)
 end)

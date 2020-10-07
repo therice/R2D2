@@ -140,7 +140,7 @@ local DefaultMixin = {
 
     -- creates a copy of the current instance, but only the actual attributes
     -- class metadata is stripped
-    -- useful for serialzing the information over the wire
+    -- useful for serializing the information over the wire
     toTable = function(self)
         return _strip_class_metadata(self)
     end,
