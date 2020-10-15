@@ -5,10 +5,8 @@ local Objects   = Util.Objects
 local L         = AddOn.components.Locale
 local Models    = AddOn.components.Models
 local ItemUtil  = AddOn.Libs.ItemUtil
-local LibCompress = AddOn.Libs.Compress
 local Compression = AddOn.Libs.Util.Compression
 
--- local AddOnEncodeTable = LibCompress:GetAddonEncodeTable()
 
 function AddOn:GetAnnounceChannel(channel)
     local C = AddOn.Constants
@@ -74,40 +72,14 @@ end
 -- eventually, we can eliminate chaining and go back to our method of choice
 -- however this needs phased out in multiple releases
 local Compressors = Compression.GetCompressors(
-        -- Compression.CompressorType.LibCompress,
         Compression.CompressorType.LibDeflate,
         Compression.CompressorType.LibCompressNoOp
 )
 
-
--- todo : replace the compression with LibDeflate, once receiving logic has been released
 function AddOn:PrepareForSend(command, ...)
     local serialized = self:Serialize(command, self.ScrubData(...))
-    
-    --[[
-    local encodedTable = Util.Tables.Temp()
-    for _, alg in Util.Objects.Each({'CompressLZW', 'CompressHuffman', 'Store'}) do
-        Util.Tables.Push(encodedTable, AddOnEncodeTable:Encode(LibCompress[alg](LibCompress, serialized)))
-    end
-    
-    local minIndex, minLen = -1, math.huge
-    for i = #encodedTable, 1, -1 do
-        local test = LibCompress:Decompress(AddOnEncodeTable:Decode(encodedTable[i]))
-        Logging:Trace("PrepareForSend(%d) : length '%d' valid '%s'", i, #encodedTable[i], tostring(test == serialized ))
-        if test and test == serialized and #encodedTable[i] < minLen then
-            minLen = #encodedTable[i]
-            minIndex = i
-        end
-    end
-    
-    Logging:Debug("PrepareForSend() : Best compression at index '%d' with length '%d'", minIndex, minLen)
-    local data = encodedTable[minIndex]
-    Util.Tables.ReleaseTemp(encodedTable)
-    --]]
-    
     local data = Compressors[1]:compress(serialized, true)
     Logging:Debug("PrepareForSend() : Compressed length '%d' to '%d'", #serialized, #data)
-    
     return data
 end
 
@@ -129,35 +101,11 @@ function AddOn:ProcessReceived(msg)
         Logging:Trace("ProcessReceived() : Decompression FAILED using %s", compressor:GetName())
     end
     
-    -- keeping around for now as reference in case we encounter issues with moving towards
-    -- different type of compression and quickly need to revert
-    --[[
-    local decoded = AddOnEncodeTable:Decode(msg)
-    if not decoded then
-        Logging:Error("ProcessReceived() : Message could not be decoded")
-        return false
-    end
-    
-    local decompressed, err = LibCompress:Decompress(decoded)
-    if not decompressed then
-        Logging:Debug("ProcessReceived() : Message could not be decompressed - will retry with no compression. '%s'", err)
-        
-        -- try again with "no compression" tacked on to beginning
-        decompressed, err = LibCompress:Decompress(LibCompress:Store(decoded))
-        if not decompressed then
-            Logging:Warn("ProcessReceived() : Message could not be decompressed (with explicit no compression). '%s'",
-                         err)
-            return false
-        end
-    end
-    --]]
-    
     if not decompressed then
         Logging:Warn("ProcessReceived() : Message could not be decompressed")
         return false
     end
-    
-    
+
     local success, command, data = self:Deserialize(decompressed)
     if not success then
         Logging:Error("ProcessReceived() : Message could not deserialized, '%s' - %s", tostring(command), Util.Objects.ToString(decompressed))

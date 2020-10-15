@@ -453,11 +453,11 @@ function Points:GetAdjustFrame()
         UI('Dropdown')
             .SetPoint("CENTER", f.name, "BOTTOM", 0, -35)
             .SetParent(f)()
-    local values = {}
+    local resources = {}
     for k, v in pairs(Award.TypeIdToResource) do
-        values[k] = v:upper()
+        resources[k] = v:upper()
     end
-    resourceType:SetList(values)
+    resourceType:SetList(resources)
     f.resourceType = resourceType
     
     local atLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -469,11 +469,11 @@ function Points:GetAdjustFrame()
         UI('Dropdown')
             .SetPoint("TOPLEFT", f.resourceType.frame, "BOTTOMLEFT", 0, -20)
             .SetParent(f)()
-    values = {}
+    local actions = {}
     for k, v in pairs(Award.TypeIdToAction) do
-        values[k] = v
+        actions[k] = v
     end
-    actionType:SetList(values)
+    actionType:SetList(actions)
     f.actionType = actionType
     
     local qtyLabel = f.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")

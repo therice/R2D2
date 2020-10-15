@@ -116,34 +116,36 @@ describe("LibUtil", function()
     
             local delta1 = Util.Tables.CopyUnselect(source, unpack(Util.Tables.Keys(target)))
             local delta2 = Util.Tables.CopyUnselect(target, unpack(Util.Tables.Keys(source)))
-                    
-            --local delta =
-            --    Util(source)
-            --        :CopyFilter(
-            --            function(v, k)
-            --                print(Util.Objects.ToString(k) .. ' = ' .. Util.Objects.ToString(v))
-            --                if Util.Tables.ContainsKey(target, k) then
-            --                    local v2 = target[k]
-            --                    if type(v) == type(v2) then
-            --                        return Util.Objects.Equals(v, v2)
-            --                    end
-            --                end
-            --                print('default')
-            --                return true
-            --            end,
-            --            true,
-            --            false,
-            --            true
-            --    )()
-            
-            print(Util.Objects.ToString(delta1))
-            print(Util.Tables.Count(delta1))
-            print(Util.Objects.ToString(delta2))
-            print(Util.Tables.Count(delta2))
-    
+
+            assert(Util.Tables.Count(delta1) == 2)
+            assert.Is.Not.Nil(delta1['c'])
+            assert.Is.Not.Nil(delta1['x'])
+
+            assert(Util.Tables.Count(delta2) == 1)
+            assert.Is.Not.Nil(delta2['d'])
+
             local deltac = Util.Tables.CopyUnselect({a=1, b=1, c=1}, 'a', 'b', 'c')
-            print(Util.Objects.ToString(deltac))
-            print(Util.Tables.Count(deltac))
+            assert(Util.Tables.Count(deltac) == 0)
+        end)
+        it("sorts table via user specified function", function()
+            local t = {
+                [1] = {'Zed', 'Aba', 'Noas'},
+                [2] = {'aB', 'Zx', 'Ab'},
+            }
+
+            for k, v in pairs(t) do
+                local sorted =
+                    Util.Tables.Sort(
+                        Util.Tables.Copy(v),
+                        function (a, b) return a < b end
+                    )
+
+                if k == 1 then
+                    assert(Util.Tables.Equals(sorted, {'Aba', 'Noas', 'Zed'}, true))
+                elseif k == 2 then
+                    assert(Util.Tables.Equals(sorted, {'Ab', 'Zx', 'aB'}, true))
+                end
+            end
         end)
     end)
 end)

@@ -110,7 +110,6 @@ end
 
 local function _strip_class_metadata(t)
     if type(t) ~= 'table' then return t end
-    
     local res = {}
     for k, v in pairs(t) do
         if k ~= "clazz" then

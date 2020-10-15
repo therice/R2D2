@@ -60,11 +60,12 @@ function AddOn.UpdateMoreInfo(module, f, row, data, classSupplier, gpSupplier)
         name = data[row].name
     else
         local selection = f.st:GetSelection()
-        name = selection and f.st:GetRow(selection).name or nil
+        local r = f.st:GetRow(selection)
+        if selection and r then name = r.name else name = nil end
     end
     
     -- if there is a GP display value, update it to reflect candidates response
-    if f.gp and gpSupplier and Util.Objects.IsFunction(gpSupplier) then
+    if name and f.gp and gpSupplier and Util.Objects.IsFunction(gpSupplier) then
         local gpText = gpSupplier(name)
         f.gp:SetText("GP: " .. (gpText and gpText or "UNKNOWN"))
     end
