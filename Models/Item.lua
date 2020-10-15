@@ -301,9 +301,25 @@ function LootEntry:initialize(itemEntry, timeout)
                 self.rolled = false
                 self.note = nil
                 self.sessions = itemEntry.session and { itemEntry.session } or {}
+                -- map from response to players who responded
+                -- this is exclusively for item rolling (Loot interface)
+                -- and used to display who responded for each response
+                self.responders = {}
                 self.timeLeft = timeout and timeout or false
             end
     )
+end
+
+function LootEntry:TrackResponse(name, response)
+    local responses = self.responders[response]
+    if not responses then
+        responses = {}
+        self.responders[response] = responses
+    end
+
+    if not Util.Tables.ContainsValue(responses, name) then
+        Util.Tables.Push(responses, name)
+    end
 end
 
 -- return an instance with only rolled attribute, set to true

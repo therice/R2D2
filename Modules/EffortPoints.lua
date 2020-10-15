@@ -275,18 +275,18 @@ function EP:OnEnable()
 end
 
 function EP:ScaleIfRequired(value, mapId)
-    Logging:Debug("EP:ScaleIfRequired() : value = %s, mapId = %s", tostring(value), tostring(mapId))
+    Logging:Trace("EP:ScaleIfRequired() : value = %s, mapId = %s", tostring(value), tostring(mapId))
     if Util.Objects.IsNil(mapId) then
         -- only applicable if in instance and part of a raid
         -- todo : maybe this should also include groups?
         if IsInInstance() and IsInRaid() then
             _, _, _, _, _, _, _, mapId = GetInstanceInfo()
-            Logging:Debug("EP:ScaleIfRequired() : mapId = %s via GetInstanceInfo()", tostring(mapId))
+            Logging:Trace("EP:ScaleIfRequired() : mapId = %s via GetInstanceInfo()", tostring(mapId))
         end
     
         -- check again, if not found then return value
         if Util.Objects.IsNil(mapId) then
-            Logging:Debug("EP:ScaleIfRequired() : Unable to determine map id, returning original value")
+            Logging:Trace("EP:ScaleIfRequired() : Unable to determine map id, returning original value")
             return value
         end
     end

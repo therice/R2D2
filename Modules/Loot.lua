@@ -1,5 +1,5 @@
-local _, AddOn = ...
-local Loot      = AddOn:NewModule("Loot", "AceEvent-3.0", "AceTimer-3.0")
+local name, AddOn = ...
+local Loot      = AddOn:NewModule("Loot","AceComm-3.0", "AceEvent-3.0", "AceTimer-3.0")
 local Logging   = AddOn.Libs.Logging
 local Util      = AddOn.Libs.Util
 local UI        = AddOn.components.UI
@@ -7,7 +7,7 @@ local L         = AddOn.components.Locale
 local Models    = AddOn.components.Models
 
 local ENTRY_HEIGHT = 80
-local MAX_ENTRIES = 5
+local MAX_ENTRIES = 6
 local MIN_BUTTON_WIDTH = 40
 
 local awaitingRolls = {}
@@ -27,6 +27,12 @@ function Loot:OnEnable()
     self.items = {}
     self.frame = self:GetFrame()
     self:RegisterEvent("CHAT_MSG_SYSTEM")
+
+    -- only register comm hook if support is enabled by ML
+    local showLootResponses = AddOn:GetMasterLooterDbValue('showLootResponses')
+    if Util.Objects.IsBoolean(showLootResponses) and showLootResponses then
+        self:RegisterComm(name, "OnCommReceived")
+    end
 end
 
 function Loot:OnDisable()
@@ -34,11 +40,63 @@ function Loot:OnDisable()
     self.frame:Hide()
     self.items = {}
     self:CancelAllTimers()
+    self:UnregisterAllComm()
 end
 
 function Loot:EnableOnStartup()
     return false
 end
+
+function Loot:OnCommReceived(prefix, serializedMsg, dist, sender)
+    Logging:Trace("OnCommReceived() : prefix=%s, via=%s, sender=%s", prefix, dist, sender)
+    Logging:Trace("OnCommReceived() : %s", serializedMsg)
+
+    local C = AddOn.Constants
+    if prefix == C.name and not AddOn:UnitIsUnit(sender, "player") then
+        local success, command, data = AddOn:ProcessReceived(serializedMsg)
+        Logging:Debug("OnCommReceived() : success=%s, command=%s, from=%s, dist=%s, data=%s,",
+                tostring(success), command, tostring(sender), tostring(dist),
+                Logging:IsEnabledFor(Logging.Level.Trace) and Util.Objects.ToString(data, 1) or '[omitted]'
+        )
+
+        if success then
+            -- this won't include automatic pass responses, those come via LootAck
+            -- however, we aren't concerned with those here unless we map to the
+            -- Pass button (which currently is not done)
+            if command == C.Commands.Response then
+                local session, name, t = unpack(data)
+                -- e.g. t = {response = 1}
+                Logging:Debug(
+                        "OnCommReceived() : %s response for session %d => %s",
+                        name, session, Util.Objects.ToString(t)
+                )
+                if Util.Tables.ContainsKey(t, 'response') then
+                    -- find the item associated with this session
+                    local _, item = Util.Tables.FindFn(
+                            self.items,
+                            -- in case of duplicate entries, should we check for rolled?
+                            function(e) return Util.Objects.In(session, e.sessions)end
+                    )
+                    -- This will be of type LootEntry
+                    if item then
+                        Logging:Debug("OnCommReceived() : %s(%s) / session %d => %s",
+                                name,
+                                tostring(AddOn:GetUnitClass(name)),
+                                session,
+                                Util.Objects.ToString(item)
+                        )
+                        item:TrackResponse(name, t.response)
+                        Logging:Debug("OnCommReceived() : %s responses => %s",
+                                tostring(item.link),
+                                Util.Objects.ToString(item.responders)
+                        )
+                    end
+                end
+            end
+        end
+    end
+end
+
 
 -- @param item a Model.ItemEntry
 function Loot:AddItem(offset, k, item)
@@ -65,7 +123,6 @@ function Loot:AddItem(offset, k, item)
         )
     --]]
     -- Logging:Trace("AddItem(%s, %s, %s)", offset, k, Util.Objects.ToString(item))
-    
     self.items[offset + k] = item:ToLootEntry(AddOn:GetMasterLooterDbValue('timeout'))
 end
 
@@ -206,6 +263,25 @@ function Loot.UpdateItemText(entry, award_scale)
             " " .. AddOn:GearPointsModule():GetGpTextColored(item, award_scale) ..
             " |cff7fffff".. item:GetTypeText() .. "|r"
     )
+end
+
+function Loot.UpdateItemResponders(entry, response)
+    if entry and entry.item and response then
+        local responders = entry.item.responders and entry.item.responders[response] or nil
+        if responders and Util.Tables.Count(responders) > 0 then
+            local text = {}
+            for _, responder in
+                pairs(
+                    Util.Tables.Sort(
+                            Util.Tables.Copy(responders),
+                            function (a, b) return a < b end
+                    )
+                ) do
+                Util.Tables.Push(text, AddOn:GetUnitClassColoredName(responder))
+            end
+            UI:CreateTooltip(unpack(text))
+        end
+    end
 end
 
 function Loot:OnRoll(entry, button)
@@ -386,13 +462,23 @@ do
                     if i > numButtons then
                         b[i] = b[i] or UI:CreateButton(_G.PASS, entry.frame)
                         b[i]:SetText(_G.PASS)
-                        b[i]:SetScript("OnClick", function() Loot:OnRoll(entry, "PASS") end)
+                        b[i]:SetMultipleScripts({
+                            OnEnter = function() Loot.UpdateItemResponders(entry, "PASS") end,
+                            OnLeave = function() UI:HideTooltip() end,
+                            OnClick = function() Loot:OnRoll(entry, "PASS") end,
+                        })
                     else
                         b[i] = b[i] or UI:CreateButton(buttons[i].text, entry.frame)
                         b[i]:SetText(buttons[i].text)
                         b[i]:SetMultipleScripts({
-                            OnEnter = function() Loot.UpdateItemText(entry, buttons[i].award_scale) end,
-                            OnLeave = function() Loot.UpdateItemText(entry) end,
+                            OnEnter = function()
+                                Loot.UpdateItemResponders(entry, i)
+                                Loot.UpdateItemText(entry, buttons[i].award_scale)
+                            end,
+                            OnLeave = function()
+                                UI:HideTooltip()
+                                Loot.UpdateItemText(entry)
+                            end,
                             OnClick = function() Loot:OnRoll(entry, i) end,
                         })
                     end

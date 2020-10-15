@@ -63,6 +63,7 @@ AddOn.Constants = {
     DropDowns = {
         AllocateRightClick       = name .. "_Allocate_RightClick",
         AllocateFilter           = name .. "_Allocate_Filter",
+        Enchanters               = name .. "_EnchantersMenu",
         LootHistoryRightClick    = name .. "_LH_RightClick",
         LootHistoryFilter        = name .. "_LH_Filter",
         PointsRightClick         = name .. "_Points_RightClick",

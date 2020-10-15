@@ -10,7 +10,7 @@ local Models        = AddOn.components.Models
 
 local ROW_HEIGHT, NUM_ROWS, MIN_UPDATE_INTERVAL = 20, 15, 0.2
 local GuildRankSort, ResponseSort, EpSort, GpSort, PrSort
-local MenuFrame, FilterMenu
+local MenuFrame, FilterMenu, Enchanters
 -- session is a number mapping to item
 -- sessionButtons is mapping of session to IconBordered instances
 -- lootTable is a mapping of session to AllocateEntry instances
@@ -69,8 +69,10 @@ function LootAllocate:OnInitialize()
     self.db = AddOn.db:RegisterNamespace(self:GetName(), LootAllocate.defaults)
     MenuFrame = MSA_DropDownMenu_Create(C.DropDowns.AllocateRightClick, UIParent)
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.AllocateFilter, UIParent)
+    Enchanters = MSA_DropDownMenu_Create(C.DropDowns.Enchanters, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
+    MSA_DropDownMenu_Initialize(Enchanters, self.EnchantersMenu)
 end
 
 function LootAllocate:OnEnable()
@@ -683,12 +685,18 @@ function LootAllocate:GetFrame()
     AddOn.EmbedMoreInfoWidgets(self:GetName(), f)
     
     -- filter
-    local b3 = UI:CreateButton(_G.FILTER, f.content)
-    b3:SetPoint("RIGHT", b1, "LEFT", -10, 0)
-    b3:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
-    b3:SetScript("OnEnter", function() UI:CreateTooltip(L["deselect_responses"]) end)
-    b3:SetScript("OnLeave", function() UI:HideTooltip() end)
-    f.filter = b3
+    local b2 = UI:CreateButton(_G.FILTER, f.content)
+    b2:SetPoint("RIGHT", b1, "LEFT", -10, 0)
+    b2:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
+    b2:SetScript("OnEnter", function() UI:CreateTooltip(L["deselect_responses"]) end)
+    b2:SetScript("OnLeave", function() UI:HideTooltip() end)
+    f.filter = b2
+
+    -- disenchant
+    local b3 = UI:CreateButton(_G.ROLL_DISENCHANT, f.content)
+    b3:SetPoint("RIGHT", b2, "LEFT", -10, 0)
+    b3:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, Enchanters, self, 0, 0) end )
+    f.disenchant = b3
 
     -- loot status
     --f.lootStatus = UI:New("Text", f.content, " ")
@@ -1061,7 +1069,7 @@ do
             
             if value == "AWARD_FOR" and entry.special == value then
                 for k,v in ipairs(LootAllocate.db.profile.awardReasons) do
-                    Logging:Debug("AWARD_FOR() : %s / %s", tostring(k), Util.Objects.ToString(v))
+                    -- Logging:Debug("AWARD_FOR() : %s / %s", tostring(k), Util.Objects.ToString(v))
                     if k > LootAllocate.db.profile.awardReasons.numAwardReasons then break end
                     info.text = v.text
                     info.notCheckable = true
@@ -1098,7 +1106,43 @@ do
             end
         end
     )
-    
+
+    function LootAllocate.EnchantersMenu(menu, level)
+        Logging:Debug("EnchantersMenu()")
+        if level == 1 then
+            local added = false
+            local info = MSA_DropDownMenu_CreateInfo()
+            for _, name in Util.Objects.Each(Util.Tables.Sort(Util.Tables.Keys(AddOn.candidates))) do
+                local candidate = AddOn.candidates[name]
+                if candidate and candidate.enchanter then
+                    Logging:Debug("EnchantersMenu() : Adding %s", Util.Objects.ToString(candidate))
+                    info.text = "|cff".. AddOn.GetClassColorRGB(candidate.class) ..
+                            AddOn.Ambiguate(name) .. "|r ("..
+                            tostring(candidate.enchant_lvl) .. ")"
+                    info.notCheckable = true
+                    info.func = function()
+                        for k,v in ipairs(LootAllocate.db.profile.awardReasons) do
+                            -- todo : fix this text check
+                            if not v.user_visible and Util.Strings.StartsWith(Util.Strings.Lower(v.text), 'disenchant') then
+                                Logging:Debug("EnchantersMenu() : Disenchant award resason %s / %s", tostring(k), Util.Objects.ToString(v))
+                                Dialog:Spawn(AddOn.Constants.Popups.ConfirmAward, LootAllocate:GetAwardPopupData(session, name, v))
+                                return
+                            end
+                        end
+                    end
+                    added = true
+                    MSA_DropDownMenu_AddButton(info, level)
+                end
+            end
+
+            if not added then
+                info.text = L["no_enchanters_found"]
+                info.notCheckable = true
+                info.isTitle = true
+                MSA_DropDownMenu_AddButton(info, level)
+            end
+        end
+    end
     function LootAllocate.FilterMenu(menu, level)
         -- Logging:Trace("FilterMenu()")
         local Module = AddOn.db.profile.modules[LootAllocate:GetName()]

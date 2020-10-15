@@ -34,7 +34,7 @@ ML.defaults = {
         onlyUseInRaids = true,
         -- is 'out of raid' support enabled (specifies auto-responses when user not in instance, but in raid)
         outOfRaid = false,
-        -- should a session automatically be started with all eligibile items
+        -- should a session automatically be started with all eligible items
         autoStart  = false,
         -- automatically add all eligible equipable items from loot to session frame
         autoLootEquipable = true,
@@ -44,6 +44,8 @@ ML.defaults = {
         autoLootBoe = true,
         -- how long does a candidate have to respond
         timeout = 60,
+        -- are player's responses available (shown) in the loot dialogue
+        showLootResponses = false,
         -- are whispers supported for candidate responses
         acceptWhispers = true,
         -- are awards announced via specified channel
@@ -549,8 +551,17 @@ ML.options = {
                         })
                     }
                 },
-                whisperResponses = {
+                showLootResponses = {
                     order = 2,
+                    name = L["responses_during_loot"],
+                    type = 'group',
+                    inline = true,
+                    args = {
+                        showLootResponses = COpts.Toggle(L['enable_display'], 1, L['responses_during_loot_desc']),
+                    }
+                },
+                whisperResponses = {
+                    order = 3,
                     name = L["responses_from_chat"],
                     type = 'group',
                     inline = true,
@@ -881,11 +892,12 @@ function ML:BuildDb()
     
     
     local Db = {
-        buttons     =   changedButtons,
-        responses   =   changedResponses,
-        outOfRaid   =   db.outOfRaid,
-        timeout     =   db.timeout,
-        raid        =   raids,
+        buttons             =   changedButtons,
+        responses           =   changedResponses,
+        outOfRaid           =   db.outOfRaid,
+        timeout             =   db.timeout,
+        showLootResponses   =   db.showLootResponses,
+        raid                =   raids,
     }
 
     Logging:Debug("ML:BuildDb() : %s", Util.Objects.ToString(Db, 5))
