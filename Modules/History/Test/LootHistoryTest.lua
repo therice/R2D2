@@ -134,7 +134,7 @@ describe("Loot History", function()
             assert(count == 36)
             LootHistory.SetFilterValues(nil)
         end)
-        it("from age (younger)", function()
+        it("from age (younger) #travisignore", function()
             -- calculate # days between now and 2020-05-23
             count = 0
             local now = Date()
@@ -148,7 +148,7 @@ describe("Loot History", function()
             end
             assert(count == 35)
         end)
-        it("from age (older)", function()
+        it("from age (older) #travisignore", function()
             -- calculate # days between now and 2020-05-23
             count = 0
             local now = Date()
