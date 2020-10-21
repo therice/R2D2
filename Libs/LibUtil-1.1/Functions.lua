@@ -88,6 +88,18 @@ function Self.Dispatch(...)
     end
 end
 
+function Self.Filter(predicate_func, f, s, v)
+    return function(s, v)
+        local tmp = { f(s, v) }
+        while tmp[1] ~= nil and not predicate_func(unpack(tmp)) do
+            v = tmp[1]
+            tmp = { f(s, v) }
+        end
+        return unpack(tmp)
+    end, s, v
+end
+
+
 -- MODIFY
 
 -- Throttle a function, so it is executed at most every n seconds

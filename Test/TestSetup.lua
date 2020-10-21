@@ -37,7 +37,7 @@ function Before()
     _G.R2D2_Testing = true
     logFile = io.open(pl.abspath(path) .. '/' .. name .. '.log', 'w')
     _G.R2D2_Testing_GetLogFile = function() return logFile end
-    print("Caller -> FILE(" .. caller .. ") PATH(" .. path .. ") NAME(" .. name .. ")")
+    -- print("Caller -> FILE(" .. caller .. ") PATH(" .. path .. ") NAME(" .. name .. ")")
 end
 
 function After()

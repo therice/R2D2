@@ -36,7 +36,7 @@ LootHistory.defaults = {
 }
 
 local ROW_HEIGHT, NUM_ROWS = 20, 15
-local MenuFrame, FilterMenu, selectedDate, selectedName, selectedInstance, moreInfo
+local MenuFrame, FilterMenu, selectedDate, selectedName, selectedInstance
 local stats = {stale = true, value = nil}
 
 function LootHistory:OnInitialize()
@@ -104,7 +104,6 @@ function LootHistory:OnInitialize()
     FilterMenu = MSA_DropDownMenu_Create(C.DropDowns.LootHistoryFilter, UIParent)
     MSA_DropDownMenu_Initialize(MenuFrame, self.RightClickMenu, "MENU")
     MSA_DropDownMenu_Initialize(FilterMenu, self.FilterMenu)
-    self.moreInfo = CreateFrame( "GameTooltip", "R2D2_" .. self:GetName() .. "_MoreInfo", nil, "GameTooltipTemplate" )
     AddOn:SyncModule():AddHandler(
             self:GetName(),
             L['loot_history'],
@@ -115,7 +114,6 @@ end
 
 function LootHistory:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
-    moreInfo = AddOn:MoreInfoEnabled(self:GetName())
     self.frame = self:GetFrame()
     self:BuildData()
     self:Show()
@@ -124,7 +122,6 @@ end
 function LootHistory:OnDisable()
     Logging:Debug("OnDisable(%s)", self:GetName())
     self:Hide()
-    moreInfo = false
 end
 
 function LootHistory:EnableOnStartup()
@@ -134,6 +131,92 @@ end
 function LootHistory:GetHistory()
     Logging:Trace("GetHistory()")
     return self.history
+end
+
+function LootHistory:ExportHistory(iterator)
+    Logging:Debug("ExportHistory() : iterator=%s", Util.Objects.ToString(iterator))
+
+    local export = {}
+
+    for _, row in iterator() do
+        if row.entry then
+            local entry = row.entry
+            local loot = export[entry.owner]
+            if not loot then
+                loot = {}
+                export[entry.owner] = loot
+            end
+
+            Util.Tables.Push(loot, entry:toTable())
+        end
+    end
+
+    return AddOn.components.History.ToJson(export)
+end
+
+function LootHistory:ImportHistory(table)
+    Logging:Debug("ImportHistory() : count=%d", Util.Tables.Count(table))
+    local data = {}
+    local syncData = CDB(data)
+    for k, v in pairs(table) do
+        syncData:put(k, v)
+    end
+    self:ImportDataFromSync(data)
+end
+
+function LootHistory:DeleteHistory(iterator)
+    Logging:Debug("DeleteHistory() : iterator=%s", Util.Objects.ToString(iterator))
+
+    local history, deleted = self:GetHistory(), {}
+
+    local function TrackDeletion(name)
+        local count = deleted[name]
+        if not count then count = 0 end
+        deleted[name] = (count + 1)
+    end
+
+    -- this is necessary to reflect row numbers in the iterated data
+    -- based upon mutations, as we delete a row any rows that came after it
+    -- must have their row number decremented
+    local function UpdateRowNumbers(name, num)
+        Logging:Debug("UpdateRowNumbers(%s, %d)", name, num)
+        for _, v in Util.Functions.Filter(
+                function (_, r)
+                    return r.name == name and r.num > num
+                end,
+                pairs(self.frame.rows)
+        ) do
+            Logging:Debug("UpdateRowNumbers() : Updating %s/%d to %d", v.name, v.num, v.num - 1)
+            v.num = v.num - 1
+        end
+    end
+
+
+    for _, row in iterator() do
+        if row and row.entry and row.num then
+            local entry = row.entry
+            if entry.owner and row.num then
+                Logging:Debug("(%s) : rownum=%d, owner=%s, index=%d",  entry.owner, row.rownum, row.name, row.num)
+                history:del(entry.owner, row.num)
+                UpdateRowNumbers(entry.owner, row.num)
+                TrackDeletion(entry.owner)
+            end
+        end
+    end
+
+    if Util.Tables.Count(deleted) > 0 then
+        for name, _ in pairs(deleted) do
+            if #history:get(name) == 0 then
+                Logging:Debug("DeleteHistory() : Last entry deleted, removing %s", tostring(name))
+                history:del(name)
+            end
+        end
+
+        self:BuildData()
+        self.frame.st:SortData()
+    end
+
+    return deleted
 end
 
 function LootHistory:GetDataForSync()
@@ -168,7 +251,7 @@ function LootHistory:ImportDataFromSync(data)
                   Util.Tables.Count(data)
     )
     
-    local persist = not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()
+    local persist = (not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()) or _G.R2D2_Testing
     
     if Util.Tables.Count(data) > 0 then
         local cdb = CDB(data)
@@ -178,10 +261,10 @@ function LootHistory:ImportDataFromSync(data)
         for name, history in c_pairs(cdb) do
             local charHistory = self.history:get(name)
             
-            Logging:Debug("LootHistory:ImportDataFromSync() : character '%s'", tostring(name))
+            Logging:Debug("LootHistory:ImportDataFromSync(%s)", tostring(name))
             
             if not charHistory then
-                Logging:Debug("LootHistory:ImportDataFromSync(%s) : no previous history, setting to %s", name, Util.Objects.ToString(history))
+                Logging:Debug("LootHistory:ImportDataFromSync(%s) : no previous history, creating and populating", name)
                 if persist then
                     self.history:put(name, history)
                 end
@@ -193,20 +276,20 @@ function LootHistory:ImportDataFromSync(data)
                     return Util.Tables.FindFn(
                             charHistory,
                             function(e)
-                                Logging:Debug("%d == %d, %s == %s", e.timestamp, importe.timestamp, tostring(e.item), tostring(importe.item))
+                                -- Logging:Debug("%d == %d, %s == %s", e.timestamp, importe.timestamp, tostring(e.item), tostring(importe.item))
                                 return e.timestamp == importe.timestamp and Util.Strings.Equal(e.item, importe.item)
                             end
                     )
                 end
                 
                 for _, entryTable in pairs(history) do
-                    Logging:Debug("LootHistory:ImportDataFromSync(%s) : examining import entry %s", name, Util.Objects.ToString(entryTable))
+                    Logging:Debug("LootHistory:ImportDataFromSync(%s, %s) : examining import entry", name, entryTable.id)
                     local _, existing = FindExistingEntry(entryTable)
                     if existing then
-                        Logging:Debug("LootHistory:ImportDataFromSync(%s) : found existing entry in history, skipping...", name)
+                        Logging:Debug("LootHistory:ImportDataFromSync(%s, %s) : found existing entry in history, skipping...", name, entryTable.id)
                         skipped = skipped + 1
                     else
-                        Logging:Debug("LootHistory:ImportDataFromSync(%s) : entry does not exist in history, adding...", name)
+                        Logging:Debug("LootHistory:ImportDataFromSync(%s, %s) : entry does not exist in history, adding...", name, entryTable.id)
                         if persist then
                             self.history:insert(entryTable, name)
                         end
@@ -241,8 +324,10 @@ end
 
 --- Hide the LootHistory frame.
 function LootHistory:Hide()
-    if self.moreInfo then self.moreInfo:Hide() end
-    if self.frame then self.frame:Hide() end
+    if self.frame then
+        self.frame.moreInfo:Hide()
+        self.frame:Hide()
+    end
 end
 
 function LootHistory:BuildData()
@@ -294,7 +379,9 @@ function LootHistory:BuildData()
                     -- probably only need entry here, but ...
                     self.frame.rows[row] = {
                         date = ts,
-                        num = index,
+                        name = name,
+                        rownum = row,   -- this is the index in the rows table
+                        num = index,    -- this is the index within the player's table
                         entry = entry,
                         cols = {
                             { value = entry.class, DoCellUpdate = AddOn.SetCellClassIcon, args = { entry.class } },
@@ -411,12 +498,11 @@ function LootHistory.SetCellDelete(rowFrame, frame, data, cols, row, realrow, co
             
             history:del(name, num)
             tremove(data, realrow)
-    
+
+            -- todo : we are removing a row, do we need to update row.rownum as well?
             for _, v in pairs(data) do
-                if v.name == name then
-                    if v.num >= num then
-                        v.num = v.num - 1
-                    end
+                if v.name == name and v.num >= num then
+                    v.num = v.num - 1
                 end
             end
     
@@ -481,10 +567,10 @@ function LootHistory:GetFrame()
                           ["OnClick"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
                               if row or realrow then
                                   if button == "LeftButton" then
-                                      self:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
+                                      self:UpdateMoreInfo(self:GetName(), f, realrow, data)
                                   elseif button == "RightButton" then
-                                      MenuFrame.datatable = data[realrow]
-                                      MSA_ToggleDropDownMenu(1,nil,MenuFrame,cellFrame,0,0)
+                                      MenuFrame.entry = data[realrow].entry
+                                      MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0)
                                   end
                               end
                               return false
@@ -575,41 +661,16 @@ function LootHistory:GetFrame()
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -100)
     close:SetScript("OnClick", function() self:Disable() end)
     f.close = close
-    
-    local moreInfoBtn = CreateFrame("Button", nil, f.content, "UIPanelButtonTemplate")
-    moreInfoBtn:SetSize(25, 25)
-    moreInfoBtn:SetPoint("BOTTOMRIGHT", f.close, "TOPRIGHT", 0, 10)
-    moreInfoBtn:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
-    moreInfoBtn:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down")
-    moreInfoBtn:SetScript("OnClick", function(button)
-        moreInfo = not moreInfo
-        AddOn:ModuleSettings(LootHistory:GetName()).moreInfo = moreInfo
-        self.frame.st:ClearSelection()
-        self:UpdateMoreInfo()
-        if moreInfo then -- show the more info frame
-            button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up");
-            button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Down");
-            self.moreInfo:Show()
-        else -- hide it
-            button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
-            button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
-            self.moreInfo:Hide()
-        end
-    end)
-    moreInfoBtn:SetScript("OnEnter", function() UI:CreateTooltip(L["click_more_info"]) end)
-    moreInfoBtn:SetScript("OnLeave", function() UI:HideTooltip() end)
-    f.moreInfoBtn = moreInfoBtn
-    
-    f.content:SetScript("OnSizeChanged", function()
-        self.moreInfo:SetScale(f:GetScale() * 0.6)
-    end)
-    
+
+    AddOn.EmbedMoreInfoWidgets(self:GetName(), f, function(m, f) self:UpdateMoreInfo(m, f) end)
+    AddOn.components.History.EmbedActionButtons(self:GetName(), f)
+
     local filter = UI:CreateButton(_G.FILTER, f.content)
     filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     f.filter = filter
     MSA_DropDownMenu_Initialize(filter, self.FilterMenu)
-    f.filter:SetSize(125,25)
+    f.filter:SetSize(100,25)
     
     local clear = UI:CreateButton(L["clear_selection"], f.content)
     clear:SetPoint("RIGHT", f.filter, "LEFT", -10, 0)
@@ -620,22 +681,31 @@ function LootHistory:GetFrame()
         self.frame.name:ClearSelection()
         self:Update()
     end)
-    clear:SetWidth(125)
     f.clearSelectionBtn = clear
-    
-    
+
     f:SetWidth(st.frame:GetWidth() + 20)
     return f
 end
 
-function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realrow, column, tabel, button, ...)
-    if not data then return end
-    local tip = self.moreInfo
-    tip:SetOwner(self.frame, "ANCHOR_RIGHT")
-    
-    local entry = data[realrow].entry
+function LootHistory:UpdateMoreInfo(module, f, row, data)
+    local moreInfo = AddOn:MoreInfoEnabled(module)
+
+    local entry
+    if data and row then
+        entry = data[row].entry
+    else
+        local selection = f.st:GetSelection()
+        entry = selection and f.st:GetRow(selection).entry or nil
+    end
+
+    if not moreInfo or not entry then
+        return f.moreInfo:Hide()
+    end
+
+    local tip = f.moreInfo
+    tip:SetOwner(f, "ANCHOR_RIGHT")
+
     local color = AddOn.GetClassColor(entry.class)
-    
     tip:AddLine(AddOn.Ambiguate(entry.owner), color.r, color.g, color.b)
     tip:AddLine("")
     tip:AddDoubleLine(L["date"] .. ":", entry:FormattedTimestamp() or _G.UNKNOWN, 1,1,1, 1,1,1)
@@ -647,16 +717,16 @@ function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realro
     end
     tip:AddLine(" ")
     tip:AddLine(L["total_awards"])
-    
+
     local stats = self:GetStatistics():Get(entry.owner)
     stats:CalculateTotals()
     -- Logging:Debug("%s => %s", entry.owner, Objects.ToString(stats))
-    
+
     table.sort(stats.totals.responses,
-               function(a, b)
-                   local responseId1, responseId2 = a[4], b[4]
-                   return Objects.IsNumber(responseId1) and Objects.IsNumber(responseId2) and responseId1 < responseId2 or false
-               end
+            function(a, b)
+                local responseId1, responseId2 = a[4], b[4]
+                return Objects.IsNumber(responseId1) and Objects.IsNumber(responseId2) and responseId1 < responseId2 or false
+            end
     )
     for _, v in pairs(stats.totals.responses) do
         local r,g,b
@@ -666,15 +736,9 @@ function LootHistory:UpdateMoreInfo(rowFrame, cellFrame, data, cols, row, realro
     tip:AddDoubleLine(L["number_of_raids_from which_loot_was_received"] .. ":", stats.totals.raids.count, 1,1,1, 1,1,1)
     tip:AddDoubleLine(L["total_items_won"] .. ":", stats.totals.count, 1,1,1, 0,1,0)
     tip:AddLine(" ")
-    
-    tip:SetScale(self.frame:GetScale() * 0.65)
-    if moreInfo then
-        tip:Show()
-    else
-        tip:Hide()
-    end
+
+    tip:Show()
     tip:SetAnchorType("ANCHOR_RIGHT", 0, -tip:GetHeight())
-    
 end
 
 function LootHistory.FilterMenu(menu, level)
@@ -785,6 +849,15 @@ function LootHistory.RightClickMenu(menu, level)
     -- empty for now, don't think there's value here
 end
 
+if _G.R2D2_Testing then
+    function LootHistory.SetFilterValues(name, instance, date)
+        selectedName = name
+        selectedInstance = instance
+        selectedDate = date
+    end
+end
+-- selectedName = "Gnomechómsky-Atiesh"
+
 local function SelectionFilter(name, instance, date)
     Logging:Trace("FilterByNameAndDate(%s, %s, %s) : %s, %s %s",
                   tostring(selectedName), tostring(selectedInstance), Objects.ToString(selectedDate),
@@ -835,19 +908,21 @@ end
 
 function LootHistory.FilterFunc(table, row)
     local entry = row.entry
-    Logging:Trace("Applying Selection Filter(s)")
+    Logging:Trace("FilterFunc(): Applying Selection Filter(s)")
     local selectionFilter = SelectionFilter(entry.owner, entry.instance, entry.timestamp)
     
     -- determine if module filters need respected
     local moduleFilters = AddOn:ModuleSettings(LootHistory:GetName()).filters
     if not moduleFilters then return selectionFilter end
     
-    Logging:Trace("Applying Class Filter(s)")
+    Logging:Trace("FilterFunc(): Applying Class Filter(s)")
     local classFilter = ClassFilter(entry.class)
     
-    Logging:Trace("Applying Response Filter(s)")
+    Logging:Trace("FilterFunc(): Applying Response Filter(s)")
     local responseFilter = ResponseFilter(entry.responseId, entry:IsAwardReason())
-    
+
+    Logging:Trace("FilterFunc(): %s, %s, %s", tostring(selectionFilter), tostring(classFilter), tostring(responseFilter))
+
     return selectionFilter and classFilter and responseFilter
 end
 

@@ -64,9 +64,9 @@ describe("DB Model", function()
             for _, v in pairs(TestData) do
                 db:insert(v)
             end
-    
+
             print('Length=' .. #db)
-            
+
             local c_pairs = CompressedDb.static.pairs
 
 
@@ -107,6 +107,59 @@ describe("DB Model", function()
             end
         end)
 
+        it("handles delete via key", function()
+            local db, cdb = NewDb()
+            local values = {"a", "b", "c", "1", "2", "3"}
+
+            for _, v in Util.Objects.Each(values) do
+                cdb:insert(v)
+            end
+
+            for k, v in pairs(db['factionrealm']) do
+                if k ~= CompressedDb.static.CompressionSettingsKey then
+                    assert.Is.Not.Nil(v)
+                end
+            end
+
+            cdb:del(2)
+            cdb:del(5)
+
+            assert(#db['factionrealm'] == 4)
+            local values2 = Util(values):Copy()()
+            Util.Tables.Remove(values2, 2)
+            Util.Tables.Remove(values2, 5)
+
+            local c_pairs = CompressedDb.static.pairs
+            for k, v in c_pairs(cdb) do
+                assert(v == values2[k])
+            end
+        end)
+
+        it("handles delete via key and index", function()
+            local _, cdb = NewDb()
+            local values = {["a"] = {1, 2}, ["b"] = {}, ["c"] = {3, 4}, ["1"] = {"a", "z"}}
+
+            for k, _ in pairs(values) do
+                cdb:put(k, values[k])
+            end
+
+            cdb:del('b')
+            cdb:del('a', 2)
+            cdb:del('1', 1)
+
+
+            local values2 = Util(values):Copy()()
+            Util.Tables.Remove(values2, 'b')
+            Util.Tables.Remove(values2['a'], 2)
+            Util.Tables.Remove(values2['1'], 1)
+
+            local c_pairs = CompressedDb.static.pairs
+            for k, v in c_pairs(cdb) do
+                assert.Is.Not.Nil(values2[k])
+                assert(Util.Tables.Equals(v, values2[k], true))
+            end
+
+        end)
         --[[
         it("scratch case", function()
             local Traffic = R2D2.components.Models.History.Traffic
@@ -210,27 +263,56 @@ describe("DB Model", function()
         it("upgrades compression mechanism #1", function()
             local c_pairs = CompressedDb.static.pairs
             local c_ipairs = CompressedDb.static.ipairs
-    
+
             for _, data in pairs({TestUpgradeData1, TestUpgradeData2}) do
                 local db, cdb = NewDb(data)
-        
+
                 for k, _ in pairs(db.factionrealm) do
                     print(format("db pairs(%s)/get(%s)", tostring(k), tostring(k)) .. ' =>'.. Util.Objects.ToString(db.factionrealm[k]))
                 end
                 for k, _ in c_pairs(cdb) do
                     print(format("cdb pairs(%s)/get(%s)", tostring(k), tostring(k)) .. ' =>'.. Util.Objects.ToString(cdb:get(k)))
                 end
-        
+
                 for k, _ in ipairs(db.factionrealm) do
                     print(format("db ipairs(%d)/get(%d)", k, k) .. ' =>' .. Util.Objects.ToString(db.factionrealm[k]))
                 end
-        
+
                 for k, _ in c_ipairs(cdb) do
                     print(format("cdb ipairs(%d)/get(%d)", k, k) .. ' =>' .. Util.Objects.ToString(cdb:get(k)))
                 end
-                
+
                 cdb = CompressedDb(cdb.db)
             end
+        end)
+        it("detects and removes nil values (numeric index)", function()
+            local db, cdb = NewDb(TestSparseData)
+
+            local c_pairs = CompressedDb.static.pairs
+
+            local count = 0
+            for k, _ in c_pairs(cdb) do
+                print(format("cdb pairs(%s)/get(%s)", tostring(k), tostring(k)) .. ' =>'.. Util.Objects.ToString(cdb:get(k)))
+                count = count +1
+            end
+            assert(count == 6)
+
+            for k, v in pairs(db.factionrealm) do
+                print( Util.Objects.ToString(k) .. ' = ' .. Util.Objects.ToString(v))
+            end
+
+        end)
+        it("detects and removes nil values (string index)", function()
+            local _, cdb = NewDb(TestSparseData2)
+            local c_pairs = CompressedDb.static.pairs
+
+            local count = 0
+            for k, _ in c_pairs(cdb) do
+                print(format("cdb pairs(%s)/get(%s)", tostring(k), tostring(k)) .. ' =>'.. Util.Objects.ToString(cdb:get(k)))
+                count = count +1
+            end
+            assert(count == 6)
+
         end)
     end)
 end)

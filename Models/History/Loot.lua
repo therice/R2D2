@@ -233,6 +233,8 @@ function LootStatisticsEntry:CalculateTotals()
         self.totals.raids.count = Util.Tables.Count(self.totals.raids)
         self.totalled = true
     end
+
+    return self.totals
 end
 
 function LootStatisticsEntry:GetTotals()

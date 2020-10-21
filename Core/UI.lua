@@ -139,7 +139,6 @@ function AddOn.HideConfig()
     return false
 end
 
-
 -- bet we can use AceBucket for this
 local UpdateHandler = Class('UpdateHandler')
 

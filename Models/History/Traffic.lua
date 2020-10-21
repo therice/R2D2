@@ -115,12 +115,6 @@ function TrafficStatisticsEntry:initialize()
             [Award.ResourceType.Ep] = {},
             [Award.ResourceType.Gp] = {},
         },
-        resets = {
-            count = 0
-        },
-        decays = {
-            count = 0,
-        },
     }
     self.totalled = false
 end
@@ -173,12 +167,14 @@ function TrafficStatisticsEntry:CalculateTotals()
             self.totals.awards[rt] = {
                 count = 0,
                 total = 0,
+                resets = 0,
+                decays = 0,
             }
             
             self.totals.awards[rt].count = awards
             self.totals.awards[rt].total = totals
-            self.totals.resets.count = resets
-            self.totals.decays.count = decays -- math.floor(decays / 2) -- one for EP and one for GP (2 for each operation)
+            self.totals.awards[rt].resets = resets
+            self.totals.awards[rt].decays = decays
         end
     end
     
