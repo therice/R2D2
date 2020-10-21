@@ -311,7 +311,6 @@ function History.FromJson(json)
         Logging:Debug("FromJson() : Value is encoded and compressed, converting to JSON")
         local decoded = Base64:Decode(json)
         json = Compressors[1]:decompress(decoded, true)
-        --print(json)
     end
 
     return AddOn.Libs.JSON:Decode(json)

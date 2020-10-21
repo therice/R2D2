@@ -415,8 +415,6 @@ function TrafficHistory:BuildData()
                 }
             end
         end
-
-        lastrow = row
     end
 
     Tables.CopyInto(nameData, SubjectTypesForDisplay)

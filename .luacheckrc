@@ -48,6 +48,7 @@ read_globals = {
 	"time",
 	"tremove",
 	"wipe",
+	"debugprofilestop",
 
 	-- 3rd party libraries
 	"LibStub",
