@@ -4,7 +4,7 @@ local CompressedDb, Util
 
 local function NewDb(data)
     -- need to add random # to end or it will have the same data
-    local db = R2D2.Libs.AceDB:New('R2D2_TestDB' .. random(100))
+    local db = R2D2.Libs.AceDB:New('R2D2_TestDB' .. random(10000))
     if data then
         for k, v in pairs(data) do
             db.factionrealm[k] = v
@@ -314,5 +314,16 @@ describe("DB Model", function()
             assert(count == 6)
 
         end)
+
+        --it("one off", function()
+        --
+        --    local a = CompressedDb.static:decompress(
+        --            "AzybAgBqkvKspPKSpGqXULENopmSMBvCfKJuQlV3JarbAjuV2qvaDWq/kJ8SaRgkvxGnCZcpg0k1HJWDJDkqER0TOUfEQomwVEkthspyxUNJeUq1DKR1wGNRUyE1Gcp0qddCVVcl0TMS1wU9HCpNI8VmVG0XqnyUpL5Kqs9K8l2SjIQq44QyGsRhlJNKuKVE14h0XsI3UnqO9Fai/HT0HceoVXPfUOWOGc0juBYEvquq2GCGRbqceZ4pitRMxhNtAUiSpEECAAAAACBRAAAAAJAhZfURtFchG4xGOuEj3ZvhBEJ0US5D5Il0nkyky5nneU0s4xi+gMlEeiW3GoaZPHca4tQsNz36Ox39ne6qZiMYvFS1MAr5ht7rqvV6Ubp+v+84Qum9IsyCHwLfaYhTs9zogrPvdB+jJJxsJYwnY99QTezOcpOpIRil97pqXVFaU39nucncq2ESWIbEVRfQ+MVS1cIo5B4wboF9a1CSu4BpMzjbHZ8g2uBIr5Gxexec1Qhmd8x4FiL6LrB7ksYkWmSCKsoy3VsERpsF3HeSxiRaZIIqyn2McgSmdscXMJlIr+RWwzC7IwhpPEGbTLHA7kkak2iRCaooS9R9jJJwsqELzr6h93g2VBD46HsgYDLfqDvHOkO+UfeAqZH5Tu87q2KDeWYI+0bF0UrvY5SEk61kyOAWXXwn7Z3lFgRGF5x9p/sY5QhMbYF9K3fRFtzlzPNMUaRmMp5oC0CSJA0SAAAAAACJAgAAAIAMKauPoL0K2WA00gkf6d4MJxCii3IZIs/7Bw==",
+        --            2
+        --    )
+        --
+        --    print(Util.Objects.ToString(a))
+        --    print( CompressedDb.static:compress(a))
+        --end)
     end)
 end)

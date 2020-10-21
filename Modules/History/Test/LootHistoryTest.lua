@@ -5,7 +5,7 @@ local LootHistory, Util, Class, CDB, Sync, History, Date, JSON
 
 local function NewLootHistoryDb(data)
     -- need to add random # to end or it will have the same data
-    local db = R2D2.Libs.AceDB:New('R2D2_LootDB' .. random(100), LootHistory.defaults)
+    local db = R2D2.Libs.AceDB:New('R2D2_LootDB' .. random(10000), LootHistory.defaults)
     local count = 0
     for player, history in pairs(data) do
         db.factionrealm[player] = history

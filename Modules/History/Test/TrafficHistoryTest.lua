@@ -5,7 +5,7 @@ local TrafficHistory, Util, Class, CDB, Sync, History, Date
 
 local function NewTrafficHistoryDb(data)
     -- need to add random # to end or it will have the same data
-    local db = R2D2.Libs.AceDB:New('R2D2_TrafficDB' .. random(100), TrafficHistory.defaults)
+    local db = R2D2.Libs.AceDB:New('R2D2_TrafficDB' .. random(10000), TrafficHistory.defaults)
     local count = 0
     for k, history in pairs(data) do
         db.factionrealm[k] = history

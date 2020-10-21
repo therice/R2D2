@@ -46,7 +46,8 @@ end
 local function decompress(data, type)
     if data == nil then return nil end
     if not Util.Objects.IsNumber(type) then return nil end
-    
+
+
     local decoded = Base64:Decode(data)
     local decompressed, message = Compressors[type]:decompress(decoded)
     if not decompressed then
@@ -55,7 +56,7 @@ local function decompress(data, type)
     end
     local success, raw = Serialize:Deserialize(decompressed)
     if not success then
-        error('Could not de-serialize de-compressed data')
+        error('Could not de-serialize de-compressed data : ' .. tostring(raw))
     end
     return raw
 end
