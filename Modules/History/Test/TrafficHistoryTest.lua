@@ -99,7 +99,7 @@ describe("Traffic History", function()
             assert(count == 36)
             TrafficHistory.SetFilterValues(nil)
         end)
-        it("from age (younger) #travisignore", function()
+        it("from age (younger)", function()
             -- calculate # days between now and 2020-05-23
             count = 0
             local now = Date()
@@ -114,7 +114,7 @@ describe("Traffic History", function()
             print(count)
             assert(count == 53)
         end)
-        it("from age (older) #travisignore", function()
+        it("from age (older)", function()
             -- calculate # days between now and 2020-05-23
             count = 0
             local now = Date()
