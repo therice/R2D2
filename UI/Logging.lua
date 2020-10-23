@@ -32,7 +32,20 @@ else
     )
 end
 
--- function COpts.Execute(name, order, descr, fn, extra)
+local LoggingLevels = {
+    [Logging:GetThreshold(Logging.Level.Disabled)] = Logging.Level.Disabled,
+    [Logging:GetThreshold(Logging.Level.Fatal)]    = Logging.Level.Fatal,
+    [Logging:GetThreshold(Logging.Level.Error)]    = Logging.Level.Error,
+    [Logging:GetThreshold(Logging.Level.Warn)]     = Logging.Level.Warn,
+    [Logging:GetThreshold(Logging.Level.Info)]     = Logging.Level.Info,
+    [Logging:GetThreshold(Logging.Level.Debug)]    = Logging.Level.Debug,
+    [Logging:GetThreshold(Logging.Level.Trace)]    = Logging.Level.Trace,
+}
+
+local function SetLoggingThreshold(threshold)
+    AddOn.db.profile.logThreshold = threshold
+    Logging:SetRootThreshold(threshold)
+end
 
 LoggingUI.options = {
     name = L['logging'],
@@ -44,20 +57,9 @@ LoggingUI.options = {
         spacer = COpts.Description("", nil, 2),
         -- function COpts.Select(name, order, descr, values, get, set, extra)
         logThreshold = COpts.Select(L['logging_threshold'], 3, L['logging_threshold_desc'],
-                {
-                    [Logging:GetThreshold(Logging.Level.Disabled)] = Logging.Level.Disabled,
-                    [Logging:GetThreshold(Logging.Level.Fatal)]    = Logging.Level.Fatal,
-                    [Logging:GetThreshold(Logging.Level.Error)]    = Logging.Level.Error,
-                    [Logging:GetThreshold(Logging.Level.Warn)]     = Logging.Level.Warn,
-                    [Logging:GetThreshold(Logging.Level.Info)]     = Logging.Level.Info,
-                    [Logging:GetThreshold(Logging.Level.Debug)]    = Logging.Level.Debug,
-                    [Logging:GetThreshold(Logging.Level.Trace)]    = Logging.Level.Trace,
-                },
+                Util.Tables.Copy(LoggingLevels),
                 function() return Logging:GetRootThreshold() end,
-                function(_, logThreshold)
-                    AddOn.db.profile.logThreshold = logThreshold
-                    Logging:SetRootThreshold(logThreshold)
-                end
+                function(_, logThreshold) SetLoggingThreshold(logThreshold) end
         )
     }
 }
@@ -95,9 +97,10 @@ function LoggingUI:GetFrame()
             }
     )
     frame.msg:SetWidth(frame:GetWidth() - 25)
-    frame.msg:SetHeight(frame:GetHeight() - 60)
+    frame.msg:SetHeight(frame:GetHeight() - 70)
     frame.msg:SetPoint("CENTER", frame, "CENTER")
-    
+    frame.msg:SetScript("OnMouseWheel", ScrollingFunction)
+
     local close = UI:CreateButton("Close", frame.content)
     close:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -13, 5)
     close:SetScript("OnClick", function() frame:Hide() end)
@@ -108,6 +111,19 @@ function LoggingUI:GetFrame()
     clear:SetScript("OnClick", function() frame.msg:Clear() end)
     frame.clear = clear
     
+    local threshold =
+        UI('Dropdown')
+            .SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 10, 7)
+            .SetLabel(nil)
+            .SetParent(frame)()
+    threshold:SetList(Util.Tables.Copy(LoggingLevels))
+    threshold:SetValue(AddOn.db.profile.logThreshold)
+    threshold:SetCallback(
+            "OnValueChanged",
+            function (_, _, threshold) SetLoggingThreshold(threshold) end
+    )
+    frame.threshold = threshold
+
     ---- now set logging to emit to frame
     Logging:SetWriter(
             function(msg)
@@ -118,8 +134,6 @@ function LoggingUI:GetFrame()
                 end
             end
     )
-
-    frame.msg:SetScript("OnMouseWheel", ScrollingFunction)
 
     return frame
 end
