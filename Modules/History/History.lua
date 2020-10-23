@@ -82,10 +82,6 @@ local frames = {}
 --@param module the module name
 --@param f the frame to which to add buttons
 function History.EmbedActionButtons(module, f)
-    if not cbh then
-        cbh = AddOn.CreateUpdateHandler(DoStuff, 1)
-    end
-
     local delete = UI:CreateButton(L['bulk_delete'], f.content)
     if f.close then
         delete:SetPoint("TOPRIGHT", f.close, "TOPRIGHT", 0, 35)
@@ -229,18 +225,18 @@ local function CreateHistoryFrame(module, parent, type)
     end
 
     if Util.Objects.In(type, FrameTypes.Export, FrameTypes.BulkDelete) then
-        local type =
-            UI('Dropdown')
-                    .SetPoint("BOTTOMLEFT", f.content, "BOTTOMLEFT", 17, 10)
-                    .SetList(
-                    Util(TypeIdToProcess):Copy()
-                                         :Map(function (v) return L[format('history_%s', TypeToLocaleKey(v))] end)()
-            )
+        local typedd =
+                UI('Dropdown')
+                        .SetPoint("BOTTOMLEFT", f.content, "BOTTOMLEFT", 17, 10)
+                        .SetList(
+                        Util(TypeIdToProcess):Copy()
+                                             :Map(function (v) return L[format('history_%s', TypeToLocaleKey(v))] end)()
+                )
                 .SetWidth(100)
                 .SetValue(ProcessTypes.Filtered)
                 .SetLabel(L['type'])
                 .SetParent(f)()
-        type:SetCallback(
+        typedd:SetCallback(
                 "OnValueChanged",
                 function (_, _, key)
                     if Util.Objects.In(key, ProcessTypes.AgeOlder, ProcessTypes.AgeYounger) then
@@ -250,14 +246,14 @@ local function CreateHistoryFrame(module, parent, type)
                     end
                 end
         )
-        type:SetCallback(
+        typedd:SetCallback(
                 "OnEnter", function()
-                    local localeKey = format('history_%s_desc', TypeToLocaleKey(TypeIdToProcess[type:GetValue()]))
-                    UI:CreateHelpTooltip(type.button, "ANCHOR_RIGHT", L[localeKey])
+                    local localeKey = format('history_%s_desc', TypeToLocaleKey(TypeIdToProcess[typedd:GetValue()]))
+                    UI:CreateHelpTooltip(typedd.button, "ANCHOR_RIGHT", L[localeKey])
                 end
         )
-        type:SetCallback("OnLeave", function() UI:HideTooltip() end)
-        f.type = type
+        typedd:SetCallback("OnLeave", function() UI:HideTooltip() end)
+        f.type = typedd
 
         local age =
             UI('EditBox')
