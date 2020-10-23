@@ -170,13 +170,14 @@ function TrafficHistory:GetHistory()
 end
 
 
-function TrafficHistory:ExportHistory(iterator)
+function TrafficHistory:ExportHistory(iterator, fn)
     Logging:Debug("ExportHistory() : iterator=%s", Util.Objects.ToString(iterator))
 
     local export = {}
 
     for _, row in iterator() do
         Util.Tables.Push(export, row.entry:toTable())
+        if fn then fn (row.entry) end
     end
 
     return AddOn.components.History.ToJson(export)
@@ -192,9 +193,10 @@ function TrafficHistory:ImportHistory(table)
     self:ImportDataFromSync(data)
 end
 
-function TrafficHistory:DeleteHistory(iterator)
+function TrafficHistory:DeleteHistory(iterator, fn)
     Logging:Debug("DeleteHistory() : iterator=%s", Util.Objects.ToString(iterator))
 
+    local persist = (not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()) or _G.R2D2_Testing
     local history, deleted = self:GetHistory(), {}
 
     local function TrackDeletion(entry)
@@ -221,9 +223,13 @@ function TrafficHistory:DeleteHistory(iterator)
 
     for _, row in iterator() do
         if row.entry and row.num then
-            Logging:Debug("DeleteHistory() : id=%d", row.num)
-            history:del(row.num)
-            UpdateRowNumbers(row.num)
+            Logging:Debug("DeleteHistory(%d)", row.num)
+            if persist then
+                history:del(row.num)
+                UpdateRowNumbers(row.num)
+            end
+
+            if fn then fn(row.entry) end
             TrackDeletion(row.entry)
         end
     end

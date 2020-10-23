@@ -11,7 +11,7 @@ AddOn.components.History = History
 local FrameTypes = {
     BulkDelete  =   "bulk_delete",
     Export      =   "export",
-    Import      =   "impot",
+    Import      =   "import",
 }
 
 -- if the keys change, update the translations
@@ -27,11 +27,65 @@ local TypeIdToProcess = tInvert(ProcessTypes)
 History.ProcessTypes = ProcessTypes
 History.TypeIdToProcess = TypeIdToProcess
 
-local frames = {}
 
+local uh, queue = CreateFrame("FRAME", "History_UpdateHandler_Frame"), {}
+uh.elapsed = 0.0
+uh.interval = 1
+uh.processing = false
+uh:SetScript(
+        'OnUpdate',
+        function(self, elapsed)
+            Logging:Trace("History.UpdateHandler.OnUpdate(%.2f) : elapsed=%.2f, interval=%.2f, processing=%s", elapsed, self.elapsed, self.interval, tostring(self.processing))
+
+            self.elapsed = self.elapsed + elapsed
+            -- we don't use the high precision approach as this isn't meant to be executed
+            -- frequently
+            --[[
+            while (self.elapsed > self.interval) do
+                -- code to execute
+                self.elapsed = self.elapsed - self.interval
+            end
+            --]]
+
+            if not self.processing and self.elapsed > self.interval then
+                local f = Util.Tables.Pop(queue)
+                if f then
+                    self.processing = true
+                    local check, _ = pcall(function() return f() end)
+                    if not check then
+                        Logging:Warn("History.UpdateHandler.OnUpdate() : function call failed")
+                    end
+                    self.processing = false
+                end
+
+                -- setting this after last execution, means that interval is only with respect
+                -- to last execution finishing or being attempted
+                self.elapsed = 0.0
+
+                if Util.Tables.IsEmpty(queue) then
+                    Logging:Trace("History.UpdateHandler.OnUpdate(): nothing more to process, hiding")
+                    self:Hide()
+                end
+            end
+        end
+)
+uh:Hide()
+
+local function EnqueueOperation(f)
+    Util.Tables.Push(queue, f)
+    if not uh:IsShown() then
+        uh:Show()
+    end
+end
+
+local frames = {}
 --@param module the module name
 --@param f the frame to which to add buttons
 function History.EmbedActionButtons(module, f)
+    if not cbh then
+        cbh = AddOn.CreateUpdateHandler(DoStuff, 1)
+    end
+
     local delete = UI:CreateButton(L['bulk_delete'], f.content)
     if f.close then
         delete:SetPoint("TOPRIGHT", f.close, "TOPRIGHT", 0, 35)
@@ -42,17 +96,17 @@ function History.EmbedActionButtons(module, f)
     f.delete = delete
 
     local export = UI:CreateButton(L['export'], f.content)
-    export:SetPoint("RIGHT", f.delete,  "LEFT", -10, 0)
+    export:SetPoint("RIGHT", f.delete, "LEFT", -10, 0)
     export:SetScript("OnClick", function() History.ExportFrame(module, f):Show() end)
     f.export = export
 
     local import = UI:CreateButton(L['import'], f.content)
     import:SetPoint("RIGHT", f.export, "LEFT", -10, 0)
-    import:SetScript("OnClick", function() end)
+    import:SetScript("OnClick", function() History.ImportFrame(module, f):Show() end)
     f.import = import
 end
 
-local function GetFrame(module, type, builder)
+local function GetHistoryFrame(module, type, builder)
     Logging:Debug("GetFrame(%s, %s)", module, type)
 
     local moduleFrames = frames[module]
@@ -74,63 +128,119 @@ local function GetFrame(module, type, builder)
 end
 
 
-function History.ExportFrame(module, parent)
-    local function CreateFrame()
-        local f = UI:CreateFrame("R2D2_" .. module .. "_Export", module .. "Export", format(L["r2d2_history_export_frame"], Util.Strings.FromCamelCase(module)), 200, 275)
-        f:SetWidth(700)
-        f:SetHeight(360)
-        f:SetPoint("TOPLEFT", parent, "TOPRIGHT", 150)
+local function CreateHistoryFrame(module, parent, type)
+    Logging:Debug("CreateFrame(%s) : %s", module, Util.Objects.ToString(type))
 
+    local titleTranslationKey = format('r2d2_history_%s_frame', type)
+    local suffix = Util.Strings.UcFirst(Util.Strings.ToCamelCase(type, "_"))
+
+    local f = UI:CreateFrame(format("R2D2_%s_%s", module, suffix), format("%s%s", module, suffix), format(L[titleTranslationKey], Util.Strings.FromCamelCase(module)), 200, 275)
+    f:SetWidth(700)
+    f:SetHeight(360)
+    f:SetPoint("TOPLEFT", parent, "TOPRIGHT", 150)
+
+    if Util.Objects.In(type, FrameTypes.Export, FrameTypes.Import) then
         local group =
             UI('InlineGroup')
-                .SetParent(f)
-                .SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -5, 50)
-                .SetPoint("TOPLEFT", f.content, "TOPLEFT", 17, 0)()
+                    .SetParent(f)
+                    .SetLayout('fill')
+                    .SetPoint("TOPLEFT", f.content, "TOPLEFT", 17, 0)
+                    .SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -17, 70)()
         f.group = group
 
         local edit =
             UI('MultiLineEditBox')
-                .DisableButton(true)
-                .SetFullWidth(true)
-                .SetFullHeight(true)
-                .SetNumLines(18)
-                .SetLabel("")()
+                    .DisableButton(true)
+                    .SetFullWidth(true)
+                    .SetFullHeight(true)
+                    --.SetNumLines(18)
+                    .SetLabel("")()
         group:AddChild(edit)
         edit.scrollFrame:UpdateScrollChildRect()
         f.edit = edit
-
-        --local edit = UI('EditBox').SetWidth(f:GetWidth() - 25).SetHeight(f:GetHeight())()
-        --local edit =
-        --    UI('EditBox')
-        --        .SetFullWidth(true)
-        --        .SetLabel("")
-        --        .SetMaxLetters(0)()
-        --edit.button:Hide()
-        --edit.frame:SetClipsChildren(true)
-
-        local function TypeToLocaleKey(v)
-            return Util.Strings.Lower(
-                    Util.Strings.Join('_',
-                            Util.Strings.Split(
-                                    Util.Strings.FromCamelCase(v),
-                                    ' '
-                            )
-                    )
-            )
+        function f.edit.Reset() f.edit:SetText("") end
+    elseif type == FrameTypes.BulkDelete then
+        local function ScrollingFunction(self, arg)
+            if arg > 0 then
+                if IsShiftKeyDown() then self:ScrollToTop() else self:ScrollUp() end
+            elseif arg < 0 then
+                if IsShiftKeyDown() then self:ScrollToBottom() else self:ScrollDown() end
+            end
         end
 
-        local exportType =
-            UI('Dropdown')
-                .SetPoint("BOTTOMLEFT", f.content, "BOTTOMLEFT", 17, 10)
-                .SetList(
-                    Util(TypeIdToProcess):Copy()
-                    :Map(function (v) return L[format('history_%s', TypeToLocaleKey(v))] end)()
+        -- The scrolling message frame with all the debug info.
+        local edit = CreateFrame("ScrollingMessageFrame", nil, f.content)
+        edit:SetMaxLines(10000)
+        edit:SetFading(false)
+        edit:SetFontObject(GameFontHighlightLeft)
+        edit:EnableMouseWheel(true)
+        edit:SetTextCopyable(true)
+        edit:SetBackdrop(
+                {
+                    bgFile   = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+                    tile     = true, tileSize = 8, edgeSize = 4,
+                    insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+                }
+        )
+        edit:SetPoint("TOPLEFT", f.content, "TOPLEFT", 5, -10)
+        edit:SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -5, 70)
+        edit:SetScript("OnMouseWheel", ScrollingFunction)
+        f.edit = edit
+        function f.edit.Reset() f.edit:Clear() end
+    end
+
+    local statusBar = CreateFrame("StatusBar", nil, f.content, "TextStatusBar")
+    statusBar:SetSize((f.group and f.group.frame or f.edit):GetWidth() - 20, 15)
+    statusBar:SetPoint("TOPLEFT", f.group and f.group.frame or f.edit, "BOTTOMLEFT")
+    statusBar:SetPoint("TOPRIGHT", f.group and f.group.frame or f.edit, "BOTTOMRIGHT")
+    statusBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    statusBar:SetStatusBarColor(0.1, 0, 0.6, 0.8)
+    statusBar:SetMinMaxValues(0, 100)
+    statusBar:Hide()
+    f.statusBar = statusBar
+
+    statusBar.text = f.statusBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    statusBar.text:SetPoint("CENTER", f.statusBar)
+    statusBar.text:SetTextColor(1,1,1)
+    statusBar.text:SetText("")
+
+    function f.statusBar.Reset()
+        f.statusBar:Hide()
+        f.statusBar.text:Hide()
+    end
+
+    function f.statusBar.Update(value, text)
+        f.statusBar:Show()
+        if tonumber(value) then f.statusBar:SetValue(value) end
+        f.statusBar.text:Show()
+        f.statusBar.text:SetText(text)
+    end
+
+    local function TypeToLocaleKey(v)
+        return Util.Strings.Lower(
+                Util.Strings.Join('_',
+                        Util.Strings.Split(
+                                Util.Strings.FromCamelCase(v),
+                                ' '
+                        )
                 )
+        )
+    end
+
+    if Util.Objects.In(type, FrameTypes.Export, FrameTypes.BulkDelete) then
+        local type =
+            UI('Dropdown')
+                    .SetPoint("BOTTOMLEFT", f.content, "BOTTOMLEFT", 17, 10)
+                    .SetList(
+                    Util(TypeIdToProcess):Copy()
+                                         :Map(function (v) return L[format('history_%s', TypeToLocaleKey(v))] end)()
+            )
                 .SetWidth(100)
                 .SetValue(ProcessTypes.Filtered)
                 .SetLabel(L['type'])
                 .SetParent(f)()
-        exportType:SetCallback(
+        type:SetCallback(
                 "OnValueChanged",
                 function (_, _, key)
                     if Util.Objects.In(key, ProcessTypes.AgeOlder, ProcessTypes.AgeYounger) then
@@ -140,77 +250,138 @@ function History.ExportFrame(module, parent)
                     end
                 end
         )
-        exportType:SetCallback(
+        type:SetCallback(
                 "OnEnter", function()
-                    local localeKey = format('history_%s_desc', TypeToLocaleKey(TypeIdToProcess[exportType:GetValue()]))
-                    UI:CreateHelpTooltip(exportType.button, "ANCHOR_RIGHT", L[localeKey])
+                    local localeKey = format('history_%s_desc', TypeToLocaleKey(TypeIdToProcess[type:GetValue()]))
+                    UI:CreateHelpTooltip(type.button, "ANCHOR_RIGHT", L[localeKey])
                 end
         )
-        exportType:SetCallback("OnLeave", function() UI:HideTooltip() end)
-        f.exportType = exportType
+        type:SetCallback("OnLeave", function() UI:HideTooltip() end)
+        f.type = type
 
         local age =
             UI('EditBox')
-                .SetPoint("LEFT", f.exportType.dropdown, "RIGHT", 10, 10)
-                .SetParent(f)
-                .SetLabel("Days")
-                .DisableButton(true)
-                .SetWidth(100)()
+                    .SetPoint("LEFT", f.type.dropdown, "RIGHT", 10, 10)
+                    .SetParent(f)
+                    .SetLabel("Days")
+                    .DisableButton(true)
+                    .SetWidth(100)()
         age.Hide = function() f.age.frame:Hide() end
         age.Show = function() f.age.frame:Show() end
         age:SetCallback("OnEnter", function() UI:CreateHelpTooltip(age.editbox, "ANCHOR_RIGHT", L['history_days_description']) end)
         age:SetCallback("OnLeave", function() UI:HideTooltip() end)
         age.editbox:SetNumeric(true)
         f.age = age
-
-        local close = UI:CreateButton(_G.CLOSE, f.content)
-        close:SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -13, 10)
-        close:SetScript("OnClick", function() f:Hide() end)
-        f.close = close
-
-        local export = UI:CreateButton(L['execute'], f.content)
-        export:SetPoint("RIGHT", f.close, "LEFT", -25)
-        export:SetScript("OnClick",
-                function()
-                    local exportType = f.exportType:GetValue()
-                    local export =
-                        AddOn:GetModule(module):ExportHistory(
-                                History.Iterator(
-                                        module,
-                                        exportType,
-                                        Util.Objects.In(exportType, ProcessTypes.AgeOlder, ProcessTypes.AgeYounger) and tonumber(age:GetText())
-                                )
-                        )
-
-                    f.edit:SetText(export)
-                    f.edit.editBox:HighlightText()
-                    f.edit:SetFocus()
-                end)
-        f.export = export
-
-        f:Hide()
-        return f
     end
 
-    return GetFrame(module, FrameTypes.Export, CreateFrame)
+    local close = UI:CreateButton(_G.CLOSE, f.content)
+    close:SetPoint("BOTTOMRIGHT", f.content, "BOTTOMRIGHT", -13, 10)
+    close:SetScript(
+            "OnClick",
+            function()
+                f.edit.Reset()
+                f.statusBar.Reset()
+                f:Hide()
+            end
+    )
+    f.close = close
+
+    local execute = UI:CreateButton(L['execute'], f.content)
+    execute:SetPoint("RIGHT", f.close, "LEFT", -25)
+    execute:SetScript(
+            "OnEnter", function()
+                Logging:Debug("OnEnter")
+                UI:CreateHelpTooltip(execute, "ANCHOR_RIGHT", L['history_warning'])
+            end
+    )
+    execute:SetScript("OnLeave", function() UI:HideTooltip() end)
+    f.execute = execute
+
+    f:Hide()
+    return f
 end
 
+function History.ExportFrame(module, parent)
+    local function CreateExportFrame()
+        local f = CreateHistoryFrame(module, parent, FrameTypes.Export)
+        local function ExportExecute()
+            local type, exported = f.type:GetValue(), 0
+            local export = AddOn:GetModule(module):ExportHistory(
+                    History.Iterator(
+                            module,
+                            type,
+                            Util.Objects.In(type, ProcessTypes.AgeOlder, ProcessTypes.AgeYounger) and tonumber(f.age:GetText())
+                    ),
+                    function(v)
+                        exported = exported + 1
+                    end
+            )
+
+            f.statusBar.Update(100, format("Exported %d entries", exported))
+            f.edit:SetText(export)
+            f.edit.editBox:HighlightText()
+            f.edit:SetFocus()
+            f.execute:Enable()
+        end
+
+        f.execute:SetScript(
+                "OnClick",
+                function()
+                    f.edit.Reset()
+                    f.statusBar.Reset()
+                    f.execute:Disable()
+                    EnqueueOperation(ExportExecute)
+                end
+        )
+        return f
+    end
+
+    return GetHistoryFrame(module, FrameTypes.Export, CreateExportFrame)
+end
+
+function History.ImportFrame(module, parent)
+    local function CreateImportFrame()
+        local f = CreateHistoryFrame(module, parent, FrameTypes.Import)
+        return f
+    end
+
+    return GetHistoryFrame(module, FrameTypes.Import, CreateImportFrame)
+end
 
 function History.BulkDeleteFrame(module, parent)
-    local function CreateFrame()
-        local f = UI:CreateFrame("R2D2_" .. module .. "_BulkDelete", module .. "BulkDelete", format(L["r2d2_history_bulk_delete_frame"], Util.Strings.FromCamelCase(module)), 200, 275)
-        f:SetWidth(425)
-        f:SetPoint("TOPLEFT", parent, "TOPRIGHT", 150)
+    local function CreateBulkDeleteFrame()
+        local f = CreateHistoryFrame(module, parent, FrameTypes.BulkDelete)
+        local function BulkDeleteExecute()
+            local type, deleted = f.type:GetValue(), 0
+            AddOn:GetModule(module):DeleteHistory(
+                    History.Iterator(
+                            module,
+                            type,
+                            Util.Objects.In(type, ProcessTypes.AgeOlder, ProcessTypes.AgeYounger) and tonumber(f.age:GetText())
+                    ),
+                    function(v)
+                        deleted = deleted + 1
+                        f.edit:AddMessage(format("%s %s", L['deleted'], v:Description()))
+                    end
+            )
+            f.statusBar.Update(100, format(L['deleted_n'], deleted))
+            f.execute:Enable()
+        end
 
-        local close = UI:CreateButton(_G.CLOSE, f.content)
-        close:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -13, 10)
-        close:SetScript("OnClick", function() f:Hide() end)
-        f.close = close
+        f.execute:SetScript(
+                "OnClick",
+                function()
+                    f.edit.Reset()
+                    f.statusBar.Reset()
+                    f.execute:Disable()
+                    EnqueueOperation(BulkDeleteExecute)
+                end
+        )
 
         return f
     end
 
-    return GetFrame(module, FrameTypes.BulkDelete, CreateFrame)
+    return GetHistoryFrame(module, FrameTypes.BulkDelete, CreateBulkDeleteFrame)
 end
 
 function History.Iterator(module, type, ...)

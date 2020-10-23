@@ -133,7 +133,7 @@ function LootHistory:GetHistory()
     return self.history
 end
 
-function LootHistory:ExportHistory(iterator)
+function LootHistory:ExportHistory(iterator, fn)
     Logging:Debug("ExportHistory() : iterator=%s", Util.Objects.ToString(iterator))
 
     local export = {}
@@ -148,13 +148,14 @@ function LootHistory:ExportHistory(iterator)
             end
 
             Util.Tables.Push(loot, entry:toTable())
+            if fn then fn(row.entry) end
         end
     end
 
     return AddOn.components.History.ToJson(export)
 end
 
-function LootHistory:ImportHistory(table)
+function LootHistory:ImportHistory(table, fn)
     Logging:Debug("ImportHistory() : count=%d", Util.Tables.Count(table))
     local data = {}
     local syncData = CDB(data)
@@ -164,9 +165,10 @@ function LootHistory:ImportHistory(table)
     self:ImportDataFromSync(data)
 end
 
-function LootHistory:DeleteHistory(iterator)
+function LootHistory:DeleteHistory(iterator, fn)
     Logging:Debug("DeleteHistory() : iterator=%s", Util.Objects.ToString(iterator))
 
+    local persist = (not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()) or _G.R2D2_Testing
     local history, deleted = self:GetHistory(), {}
 
     local function TrackDeletion(name)
@@ -196,9 +198,12 @@ function LootHistory:DeleteHistory(iterator)
         if row and row.entry and row.num then
             local entry = row.entry
             if entry.owner and row.num then
-                Logging:Debug("(%s) : rownum=%d, owner=%s, index=%d",  entry.owner, row.rownum, row.name, row.num)
-                history:del(entry.owner, row.num)
-                UpdateRowNumbers(entry.owner, row.num)
+                Logging:Debug("DeleteHistory(%s) : rownum=%d, owner=%s, index=%d",  entry.owner, row.rownum, row.name, row.num)
+                if persist then
+                    history:del(entry.owner, row.num)
+                    UpdateRowNumbers(entry.owner, row.num)
+                end
+                if fn then fn(entry) end
                 TrackDeletion(entry.owner)
             end
         end
@@ -208,13 +213,17 @@ function LootHistory:DeleteHistory(iterator)
         for name, _ in pairs(deleted) do
             if #history:get(name) == 0 then
                 Logging:Debug("DeleteHistory() : Last entry deleted, removing %s", tostring(name))
-                history:del(name)
+                if persist then
+                    history:del(name)
+                end
             end
         end
 
         self:BuildData()
         self.frame.st:SortData()
     end
+
+    Logging:Debug("DeleteHistory() : %s", Util.Objects.ToString(deleted))
 
     return deleted
 end
@@ -331,6 +340,8 @@ function LootHistory:Hide()
 end
 
 function LootHistory:BuildData()
+    Logging:Debug("BuildData()")
+
     local data = {}
     
     local c_pairs = CDB.static.pairs

@@ -155,7 +155,7 @@ function UpdateHandler:OnUpdate(elapsed)
     -- Logging:Debug("OnUpdate(%.2f) : elapsed=%.2f, interval=%.2f, pending=%s", elapsed, self.elapsed, self.interval, tostring(self.pending))
     if self.pending and self.elapsed > self.interval then
         self.callback()
-        self.elapsed = 0
+        self.elapsed = 0.0
     end
 end
 

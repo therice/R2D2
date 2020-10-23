@@ -73,6 +73,14 @@ function Loot:FormattedResponse()
     return UI.ColoredDecorator(self.color):decorate(self.response)
 end
 
+function Loot:Description()
+    return format("[%s] %s %s",
+            self:FormattedTimestamp(),
+            UI.ColoredDecorator(AddOn.GetClassColor(self.class)):decorate(AddOn.Ambiguate(self.owner)),
+            self.item
+    )
+end
+
 -- Loot Statistics
 function LootStatistics:initialize()
     -- mapping from character name to associated stats

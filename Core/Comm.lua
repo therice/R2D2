@@ -402,8 +402,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                 end
             elseif command == C.Commands.LootHistoryAdd then
                 local winner, table = unpack(data)
-                Logging:Debug("%s, %s", tostring(winner), Objects.ToString(table))
-                
+                -- Logging:Debug("%s, %s", tostring(winner), Objects.ToString(table))
                 local entry = Models.History.Loot():reconstitute(table)
                 local _, _, _, _, _, itemTypeId, itemSubTypeId = GetItemInfoInstant(entry.item)
                 entry.itemTypeId = itemTypeId
