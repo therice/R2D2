@@ -79,6 +79,7 @@ do
     R2D2:AddLib('DataBroker', 'LibDataBroker-1.1')
     R2D2:AddLib('DbIcon', 'LibDBIcon-1.0')
     R2D2:AddLib('GuildStorage', 'LibGuildStorage-1.3')
+    R2D2:AddLib('JSON', 'LibJSON-1.0')
 end
 
 AddOn.components            = {}

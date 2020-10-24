@@ -7,6 +7,7 @@ local Class = AddOn.Libs.Class
 local Models = AddOn.components.Models
 local Award = Models.Award
 local History = Models.History.History
+local UI = AddOn.components.UI
 
 local Traffic = Class('Traffic', History)
 local TrafficStatistics = Class('TrafficStatistics')
@@ -66,6 +67,25 @@ function Traffic:Finalize()
     end
 end
 
+function Traffic:Description()
+    local subject = ""
+    if self.subjectType == Award.SubjectType.Character then
+        subject = UI.ColoredDecorator(
+                AddOn.GetClassColor(self.subjects[1][2])
+        ):decorate(AddOn.Ambiguate(self.subjects[1][1]))
+    else
+        subject = UI.ColoredDecorator(
+                AddOn.GetSubjectTypeColor(self.subjectType)
+        ):decorate(Award.TypeIdToSubject[self.subjectType])
+    end
+
+    return format("[%s] %s (%s %s)",
+            self:FormattedTimestamp(),
+            subject,
+            UI.ColoredDecorator(AddOn.GetActionTypeColor(self.actionType)):decorate(Award.TypeIdToAction[self.actionType]),
+            UI.ColoredDecorator(AddOn.GetResourceTypeColor(self.resourceType)):decorate(Award.TypeIdToResource[self.resourceType]:upper())
+    )
+end
 
 -- Loot Statistics
 function TrafficStatistics:initialize()
@@ -114,12 +134,6 @@ function TrafficStatisticsEntry:initialize()
         awards = {
             [Award.ResourceType.Ep] = {},
             [Award.ResourceType.Gp] = {},
-        },
-        resets = {
-            count = 0
-        },
-        decays = {
-            count = 0,
         },
     }
     self.totalled = false
@@ -173,12 +187,14 @@ function TrafficStatisticsEntry:CalculateTotals()
             self.totals.awards[rt] = {
                 count = 0,
                 total = 0,
+                resets = 0,
+                decays = 0,
             }
             
             self.totals.awards[rt].count = awards
             self.totals.awards[rt].total = totals
-            self.totals.resets.count = resets
-            self.totals.decays.count = decays -- math.floor(decays / 2) -- one for EP and one for GP (2 for each operation)
+            self.totals.awards[rt].resets = resets
+            self.totals.awards[rt].decays = decays
         end
     end
     

@@ -491,6 +491,14 @@ function UI:CreateGameTooltip(module, parent)
     return itemTooltip
 end
 
+function UI:CreateHelpTooltip(anchor, anchorPt, ...)
+    GameTooltip:SetOwner(anchor, anchorPt)
+    for i = 1, select("#", ...) do
+        GameTooltip:AddLine(select(i, ...), 1, .82, 0, true)
+    end
+    GameTooltip:Show()
+end
+
 --- Displays a tooltip anchored to the mouse.
 -- @param ... string(s) lines to be added.
 function UI:CreateTooltip(...)
@@ -631,7 +639,7 @@ local ChainFn = function (...)
                 or widget.image and widget.image[key] and widget.image
                 or widget.label and widget.label[key] and widget.label
                 or widget.content and widget.content[key] and widget.content
-        Logging:Trace("ChainFn() : Object = %s, Key = %s", type(obj), key)
+        Logging:Trace("ChainFn() : Object = %s, Key = %s", tostring(obj.type), key)
 
         obj[key](obj, ...)
 
@@ -652,7 +660,10 @@ setmetatable(UI.Chain, {
     end,
     __call = function (chain, index)
         local widget = rawget(chain, "widget")
-        if index ~= nil then return widget[index] else return widget
+        if index ~= nil then
+            return widget[index]
+        else
+            return widget
         end
     end
 })

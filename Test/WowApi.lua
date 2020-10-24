@@ -12,12 +12,14 @@ FrameClass.methods = {
 	"EnableMouse", "SetAllPoints", "SetBackdropColor", "SetBackdropBorderColor", "SetWidth", "SetHeight", "GetParent",
 	"GetFrameLevel", "SetFrameLevel", "CreateTexture", "SetFontString", "SetDisabledFontObject", "SetID", "SetToplevel",
 	"GetFont", "SetWordWrap", "SetJustifyH", "SetMotionScriptsWhileDisabled", "SetDisabledTexture",
-	"SetAttribute", "SetScale", "GetObjectType", "IsVisible", "EnableKeyboard", "SetJustifyV", "GetHeight"
+	"SetAttribute", "SetScale", "GetObjectType", "IsVisible", "EnableKeyboard", "SetJustifyV", "GetHeight",
+	"GetObjectType", "SetMovable", "RegisterForDrag", "HookScript", "SetTextColor", "RegisterForClicks", "GetFontString",
+	"SetPushedTextOffset", "GetWidth"
 }
 
 TextureClass.methods = {
 	"SetTexCoord", "SetAllPoints", "Hide", "SetTexture", "SetBlendMode", "SetWidth", "SetHeight", "SetPoint",
-	"SetVertexColor"
+	"SetVertexColor", "SetColorTexture"
 }
 
 function FrameClass:New(name)
@@ -61,18 +63,42 @@ function FrameClass:SetToplevel(top)
 
 end
 
+function FrameClass:GetObjectType()
+	return "Frame"
+end
+
+function FrameClass:SetMovable()
+
+end
+
+function FrameClass:RegisterForDrag()
+
+end
+
+function FrameClass:RegisterForClicks()
+
+end
+
 function FrameClass:SetText(text)
 	frames[self].text = text
 end
+
+function FrameClass:SetTextColor()
+
+end
+
 
 function FrameClass:SetScript(script,handler)
 	frames[self].scripts[script] = handler
 end
 
+function FrameClass:HookScript()
+
+end
+
 function FrameClass:GetScript(script)
 	return frames[self].scripts[script]
 end
-
 
 function FrameClass:RegisterEvent(event)
 	frames[self].events[event] = true
@@ -114,6 +140,14 @@ end
 
 function FrameClass:GetParent()
 	return frames[self].parent
+end
+
+function FrameClass:GetFontString()
+
+end
+
+function FrameClass:SetPushedTextOffset()
+
 end
 
 function FrameClass:SetFrameLevel(l)
@@ -171,6 +205,10 @@ end
 
 function FrameClass:SetWidth(width)
 
+end
+
+function FrameClass:GetWidth()
+	return 100
 end
 
 function FrameClass:SetHeight(width)
@@ -276,6 +314,10 @@ function TextureClass:SetTexCoord(left, right, top, bottom)
 
 end
 
+function TextureClass:SetColorTexture()
+
+end
+
 function TextureClass:SetAllPoints()
 
 end
@@ -312,10 +354,11 @@ function CreateFrame(kind, name, parent)
 	local frame,internal = FrameClass:New(name)
 	internal.parent = parent
 	internal.type = kind
+	frame[0] = '(userdata)'
 	frames[frame] = internal
 	if name then
 		_G[name] = frame
-		--print('CreateFrame() _G[' .. name .. ' ] set')
+		-- print('CreateFrame() _G[' .. name .. ' ] set')
 	end
 	return frame
 end
@@ -944,6 +987,9 @@ local function ItemInfo(item)
 	return 0, {}
 end
 
+_G.pack = table.pack
+_G.unpack = table.unpack
+
 _G.sort = table.sort
 
 -- todo : GetItemInfo and GetItemInfoInstant only support number params at moment
@@ -959,7 +1005,13 @@ _G.GetItemInfoInstant = function(item)
 	local id, info = ItemInfo(item)
 
 	if id > 0 then
-		return id, info[6], info[7], info[9], info[10], info[12], info[13]
+		return id,
+		info and info[6] or nil,
+		info and info[7] or nil,
+		info and info[9] or nil,
+		info and info[10] or nil,
+		info and info[12] or nil,
+		info and info[13] or nil
 	end
 end
 
@@ -1055,21 +1107,34 @@ _G.TOOLTIP_DEFAULT_COLOR = {
 }
 
 _G.AUTO_LOOT_DEFAULT_TEXT = "Auto Loot"
-_G.ITEM_QUALITY_COLORS = {
-	{color=1},
-	{color=2},
-	{color=3},
-	{color=4},
-	{color=5},
-	{color=6},
-	{color=7},
-}
+
+local Color = {}
+function Color:New(r, g, b, a)
+	local c = {r=r, g=g, b=b, a=a}
+	c['GetRGB'] = function() return c.r, c.g, c.b end
+	return c
+end
 
 _G.CreateColor = function(r, g, b, a)
-	return {r=r, g=g, b=b, a=a}
+	return Color:New(r, g, b, a)
 end
+
+_G.ITEM_QUALITY_COLORS = {
+	{color = Color:New(1, 0, 0, 0)},
+	{color = Color:New(2, 0, 0, 0)},
+	{color = Color:New(3, 0, 0, 0)},
+	{color = Color:New(4, 0, 0, 0)},
+	{color = Color:New(5, 0, 0, 0)},
+	{color = Color:New(6, 0, 0, 0)},
+	{color = Color:New(7, 0, 0, 0)},
+}
+
 
 _G.UNKNOWNOBJECT = "Unknown Entity"
 _G.StaticPopup_DisplayedFrames = {}
 
 _G.PlaySound = function(...) end
+
+_G.FauxScrollFrame_Update = function() end
+_G.FauxScrollFrame_GetOffset = function() return 0 end
+_G.CLASS_ICON_TCOORDS = {}

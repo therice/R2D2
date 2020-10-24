@@ -31,4 +31,5 @@
     <Include file="lib-st\lib-st.xml" />
     <Include file="MSA-DropDownMenu-1.0\MSA-DropDownMenu-1.0.xml" />
     <Include file="LibGuildStorage-1.3\LibGuildStorage-1.3.xml" />
+    <Include file="LibJSON-1.0\LibJSON-1.0.xml" />
 </Ui>

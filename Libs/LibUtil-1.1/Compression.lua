@@ -88,7 +88,7 @@ end
 function Compressor:compress(value, encode)
     if encode == nil or type(encode) ~= 'boolean' then encode = false end
     
-    Logging:Trace("%s(%s) : length=%d", self:LogPrefix("compress"), tostring(encode), #value)
+    -- Logging:Trace("%s(%s) : length=%d", self:LogPrefix("compress"), tostring(encode), #value)
     
     local compressed, err = self.compressFn(value)
     if not compressed then
@@ -104,7 +104,7 @@ function Compressor:compress(value, encode)
         end
     end
     
-    Logging:Trace("%s(%s) : size=%d", self:LogPrefix("compress"), tostring(encode), #compressed)
+    -- Logging:Trace("%s(%s) : size=%d", self:LogPrefix("compress"), tostring(encode), #compressed)
     
     return compressed
 end
@@ -112,7 +112,7 @@ end
 function Compressor:decompress(value, decode)
     if decode == nil or type(decode) ~= 'boolean' then decode = false end
     
-    Logging:Trace("%s(%s) : length=%d", self:LogPrefix("decompress"), tostring(decode), #value)
+    -- Logging:Trace("%s(%s) : length=%d", self:LogPrefix("decompress"), tostring(decode), #value)
     
     local decoded, err1 = nil, nil
     if decode then
@@ -129,7 +129,7 @@ function Compressor:decompress(value, decode)
         return decompressed, err2
     end
     
-    Logging:Trace("%s(%s) : size=%d", self:LogPrefix("decompress"), tostring(decode), #decompressed)
+    -- Logging:Trace("%s(%s) : size=%d", self:LogPrefix("decompress"), tostring(decode), #decompressed)
     
     return decompressed
 end

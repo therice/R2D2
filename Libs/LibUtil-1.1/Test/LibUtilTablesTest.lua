@@ -147,5 +147,24 @@ describe("LibUtil", function()
                 end
             end
         end)
+        it("handles sparse table compaction ", function()
+            local sparse = {1, 3, nil, 5, nil, nil, 6, 99, nil}
+            local notsparse = {1, 3, 5, 6, 99}
+            local mix = {"a", "b", nil, nil, "z", nil, nil, ["x"] = {["a"] = 99}, "xx", ["zed"] = 3}
+            local withkeys = {["a"] = "b", nil, ["b"] = nil, ["x"] = {["a"] = 99}, ["zz"] = {1, 2, 3}}
+
+            local t1 = Util.Tables.Compact(sparse)
+            local t2 = Util.Tables.Compact(notsparse)
+            local t3 = Util.Tables.Compact(mix)
+            local t4 = Util.Tables.Compact(withkeys)
+
+            assert(#t1 == #t2)
+            assert(table.maxn(t1) == table.maxn(t2))
+            assert(Util.Tables.Equals(t1, t2, true))
+            assert(Util.Tables.Equals(t1, notsparse, true))
+            assert(Util.Tables.Equals(t2, notsparse, true))
+            assert(Util.Tables.Equals(t3, {"a", "b", "z", "xx", ["x"] = {["a"] = 99}, ["zed"] = 3}, true))
+            assert(Util.Tables.Equals(t4, {["a"] = "b", ["x"] = {["a"] = 99}, ["zz"] = {1, 2, 3}}, true))
+        end)
     end)
 end)

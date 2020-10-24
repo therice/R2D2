@@ -482,6 +482,30 @@ end
 
 -- COPY
 
+-- if the passed table is sparse, it will return a copy with entries removed which have a nil value
+-- if the passed table is NOT sparse, the original table is returned unmodified
+function Self.Compact(t)
+    if Self.Count(t) ~= table.maxn(t) then
+        local compact, append = {}, {}
+
+        local index = 1
+        for k, _ in pairs(t) do
+            if not Util.Objects.IsNil(k) then
+                if Util.Objects.IsNumber(k) and t[k] ~= nil then
+                    compact[index] = t[k]
+                    index = index + 1
+                else
+                    append[k] = t[k]
+                end
+            end
+        end
+        Self.CopyInto(compact, append)
+        return compact, true
+    end
+
+    return t, false
+end
+
 -- Copy a table and optionally apply a function to every entry
 ---@param fn function
 ---@param index boolean

@@ -46,7 +46,8 @@ end
 local function decompress(data, type)
     if data == nil then return nil end
     if not Util.Objects.IsNumber(type) then return nil end
-    
+
+
     local decoded = Base64:Decode(data)
     local decompressed, message = Compressors[type]:decompress(decoded)
     if not decompressed then
@@ -55,7 +56,7 @@ local function decompress(data, type)
     end
     local success, raw = Serialize:Deserialize(decompressed)
     if not success then
-        error('Could not de-serialize de-compressed data')
+        error('Could not de-serialize de-compressed data : ' .. tostring(raw))
     end
     return raw
 end
@@ -97,6 +98,70 @@ end
 --]]
 
 
+local function compact(db)
+    local count, maxn = Util.Tables.Count(db), table.maxn(db)
+
+    if count ~= maxn and maxn ~= 0 then
+        Logging:Warn("compact() : count=%d ~= maxn=%d, compacting", count, maxn)
+
+        local seen, skipped = {}, {}
+        for row, _ in pairs(db) do
+            -- Logging:Trace("compact() : examining %s [%s]", tostring(row), type(row))
+            -- track numeric keys separately, as we want to sort them later and
+            -- re-add in ascending order
+            if Util.Objects.IsNumber(row) then
+                Util.Tables.Push(seen, row)
+            -- track non-numeric keys later, as will be appended
+            else
+                Util.Tables.Push(skipped, row)
+            end
+        end
+
+        -- only necessary if seen numeric indexes
+        -- todo : this ~= check may be dubious
+        if #seen > 0 and (#seen + #skipped ~= math.max(count, maxn)) then
+            -- sort them so we can easily take low an dhigh
+            Util.Tables.Sort(seen)
+            local low, high, remove = seen[1], seen[#seen], false
+            Logging:Trace("compact() : count=%d, skipped=%d, low=%d, high=%d, ",  #seen, #skipped, low, high)
+
+            -- search forward looking for a gap in the sequence
+            for idx=low, high, 1 do
+                if not Util.Tables.ContainsValue(seen, idx) then
+                    remove = true
+                    break
+                end
+            end
+
+            if remove then
+                Logging:Warn("compact() : rows present that need removed, processing...")
+
+                local index, inserted, retain = 1, 0, {}
+                for _, r in pairs(seen) do
+                    Logging:Trace("compact() : repositioning %d to %d", r, index)
+                    retain[index] = db[r]
+                    index = index + 1
+                end
+                Logging:Trace("compact() : collected %d entries", #retain)
+                for _, k in pairs(skipped) do
+                    retain[k] = db[k]
+                end
+                Logging:Trace("compact() : wiping data and re-inserting")
+                Util.Tables.Wipe(db)
+                for k, v in pairs(retain) do
+                    db[k] = v
+                    inserted = inserted + 1
+                end
+                Logging:Debug("compact() : re-inserted %d entries", inserted)
+            else
+                Logging:Debug("compact() : no additional processing required")
+            end
+        end
+    end
+
+    return db
+end
+
 -- be warned, everything under the namespace for DB passed to this constructor
 -- needs to be compressed, there is no mixing and matching
 -- exception to this is top-level table keys
@@ -106,7 +171,7 @@ end
 -- of table like entries for a realm or realm/character combination
 -- such as loot history
 function CompressedDb:initialize(db)
-    self.db = db
+    self.db = compact(db)
     self.compressionType = nil
     
     -- check compression settings on the DB
@@ -153,7 +218,7 @@ end
 
 function CompressedDb:del(key, index)
     if Util.Objects.IsEmpty(index) then
-        self.db[key] = nil
+        Util.Tables.Remove(self.db, key)
     else
         local v = self:get(key)
         if not Util.Objects.IsTable(v) then
@@ -204,7 +269,6 @@ function CompressedDb.static.ipairs(cdb)
     
     return stateless_iter, cdb.db, 0
 end
-
 
 if _G.R2D2_Testing then
     function CompressedDb.static:decompress(data, type) return decompress(data, type or CurrentCompressorType) end

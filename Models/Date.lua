@@ -1,4 +1,4 @@
--- adapted from https://github.com/Tieske/Penlight/blob/master/lua/pl/utils.lua
+-- adapted from https://github.com/lunarmodules/Penlight/blob/master/lua/pl/Date.lua
 -- to utilize LibClass
 -- probably way too much stuff in here for what is actually used
 

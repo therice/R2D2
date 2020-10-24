@@ -20,7 +20,7 @@ function History:initialize(instant)
     local di = instant and Date(instant) or Date('utc')
     -- for versioning history entries, this is independent of add-on version
     self.version = SemanticVersion(1, 0)
-    -- unique identifier should multiple instances be created at same instant3
+    -- unique identifier should multiple instances be created at same instant
     self.id = di.time .. '-' .. counterGetAndIncr()
     self.timestamp = di.time
 end

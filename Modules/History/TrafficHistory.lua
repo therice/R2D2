@@ -169,6 +169,80 @@ function TrafficHistory:GetHistory()
     return self.history
 end
 
+
+function TrafficHistory:ExportHistory(iterator, fn)
+    Logging:Debug("ExportHistory() : iterator=%s", Util.Objects.ToString(iterator))
+
+    local export = {}
+
+    for _, row in iterator() do
+        Util.Tables.Push(export, row.entry:toTable())
+        if fn then fn (row.entry) end
+    end
+
+    return AddOn.components.History.ToJson(export)
+end
+
+function TrafficHistory:ImportHistory(table)
+    Logging:Debug("ImportHistory() : count=%d", #table)
+    local data = {}
+    local syncData = CDB(data)
+    for k, v in pairs(table) do
+        syncData:put(k, v)
+    end
+    self:ImportDataFromSync(data)
+end
+
+function TrafficHistory:DeleteHistory(iterator, fn)
+    Logging:Debug("DeleteHistory() : iterator=%s", Util.Objects.ToString(iterator))
+
+    local persist = (not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()) or _G.R2D2_Testing
+    local history, deleted = self:GetHistory(), {}
+
+    local function TrackDeletion(entry)
+        local count = deleted[entry:FormattedDate()]
+        if not count then count = 0 end
+        deleted[entry:FormattedDate()] = (count + 1)
+    end
+
+    -- this is necessary to reflect row numbers in the iterated data
+    -- based upon mutations, as we delete a row any rows that came after it
+    -- must have their row number decremented
+    local function UpdateRowNumbers(num)
+        -- Logging:Debug("UpdateRowNumbers(%d)", num)
+        for _, v in Util.Functions.Filter(
+                function (_, r)
+                    return r.num > num
+                end,
+                pairs(self.frame.rows)
+        ) do
+            -- Logging:Debug("UpdateRowNumbers() : Updating %d to %d", v.num, v.num - 1)
+            v.num = v.num - 1
+        end
+    end
+
+    for _, row in iterator() do
+        if row.entry and row.num then
+            Logging:Debug("DeleteHistory(%d)", row.num)
+            if persist then
+                history:del(row.num)
+                UpdateRowNumbers(row.num)
+            end
+
+            if fn then fn(row.entry) end
+            TrackDeletion(row.entry)
+        end
+    end
+
+
+    if Util.Tables.Count(deleted) > 0 then
+        self:BuildData()
+        self.frame.st:SortData()
+    end
+
+    return deleted
+end
+
 function TrafficHistory:AddEntry(entry)
     self:GetHistory():insert(entry:toTable())
     stats.stale = true
@@ -205,7 +279,7 @@ function TrafficHistory:ImportDataFromSync(data)
                   Util.Tables.Count(self.db.factionrealm),
                   Util.Tables.Count(data)
     )
-    local persist = not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()
+    local persist = (not AddOn:DevModeEnabled() and AddOn:PersistenceModeEnabled()) or _G.R2D2_Testing
     
     if Util.Tables.Count(data) > 0 then
         local c_pairs = CDB.static.pairs
@@ -222,23 +296,23 @@ function TrafficHistory:ImportDataFromSync(data)
                 -- if we've gone further into future than import record, it won't be found
                 if e.timestamp > importe.timestamp then
                     Logging:Debug(
-                        "TrafficHistory:ImportDataFromSync() : current history ts '%d' is after import ts '%d', aborting search...",
-                         e.timestamp, importe.timestamp
+                        "TrafficHistory:FindExistingEntry(%s) : current history ts '%d' is after import ts '%d', aborting search...",
+                         e.id, e.timestamp, importe.timestamp
                     )
                     break
                 end
     
                 if e.timestamp == importe.timestamp then
                     Logging:Debug(
-                        "TrafficHistory:ImportDataFromSync() : current history ts '%d' is equal to import ts '%d', performing final evaluation",
-                        e.timestamp, importe.timestamp
+                        "TrafficHistory:FindExistingEntry(%s) : current history ts '%d' is equal to import ts '%d', performing final evaluation",
+                        e.id, e.timestamp, importe.timestamp
                     )
                     
                     -- possibly too precise checking all of these, but ...
-                    if (e.subjectType == importe.subjectType) and
-                            (e.resourceType == importe.resourceType) and
-                            (e.actionType == importe.actionType) and
-                            (#e.subjects == #importe.subjects) then
+                    if  (e.subjectType == importe.subjectType) and
+                        (e.resourceType == importe.resourceType) and
+                        (e.actionType == importe.actionType) and
+                        (#e.subjects == #importe.subjects) then
                         return i, e
                     end
                 end
@@ -248,7 +322,7 @@ function TrafficHistory:ImportDataFromSync(data)
         local cdb = CDB(data)
         local imported, skipped = 0, 0
         for _, entryTable in c_pairs(cdb) do
-            Logging:Debug("TrafficHistory:ImportDataFromSync() : examining import entry %s", Util.Objects.ToString(entryTable))
+            Logging:Debug("TrafficHistory:ImportDataFromSync(%s) : examining import entry", entryTable.id)
             local _, existing = FindExistingEntry(entryTable)
             if existing then
                 Logging:Debug("TrafficHistory:ImportDataFromSync(%s) : found existing entry in history, skipping...", entryTable.id)
@@ -299,7 +373,9 @@ function TrafficHistory:BuildData()
     local c_pairs = CDB.static.pairs
     for row, entryTable in c_pairs(self:GetHistory()) do
         local entry = Models.History.Traffic():reconstitute(entryTable)
-        
+        -- Logging:Debug("Adding at row %d, %s", row, Util.Objects.ToString(entry:toTable()))
+
+        -- Logging:Debug("%s", Util.Objects.ToString(entry:toTable()))
         self.frame.rows[row] = {
             date = entry.timestamp,
             num = row,
@@ -323,7 +399,7 @@ function TrafficHistory:BuildData()
                 {DoCellUpdate = UI.ScrollingTableDoCellUpdate(self.SetCellDelete)},
             }
         }
-    
+
         -- keep a copy of all the timestamps that map to date
         -- could probably calculate later
         local fmtDate = entry:FormattedDate()
@@ -331,7 +407,7 @@ function TrafficHistory:BuildData()
             tsData[fmtDate] = {entry:FormattedDate(), timestamps = {}}
         end
         Tables.Push(tsData[fmtDate].timestamps, entry.timestamp)
-        
+
         -- Add all the individual character's to name data
         if entry.subjectType == Award.SubjectType.Character then
             local subject = entry.subjects[1]
@@ -346,7 +422,7 @@ function TrafficHistory:BuildData()
             end
         end
     end
-    
+
     Tables.CopyInto(nameData, SubjectTypesForDisplay)
     
     self.frame.st:SetData(self.frame.rows)
@@ -393,7 +469,10 @@ function TrafficHistory.SetCellSubject(rowFrame, frame, data, cols, row, realrow
     -- single character, so will be only one entry in subjects
     if subjectType == Award.SubjectType.Character then
         frame.text:SetText(AddOn.Ambiguate(entry.subjects[1][1]))
-        frame.text:SetTextColor(AddOn.GetClassColor(entry.subjects[1][2]):GetRGB())
+        local classColor = AddOn.GetClassColor(entry.subjects[1][2])
+        if classColor and classColor.GetRGB then
+            frame.text:SetTextColor(classColor:GetRGB())
+        end
     else
         TrafficHistory.SetSubject(rowFrame, frame, data, cols, row, realrow, column, fShow, table, subjectType)
     end
@@ -543,8 +622,6 @@ function TrafficHistory:GetFrame()
                       })
     f.st = st
     
-    AddOn.EmbedMoreInfoWidgets(self:GetName(), f, function(m, f) self:UpdateMoreInfo(m, f) end)
-    
     f.date = ST:CreateST(
             {
                 {
@@ -646,14 +723,16 @@ function TrafficHistory:GetFrame()
     close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -100)
     close:SetScript("OnClick", function() self:Disable() end)
     f.close = close
-    
+
+    AddOn.EmbedMoreInfoWidgets(self:GetName(), f, function(m, f) self:UpdateMoreInfo(m, f) end)
+    AddOn.components.History.EmbedActionButtons(self:GetName(), f)
     
     local filter = UI:CreateButton(_G.FILTER, f.content)
     filter:SetPoint("RIGHT", f.close, "LEFT", -10, 0)
     filter:SetScript("OnClick", function(self) MSA_ToggleDropDownMenu(1, nil, FilterMenu, self, 0, 0) end )
     f.filter = filter
     MSA_DropDownMenu_Initialize(filter, self.FilterMenu)
-    f.filter:SetSize(125,25)
+    f.filter:SetSize(100,25)
     
     local clear = UI:CreateButton(L["clear_selection"], f.content)
     clear:SetPoint("RIGHT", f.filter, "LEFT", -10, 0)
@@ -665,7 +744,6 @@ function TrafficHistory:GetFrame()
         self.frame.resource:ClearSelection()
         self:Update()
     end)
-    clear:SetWidth(125)
     f.clearSelectionBtn = clear
     
     f:SetWidth(st.frame:GetWidth() + 20)
@@ -679,6 +757,9 @@ local CountDecorator = UI.ColoredDecorator(1, 1, 1, 1)
 local TotalDecorator = UI.ColoredDecorator(0, 1, 0.59, 1)
 
 function TrafficHistory:UpdateMoreInfo(module, f, row, data)
+    local DecayDecorator = UI.ColoredDecorator(AddOn.GetActionTypeColor(Award.ActionType.Decay))
+    local ResetDecorator = UI.ColoredDecorator(AddOn.GetActionTypeColor(Award.ActionType.Reset))
+
     local moreInfo = AddOn:MoreInfoEnabled(module)
     local C = AddOn.Constants
     
@@ -727,22 +808,24 @@ function TrafficHistory:UpdateMoreInfo(module, f, row, data)
         if stats and se then
             tip:AddLine("For the past " .. TrafficIntervalInDays .. " days")
             tip:AddLine(" ")
-            tip:AddDoubleLine("Resource", "Count/Awarded")
+            tip:AddDoubleLine("Resource",
+                            CountDecorator:decorate("Count") .. " / " ..
+                            TotalDecorator:decorate("Awarded") .. " / " ..
+                            DecayDecorator:decorate("Decays") .. " / " ..
+                            ResetDecorator:decorate("Resets")
+            )
             local totals = se:CalculateTotals()
             for _, resource in pairs({Award.ResourceType.Ep, Award.ResourceType.Gp}) do
                 local decorator = UI.ColoredDecorator(AddOn.GetResourceTypeColor(resource))
                 tip:AddDoubleLine(
                         decorator:decorate(Strings.Upper(Award.TypeIdToResource[resource])),
                         CountDecorator:decorate(tostring(totals.awards[resource].count)) .. ' / ' ..
-                        TotalDecorator:decorate(tostring(totals.awards[resource].total))
+                        TotalDecorator:decorate(tostring(totals.awards[resource].total)) .. ' / ' ..
+                        DecayDecorator:decorate(tostring(totals.awards[resource].decays)) .. ' / ' ..
+                        ResetDecorator:decorate(tostring(totals.awards[resource].resets))
                 )
             end
             tip:AddLine(" ")
-            tip:AddDoubleLine("Operation", "Count")
-            local decorator = UI.ColoredDecorator(AddOn.GetActionTypeColor(Award.ActionType.Decay))
-            tip:AddDoubleLine(decorator:decorate(Award.TypeIdToAction[Award.ActionType.Decay]), CountDecorator:decorate(tostring(totals.decays.count)))
-            decorator = UI.ColoredDecorator(AddOn.GetActionTypeColor(Award.ActionType.Reset))
-            tip:AddDoubleLine(decorator:decorate(Award.TypeIdToAction[Award.ActionType.Reset]), CountDecorator:decorate(tostring(totals.resets.count)))
         else
             tip:AddLine("No entries in the past " .. TrafficIntervalInDays .. " days")
         end
@@ -815,6 +898,15 @@ TrafficHistory.RightClickMenu = UI.RightClickMenu(
         TrafficHistory.RightClickEntries
 )
 
+
+if _G.R2D2_Testing then
+    function TrafficHistory.SetFilterValues(name, action, resource, date)
+        selectedName = name
+        selectedAction = action
+        selectedResource = resource
+        selectedDate = date
+    end
+end
 
 local function SelectionFilter(entry)
     -- Logging:Debug("SelectionFilter() : %s", Objects.ToString(entry, 3))

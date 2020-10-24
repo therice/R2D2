@@ -116,7 +116,7 @@ end
 function ParseTOC(toc)
     local file = assert(io.open(toc, "r"))
     local addon = Addon:new(toc)
-    print('Parsing Addon TOC @ ' .. toc)
+    -- print('Parsing Addon TOC @ ' .. toc)
     while true do
         local line = file:read()
         if line == nil then break end
@@ -149,21 +149,21 @@ function TestSetup(toc, preload_functions)
     local load = addon:ResolveFiles()
     local addOnName  = addon:GetProperty("X-AddonName")
     local addOnNamespace = {}
-    print("Parsed Addon -> " .. addOnName)
+    -- print("Parsed Addon -> " .. addOnName)
 
     -- insert non-addon files needing for testing
     local thisDir = pl.abspath(debug.getinfo(1).source:match("@(.*)/.*.lua$"))
     local wowApi = thisDir .. '/WowApi.lua'
-    print('Loading File -> ' .. wowApi)
+    -- print('Loading File -> ' .. wowApi)
     loadfile(wowApi)()
 
     if #preload_functions > 0 then
-        print('Invoking Preload Functions (' .. #preload_functions .. ')')
+        -- print('Invoking Preload Functions (' .. #preload_functions .. ')')
         for _, f in pairs(preload_functions) do f() end
     end
 
     for _, toload in pairs(load) do
-        print('Loading File -> ' .. toload)
+        -- print('Loading File -> ' .. toload)
         loadfile(toload)(addOnName, addOnNamespace)
     end
 
