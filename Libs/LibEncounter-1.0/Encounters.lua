@@ -3,11 +3,17 @@ local lib = LibStub("LibEncounter-1.0", true)
 --
 -- Currently supports the following raids
 --
+-- (40 person)
 --  Molten Core
 --  Onyxia's Lair
 --  Blackwing Lair
 --  Temple of Ahn'Qiraj
-
+--  Naxxramas
+--
+-- (20 person)
+--  Ancient Zul'Gurub
+--  Ruins of Ahn'Qiraj
+--
 -- Mapping from map id to details (name will be used as index for localization)
 lib.Maps = {
     [309] = {
