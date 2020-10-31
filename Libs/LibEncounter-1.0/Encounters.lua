@@ -186,6 +186,60 @@ lib.Creatures = {
     [15727] = {
         name = 'C\'Thun'
     },
+    [15956] = {
+        name = 'Anub\'Rekhan'
+    },
+    [15953] = {
+        name = 'Grand Widow Faerlina'
+    },
+    [15952] = {
+        name = 'Maexxna'
+    },
+    [15954] = {
+        name = 'Noth the Plaguebringer'
+    },
+    [15936] = {
+        name = 'Heigan the Unclean'
+    },
+    [16011] = {
+        name = 'Loatheb'
+    },
+    [16061] = {
+        name = 'Instructor Razuvious'
+    },
+    [16060] = {
+        name = 'Gothik the Harvester'
+    },
+    [16062] = {
+        name = 'Highlord Mograine'
+    },
+    [16063] = {
+        name = 'Sir Zeliek'
+    },
+    [16064] = {
+        name = 'Thane Korth\'azz'
+    },
+    [16065] = {
+        name = 'Lady Blaumeux'
+    },
+    [16028] = {
+        name = 'Patchwerk'
+    },
+    [15931] = {
+        name = 'Grobbulus'
+    },
+    [15932] = {
+        name = 'Gluth'
+    },
+    [15928] = {
+        name = 'Thaddius'
+    },
+    [15989] = {
+        name = 'Sapphiron'
+    },
+    [15990] = {
+        name = 'Kel\'Thuzad'
+    },
 }
 
 -- Mapping from encounter id to details
@@ -409,5 +463,80 @@ lib.Encounters = {
     [717] = {
         map_id = 531,
         creature_id = {15727},
+    },
+    -- Anub'Rekhan
+    [1107] = {
+        map_id = 533,
+        creature_id = {15956},
+    },
+    -- Faerlina
+    [1110] = {
+        map_id = 533,
+        creature_id = {15953},
+    },
+    -- Maexxna
+    [1116] = {
+        map_id = 533,
+        creature_id = {15952},
+    },
+    -- Noth
+    [1117] = {
+        map_id = 533,
+        creature_id = {15954},
+    },
+    -- Heigan
+    [1112] = {
+        map_id = 533,
+        creature_id = {15936},
+    },
+    -- Loatheb
+    [1115] = {
+        map_id = 533,
+        creature_id = {16011},
+    },
+    -- Razuvious
+    [1113] = {
+        map_id = 533,
+        creature_id = {16061},
+    },
+    -- Gothik
+    [1109] = {
+        map_id = 533,
+        creature_id = {16060},
+    },
+    -- Four Horsemen
+    [1121] = {
+        map_id = 533,
+        creature_id = {16062, 16063, 16064, 16065},
+    },
+    -- Patchwerk
+    [1118] = {
+        map_id = 533,
+        creature_id = {16028},
+    },
+    -- Grobbulus
+    [1111] = {
+        map_id = 533,
+        creature_id = {15931},
+    },
+    -- Gluth
+    [1108] = {
+        map_id = 533,
+        creature_id = {15932},
+    },
+    -- Thaddius
+    [1120] = {
+        map_id = 533,
+        creature_id = {15928},
+    },
+    -- Sapphiron
+    [1119] = {
+        map_id = 533,
+        creature_id = {15989},
+    },
+    -- Kel'Thuzad
+    [1114] = {
+        map_id = 533,
+        creature_id = {15990},
     },
 }

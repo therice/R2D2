@@ -117,6 +117,36 @@ EP.defaults = {
                 ['twin_emperors'] = 32,
                 -- C'Thun
                 ['15727'] = 38,
+                -- Anub'Rekhan
+                ['15956'] = 30,
+                -- Faerlina
+                ['15953'] = 30,
+                --  Maexxna
+                ['15952'] = 33,
+                -- Noth
+                ['15954'] = 30,
+                -- Heigan
+                ['15936'] = 30,
+                -- Loatheb
+                ['16011'] = 33,
+                -- Razuvious
+                ['16061'] = 30,
+                -- Gothik
+                ['16060'] = 30,
+                -- Four Horsemen
+                ['four_horsemen'] = 36,
+                -- Patchwerk
+                ['16028'] = 30,
+                -- Grobbulus
+                ['15931'] = 30,
+                -- Gluth
+                ['15932'] = 30,
+                -- Thaddius
+                ['15928'] = 33,
+                -- Sapphiron
+                ['15989'] = 42,
+                -- Kel'Thuzad
+                ['15990'] = 50,
             }
         },
     }
@@ -175,6 +205,7 @@ local MultiCreatureEncounters = {
     ['edge_of_madness']  = Encounter:GetEncounterCreatureId(788),
     ['silithid_royalty'] = Encounter:GetEncounterCreatureId(710),
     ['twin_emperors']    = Encounter:GetEncounterCreatureId(715),
+    ['four_horsemen']    = Encounter:GetEncounterCreatureId(1121),
 }
 
 do
