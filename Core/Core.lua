@@ -460,7 +460,8 @@ function AddOn:OnEvent(event, ...)
         self.encounter = Models.Encounter(...)
         Logging:Debug("EncounterEnd() : %s", Util.Objects.ToString(self.encounter:toTable()))
         -- if master looter, need to check for EP
-        if AddOn.isMasterLooter then
+        -- also, make sure we're actually handling loot - otherwise could award EP when not intended
+        if AddOn.isMasterLooter and AddOn.handleLoot then
             self:EffortPointsModule():OnEncounterEnd(self.encounter)
         end
     -- Fired when loot is removed from a corpse
