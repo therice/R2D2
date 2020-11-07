@@ -738,6 +738,7 @@ function ML:OnEnable()
     Logging:Debug("OnEnable(%s)", self:GetName())
     local C = AddOn.Constants
     -- mapping of candidateName = { class, role, rank }
+    -- keys will be "character-realm" (e.g. Bob-Atiesh)
     -- entries will be of type Candidate.Candidate
     self.candidates = {}
     -- the master looter's loot table (entries will be of type Item.ItemEntry)
@@ -753,6 +754,7 @@ function ML:OnEnable()
     -- running counter of how many attempts to start a session when unable
     self.falseStarts = 0
     -- for tracking auto awarding of rep items via round-robin (as/if needed)
+    -- entries will be character's names in format "character-realm" (e.g. Bob-Atiesh)
     self.repItemsRR = nil
     self:RegisterComm(name, "OnCommReceived")
     self:RegisterEvent(C.Events.ChatMessageWhisper, "OnEvent")
@@ -761,7 +763,6 @@ function ML:OnEnable()
     self:RegisterBucketMessage(C.Messages.ConfigTableChanged, 5, "ConfigTableChanged")
     self:AutoAwardRepItemsSetup()
     AddOn:StandbyModule():RosterSetup()
-
 end
 
 function ML:OnDisable()
@@ -1215,7 +1216,6 @@ ML.AwardReasons = {
 
 function ML:CanGiveLoot(slot, item, winner)
     local lootSlotInfo = AddOn:GetLootSlotInfo(slot)
-    
     Logging:Debug("CanGiveLoot(slot=%s) : item=%s, winner=%s", tostring(slot), tostring(item), tostring(winner))
     if not AddOn.lootOpen then
         return false, ML.AwardReasons.Failure.LootNotOpen
@@ -1499,6 +1499,7 @@ function ML:ShouldAutoAward(item, quality)
         IsEligibleItem(item) then
         
         if db.autoAwardLowerThreshold >= GetLootThreshold() or db.autoAwardLowerThreshold < 2 then
+            -- E.G. ["autoAwardTo"] = "Zùùl"
             if IsEligibleUnit(db.autoAwardTo) then
                 return true, AutoAwardMode.Normal, db.autoAwardTo
             else
@@ -1514,8 +1515,8 @@ function ML:ShouldAutoAward(item, quality)
     if db.autoAwardRepItems then
         local itemId = ItemUtil:ItemLinkToId(item)
         if itemId and ItemUtil:IsReputationItem(itemId) then
+            -- E.G. ["autoAwardRepItemsTo"] = "Zùùl"
             local awardTo = db.autoAwardRepItemsTo
-
             -- only in the case of round-robin do we need to determine the person for award
             if db.autoAwardRepItemsMode == AutoAwardRepItemsMode.RoundRobin then
                 if not self.repItemsRR then
@@ -1526,7 +1527,7 @@ function ML:ShouldAutoAward(item, quality)
                     --
                     -- there is a window of opportunity here that returned person may have
                     -- left the raid, but it's very small so not accounting for ATM
-                    awardTo = self.repItemsRR:peek().id
+                    awardTo = Ambiguate(self.repItemsRR:peek().id, "short")
                 end
             end
 
@@ -1632,17 +1633,18 @@ function ML:AutoAward(lootIndex, item, quality, winner, mode)
 end
 
 --@param session the session to award.
---@param winner	Nil/false if items should be stored in inventory and awarded later.
+--@param winner	Nil/false if items should be stored in inventory and awarded later. if non-nil, of format "character-realm" (e.g. Bob-Atiesh)
 --@param response the candidates response, used for announcement.
 --@param reason	entry in awardReasons (only populated if awarded for a reason other than response - e.g. Free)
 --@param callback This function will be called as callback(awarded, session, winner, status, ...)
 --@returns true if award is success. false if award is failed. nil if we don't know the result yet.
 function ML:Award(session, winner, response, reason, callback, ...)
     Logging:Debug("Award(%s) : %s, %s, %s", tostring(session), tostring(winner), tostring(response), Util.Objects.ToString(reason))
+
     local args = {...}
     -- data is passed through in position #1
     local itemAward = args[1]
-    
+
     if not self.lootTable or #self.lootTable == 0 then
         if self.oldLootTable and #self.oldLootTable > 0 then
             self.lootTable = self.oldLootTable
@@ -1653,7 +1655,7 @@ function ML:Award(session, winner, response, reason, callback, ...)
     end
     
     local itemEntry = self:GetItem(session)
-    
+
     -- UnLootedItemInBag : an item that's currently in loot table is also bagged
     if itemEntry.lootSlot and itemEntry.bagged then
         AwardFailed(session, winner, ML.AwardReasons.Failure.UnLootedItemInBag, callback, ...)
@@ -2238,7 +2240,6 @@ function ML:LootOpened()
                     self:ScheduleTimer("HookLootButton", 0.5, i)
                     
                     local autoAward, mode, winner = self:ShouldAutoAward(link, quality)
-    
                     if autoAward and quantity > 0 then
                         self:AutoAward(i, link, quality, winner, mode)
                     -- check if we are allowed to loot item
@@ -2348,7 +2349,7 @@ function ML.AwardPopupOnClickYes(frame, data, callback, ...)
     -- todo : this could be collapsed entirely into passing data (ItemAward)
     ML:Award(
         data.session,
-        data.winner,
+        data.winner, -- this will be of format  "character-realm" (e.g. Bob-Atiesh)
         data:NormalizedResponse().text, -- todo: can't we do this later?
         data.reason,
         ML.AwardPopupOnClickYesCallback,

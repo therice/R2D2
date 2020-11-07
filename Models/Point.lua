@@ -189,15 +189,14 @@ function Award:SetSubjects(type, ...)
                     -- the returned player name won't have realm, so convert using UnitName
                     -- https://wow.gamepedia.com/API_GetRaidRosterInfo
                     local name, _, _, _, _, _, zone, online = GetRaidRosterInfo(i)
-                    
                     Logging:Debug("SetSubjects(%s) : online=%s zone=%s", tostring(name), tostring(online), tostring(zone))
                     
                     -- be extra careful and use pcall to trap any errors in the evaluation
                     -- if it fails, we'll add the player by default
                     -- local check, add = pcall(function() return IsOnlineAndInInstance(zone, online) end)
-                    -- until the check can be addressed, just default to previous behavior (add everyone in raid)
-                    local check, add = true, true
-                    if check and not add then
+                    --
+                    -- until the check can be addressed, only check if player is online
+                    if not online then
                         Logging:Debug("SetSubjects() : Omitting %s from award, online=%s zone=%s",
                                       tostring(name), tostring(online), tostring(zone)
                         )
