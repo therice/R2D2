@@ -193,7 +193,8 @@ lib.frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 
 function lib:CHAT_MSG_ADDON(prefix, msg, type, sender)
     -- only look at messages from this library and ignore ones from yourself
-    if prefix ~= MAJOR_VERSION or sender == UnitName("player") then return end
+    --if prefix ~= MAJOR_VERSION or sender == UnitName("player") then return end
+    if prefix ~= MAJOR_VERSION or UnitIsUnit(Ambiguate(sender, "short"), "player") then return end
     Logging:Trace("CHAT_MSG_ADDON: %s, %s, %s, %s", prefix, msg, type, sender)
     
     if msg == Messages.ChangesPending then
