@@ -153,50 +153,50 @@ end
 
 function Standby:GetFrame()
     if self.frame then return self.frame end
-    local f = UI:CreateFrame("R2D2_Standby", "Standby",  L["r2d2_standby_bench_frame"], 250, 300)
-    f:SetWidth(225)
-    
-    local st = ST:CreateST(self.scrollCols, NUM_ROWS, ROW_HEIGHT, { ["r"] = 1.0, ["g"] = 0.9, ["b"] = 0.0, ["a"] = 0.5 }, f.content)
-    st.frame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
-    st:EnableSelection(true)
-    st:RegisterEvents({
-                          ["OnClick"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                              if row then
-                                  if button == "RightButton" then
-                                      MenuFrame.name = data[realrow].name
-                                      MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0);
-                                  elseif button == "LeftButton" then
-                                      self:UpdateMoreInfo(self:GetName(), f, realrow, data)
+        local f = UI:CreateFrame("R2D2_Standby", "Standby",  L["r2d2_standby_bench_frame"], 250, 300)
+        f:SetWidth(225)
+
+        local st = ST:CreateST(self.scrollCols, NUM_ROWS, ROW_HEIGHT, { ["r"] = 1.0, ["g"] = 0.9, ["b"] = 0.0, ["a"] = 0.5 }, f.content)
+        st.frame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 10, 10)
+        st:EnableSelection(true)
+        st:RegisterEvents({
+                              ["OnClick"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
+                                  if row then
+                                      if button == "RightButton" then
+                                          MenuFrame.name = data[realrow].name
+                                          MSA_ToggleDropDownMenu(1, nil, MenuFrame, cellFrame, 0, 0);
+                                      elseif button == "LeftButton" then
+                                          self:UpdateMoreInfo(self:GetName(), f, realrow, data)
+                                      end
                                   end
-                              end
-                              return false
-                          end,
-                          ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                              if row then self:UpdateMoreInfo(self:GetName(), f, realrow, data) end
-                              return false
-                          end,
-                          ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
-                              -- todo : hide this based upon no row being selected
-                              if row then
-                                  if f.st:GetSelection() then
-                                      self:UpdateMoreInfo(self:GetName(), f, realrow, data)
-                                  else
-                                      if self.frame then self.frame.moreInfo:Hide() end
+                                  return false
+                              end,
+                              ["OnEnter"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
+                                  if row then self:UpdateMoreInfo(self:GetName(), f, realrow, data) end
+                                  return false
+                              end,
+                              ["OnLeave"] = function(rowFrame, cellFrame, data, cols, row, realrow, column, table, button, ...)
+                                  -- todo : hide this based upon no row being selected
+                                  if row then
+                                      if f.st:GetSelection() then
+                                          self:UpdateMoreInfo(self:GetName(), f, realrow, data)
+                                      else
+                                          if self.frame then self.frame.moreInfo:Hide() end
+                                      end
                                   end
-                              end
-                              return false
-                          end,
-                      })
-    f.st = st
-    
-    AddOn.EmbedMoreInfoWidgets(self:GetName(), f, function(m, f) self:UpdateMoreInfo(m, f) end)
-    
-    local close = UI:CreateButton(_G.CLOSE, f.content)
-    close:SetPoint("RIGHT", f.moreInfoBtn, "LEFT", -10, 0)
-    close:SetScript("OnClick", function() self:Disable() end)
-    f.close = close
-    
-    f:SetWidth(st.frame:GetWidth() + 20)
+                                  return false
+                              end,
+                          })
+        f.st = st
+
+        AddOn.EmbedMoreInfoWidgets(self:GetName(), f, function(m, f) self:UpdateMoreInfo(m, f) end)
+
+        local close = UI:CreateButton(_G.CLOSE, f.content)
+        close:SetPoint("RIGHT", f.moreInfoBtn, "LEFT", -10, 0)
+        close:SetScript("OnClick", function() self:Disable() end)
+        f.close = close
+
+        f:SetWidth(st.frame:GetWidth() + 20)
     return f
 end
 

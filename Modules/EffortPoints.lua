@@ -351,6 +351,8 @@ function EP:ScaleIfRequired(value, mapId)
 end
 
 function EP:OnEncounterEnd(encounter)
+    Logging:Debug("OnEncounterEnd() : %s", Util.Objects.ToString(encounter:toTable()))
+
     if not encounter then
         Logging:Warn("EP:OnEncounterEnd() : No encounter provided")
         return

@@ -1261,7 +1261,7 @@ function ML:CanGiveLoot(slot, item, winner)
             if bindType ~= LE_ITEM_BIND_ON_ACQUIRE then
                 return false, ML.AwardReasons.Failure.NotBop
             else
-                return false, ML.NotMLCandidate
+                return false, ML.AwardReasons.Failure.NotMLCandidate
             end
         end
     end
@@ -1788,7 +1788,7 @@ function ML:GiveLoot(slot, winner, callback, ...)
     Logging:Debug("GiveLoot(%d) - %s", slot, tostring(winner))
     
     if AddOn.lootOpen then
-        local entry = {slot = slot, callback = callback, args = {...}, }
+        local entry = {slot = slot, callback = callback, args = {...}}
         entry.timer = self:ScheduleTimer(OnGiveLootTimeout, LOOT_TIMEOUT, entry)
         Util.Tables.Push(self.lootQueue, entry)
     

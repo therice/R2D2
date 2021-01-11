@@ -257,7 +257,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
             
                     -- Received LootTable without having received MasterLooterDb, well...
                     if not self.mlDb then
-                        self:Warn("Received LootTable without having MasterLooterDb from %s", sender)
+                        Logging:Warn("Received LootTable without having MasterLooterDb from %s", sender)
                         self:SendCommand(self.masterLooter, C.Commands.MasterLooterDbRequest)
                         return self:ScheduleTimer("OnCommReceived", 5, prefix, serializedMsg, dist, sender)
                     end
@@ -271,7 +271,7 @@ function AddOn:OnCommReceived(prefix, serializedMsg, dist, sender)
                     -- for anyone that is currently part of group, but outside of instances
                     -- automatically respond to each item (if support is enabled)
                     if self:GetMasterLooterDbValue('outOfRaid') and GetNumGroupMembers() >= 8 and not IsInInstance() then
-                        self:Debug("Raid member, but not in the instance. Responding to each item to that affect.")
+                        Logging:Debug("Raid member, but not in the instance. Responding to each item to that affect.")
                         Util.Tables.Iter(self.lootTable,
                                          function(entry, session)
                                              self:SendResponse(C.group, session, C.Responses.NotInRaid,

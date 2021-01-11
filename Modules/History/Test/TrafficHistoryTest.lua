@@ -43,7 +43,6 @@ describe("Traffic History", function()
         end
         After()
     end)
-
     describe("imports history", function()
         it("from sync", function()
             local handler = Sync.handlers['TrafficHistory']

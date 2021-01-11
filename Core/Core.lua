@@ -452,6 +452,7 @@ function AddOn:OnEvent(event, ...)
         -- https://wow.gamepedia.com/ENCOUNTER_START
         -- ENCOUNTER_START: encounterID, "encounterName", difficultyID, groupSize
         self.encounter = Models.Encounter(...)
+        Logging:Debug("EncounterStart() : %s", Util.Objects.ToString(self.encounter:toTable()))
         wipe(self.lootStatus)
         self:UpdatePlayersData()
     elseif event == E.EncounterEnd then
